@@ -13,45 +13,45 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
+#ifndef UAV_INIT_UWB_WRAPPER_HPP_
+#define UAV_INIT_UWB_WRAPPER_HPP_
 
+#include <geometry_msgs/PoseStamped.h>
 #include <ros/ros.h>
+
 #include <Eigen/Eigen>
+
 #include "utils/colors.hpp"
-#include "uwb_init_cpp.hpp"
 
+namespace uav_init
+{
+class UwbInitWrapper
+{
+public:
+  /**
+   * @brief Constructor
+   * @param Ros NodeHandle
+   */
+  UwbInitWrapper(ros::NodeHandle& nh);
 
-// Main function
-int main(int argc, char** argv) {
+private:
+  /**
+   * @brief Callbacks
+   * @param Message const pointer
+   */
+  void callback_posestamped(const geometry_msgs::PoseStamped::ConstPtr& msg);
 
+  /// Ros node handler
+  ros::NodeHandle nh_;
 
-  // Launch ros node
-  ros::init(argc, argv, "uwb_init_cpp");
-  ros::NodeHandle nh("~");
+  /// Subscribers
+  ros::Subscriber sub_posestamped;
 
-  
-  // Parameters from launchfile
-  std::string param;
+  /// Publishers
 
+  /// Messages
+};
 
-  // Check existance of parameter
-  if(!nh.getParam("param", param)) {
-    std::cout << std::endl;
-    ROS_ERROR("No param defined");
-    std::exit(EXIT_FAILURE);
-  }
+}  // namespace uav_init
 
-
-  // Instanciate UwbInitCpp
-  UwbInitCpp UwbInitCpp(nh);
-
-  
-  // ROS Spin
-  ros::spin();
-
-
-  // Done!
-  std::cout << std::endl;
-  ROS_INFO("Done!");
-  return EXIT_SUCCESS;
-
-}
+#endif  // UAV_INIT_UWB_WRAPPER_HPP_

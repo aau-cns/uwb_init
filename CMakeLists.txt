@@ -128,24 +128,31 @@ list(
 ## either from message generation or dynamic reconfigure
 # add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
+set(headers
+    include/uwb_wrapper.hpp
+)
+
+set(sources
+    src/main.cpp
+    src/uwb_wrapper.cpp)
+
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(${PROJECT_NAME}_uwb_init_cpp src/uwb_init_cpp.cpp src/uwb_init_cpp_node.cpp)
+add_executable(${PROJECT_NAME} ${headers} ${sources})
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
 ## e.g. "rosrun someones_pkg node" instead of "rosrun someones_pkg someones_pkg_node"
-set_target_properties(${PROJECT_NAME}_uwb_init_cpp PROPERTIES OUTPUT_NAME uwb_init_cpp PREFIX "")
+set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME uwb_init_cpp PREFIX "")
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-add_dependencies(${PROJECT_NAME}_uwb_init_cpp ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(${PROJECT_NAME}_uwb_init_cpp ${thirdparty_libraries})
-# target_link_libraries(${PROJECT_NAME}_camera_downsample custom_libraries)
+target_link_libraries(${PROJECT_NAME} ${thirdparty_libraries})
 
 #############
 ## Install ##

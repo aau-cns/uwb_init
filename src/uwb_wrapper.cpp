@@ -13,54 +13,35 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-
-#ifndef uwb_init_cpp_H
-#define uwb_init_cpp_H
-
+#include "uwb_wrapper.hpp"
 
 #include <ros/ros.h>
 #include <Eigen/Eigen>
-#include <geometry_msgs/PoseStamped.h>
+
 #include "utils/colors.hpp"
 
+namespace uav_init
+{
+UwbInitWrapper::UwbInitWrapper(ros::NodeHandle& nh) : nh_(nh)
+{
+  // Subscribers
+  sub_posestamped = nh.subscribe("/ov_msckf/poseimu", 1, &UwbInitWrapper::callback_posestamped, this);
 
-class UwbInitCpp {
+  // Print topics where we are subscribing to
+  std::cout << std::endl;
+  std::cout << "Subscribing: " << sub_posestamped.getTopic().c_str() << std::endl;
 
+  // Publishers
 
-  public:
+  // Print topics where we are publishing on
+  std::cout << std::endl;
 
+  // Write your code here...
+}
 
-  /**
-   * @brief Constructor
-   * @param Ros NodeHandle
-   */
-  UwbInitCpp(ros::NodeHandle &nh);
+void UwbInitWrapper::callback_posestamped(const geometry_msgs::PoseStamped::ConstPtr& msg)
+{
+  // Write your code here ...
+}
 
-
-  private:
-
-
-  /**
-   * @brief Callbacks
-   * @param Message const pointer
-   */
-  void callback_posestamped(const geometry_msgs::PoseStamped::ConstPtr& msg);
-
-
-  /// Ros node handler
-  ros::NodeHandle nh_;
-
-
-  /// Subscribers
-  ros::Subscriber sub_posestamped;
-
-
-  /// Publishers
-  
-
-  /// Messages
-  
-
-};
-
-#endif  // uwb_init_cpp_H
+}  // namespace uav_init
