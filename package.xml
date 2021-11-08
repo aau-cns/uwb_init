@@ -33,6 +33,7 @@
   <depend>nav_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>dynamic_reconfigure</depend>
+  <depend>evb1000_driver</depend>
   <!-- <build_depend>message_generation</build_depend>
   <exec_depend>message_runtime</exec_Depend> -->
 

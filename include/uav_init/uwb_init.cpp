@@ -17,13 +17,28 @@
 
 namespace uav_init
 {
-void UwbInitializer::feed_uwb(double timestamp, std::map<size_t, double> uwb_ranges, Eigen::Vector3d p_UinG)
+void UwbInitializer::feed_uwb(const std::vector<UwbData> uwb_measurements)
 {
-  for (const auto& it : uwb_ranges)
+  // add measurements to data buffer
+  for(uint i=0; i < uwb_measurements.size(); ++i)
   {
-    // Append it to our vector
-    uwb_data.insert({ it.first, std::make_tuple(p_UinG, timestamp, it.second) });
+    // check validity
+    if (uwb_measurements[i].valid)
+    {
+      uwb_data_buffer_.at(uwb_measurements[i].id).push_back(uwb_measurements[i]);
+    }
+    else
+    {
+      ROS_DEBUG_STREAM("Discarding measurment " << uwb_measurements[i].distance << " from anchor " << uwb_measurements[i].id);
+    }
   }
+}
+
+void UwbInitializer::feed_pose(const Eigen::Vector3d p_UinG)
+{
+  // TODO(scm): maybe use buffer here for timesyncing with UWB modules
+  // currently this method does not take delayed UWB measurements into account
+  cur_p_UinG_ = p_UinG;
 }
 
 bool UwbInitializer::try_to_initialize_anchors(std::map<size_t, Eigen::Vector3d>& p_ANCHORSinG, double& distance_bias,
@@ -35,7 +50,7 @@ bool UwbInitializer::try_to_initialize_anchors(std::map<size_t, Eigen::Vector3d>
   std::vector<double> distance_biases_Covs, const_biases_Covs;
 
   // For each anchor
-  for (int anchor_id = 0; anchor_id < _n_anchors; ++anchor_id)
+  for (int anchor_id = 0; anchor_id < n_anchors_; ++anchor_id)
   {
     // Extract block of measurement related with anchor_id
     // Use the First solution if C++17 is not available
@@ -113,8 +128,8 @@ bool UwbInitializer::try_to_initialize_anchors(std::map<size_t, Eigen::Vector3d>
     }
   }
 
-  assert(distance_biases.size() == _n_anchors);
-  assert(const_biases.size() == _n_anchors);
+  assert(distance_biases.size() == n_anchors_);
+  assert(const_biases.size() == n_anchors_);
 
   // Average the biases estimation and covariances
   distance_bias = accumulate(distance_biases.begin(), distance_biases.end(), 0.0) / distance_biases.size();

@@ -28,7 +28,7 @@ message(STATUS "CMAKE_CXX_FLAGES: ${CMAKE_CXX_FLAGS}")
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp dynamic_reconfigure message_generation std_msgs nav_msgs sensor_msgs geometry_msgs cv_bridge)
+find_package(catkin REQUIRED COMPONENTS roscpp dynamic_reconfigure message_generation std_msgs nav_msgs sensor_msgs geometry_msgs cv_bridge evb1000_driver)
 
 ## System dependencies are found with CMake's conventions
 find_package(Boost REQUIRED)
@@ -92,7 +92,7 @@ message(STATUS "OPENCV VERSION: " ${OpenCV_VERSION})
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-  CATKIN_DEPENDS std_msgs nav_msgs sensor_msgs geometry_msgs #message_runtime
+  CATKIN_DEPENDS std_msgs nav_msgs sensor_msgs geometry_msgs evb1000_driver #message_runtime
 #  LIBRARIES custom_libraries
 #  DEPENDS system_lib
 )
