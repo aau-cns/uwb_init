@@ -20,7 +20,7 @@ namespace uav_init
 void UwbInitializer::feed_uwb(const std::vector<UwbData> uwb_measurements)
 {
   // add measurements to data buffer
-  for(uint i=0; i < uwb_measurements.size(); ++i)
+  for (uint i = 0; i < uwb_measurements.size(); ++i)
   {
     // check validity
     if (uwb_measurements[i].valid)
@@ -29,16 +29,18 @@ void UwbInitializer::feed_uwb(const std::vector<UwbData> uwb_measurements)
     }
     else
     {
-      ROS_DEBUG_STREAM("Discarding measurment " << uwb_measurements[i].distance << " from anchor " << uwb_measurements[i].id);
+      ROS_DEBUG_STREAM("Discarding measurment " << uwb_measurements[i].distance << " from anchor "
+                                                << uwb_measurements[i].id);
     }
   }
 }
 
-void UwbInitializer::feed_pose(const Eigen::Vector3d p_UinG)
+void UwbInitializer::feed_pose(const double timestamp, const Eigen::Vector3d p_UinG)
 {
   // TODO(scm): maybe use buffer here for timesyncing with UWB modules
   // currently this method does not take delayed UWB measurements into account
-  cur_p_UinG_ = p_UinG;
+  //  cur_p_UinG_ = p_UinG;
+  buffer_p_UinG_.push_back(timestamp, p_UinG);
 }
 
 bool UwbInitializer::try_to_initialize_anchors(std::map<size_t, Eigen::Vector3d>& p_ANCHORSinG, double& distance_bias,
@@ -50,37 +52,29 @@ bool UwbInitializer::try_to_initialize_anchors(std::map<size_t, Eigen::Vector3d>
   std::vector<double> distance_biases_Covs, const_biases_Covs;
 
   // For each anchor
-  for (int anchor_id = 0; anchor_id < n_anchors_; ++anchor_id)
+  for (uint anchor_id = 0; anchor_id < n_anchors_; ++anchor_id)
   {
-    // Extract block of measurement related with anchor_id
-    // Use the First solution if C++17 is not available
-    // const auto range = uwb_data.equal_range(anchor_id);
-    // for (auto it = range.first; it != range.second; ++it) {
-    //  single_anchor_uwb_data.push_back((*it).second);
-    //}
-    // Alessandro: [check] extract is for C++17 only
-    const auto nh = uwb_data.extract(anchor_id);
-    single_anchor_uwb_data.push_back(nh.mapped());
+    std::vector single_anchor_uwb_data = uwb_data_buffer_.at(anchor_id);
 
     // Coefficient matrix and measurement vector initialization
-    Eigen::MatrixXd Coeff = Eigen::MatrixXd::Zero(single_anchor_uwb_data.size(), 6);
+    Eigen::MatrixXd coeffs = Eigen::MatrixXd::Zero(single_anchor_uwb_data.size(), 6);
     Eigen::VectorXd measurements = Eigen::VectorXd::Zero(single_anchor_uwb_data.size());
 
     // Fill the coefficient matrix and the measurement vector
-    int cnt = 0;
-    for (const auto& it : single_anchor_uwb_data)
+    for (uint i = 0; i < single_anchor_uwb_data.size(); ++i)
     {
-      Eigen::Vector3d row;
-      row << -2 * std::get<0>(it).x(), -2 * std::get<0>(it).y(), -2 * std::get<0>(it).z(),
-          std::pow(std::get<0>(it).norm(), 2), 2 * std::get<2>(it), 1;
-      Coeff.row(cnt) = row;
-      measurements(cnt) = std::pow(std::get<2>(it), 2);
-      cnt++;
+      // get closest UWB module position
+      Eigen::Vector3d closest_p_UinG = buffer_p_UinG_.get_closest(single_anchor_uwb_data.at(i).timestamp);
+      Eigen::VectorXd row(6);
+      row << -2 * closest_p_UinG.x(), -2 * closest_p_UinG.y(), -2 * closest_p_UinG.z(),
+          std::pow(closest_p_UinG.norm(), 2), 2 * single_anchor_uwb_data.at(i).distance, 1;
+      coeffs.row(i) = row.transpose();
+      measurements(i) = std::pow(single_anchor_uwb_data.at(i).distance, 2);
     }
 
     // Alessandro: [check] efficiency
     // Check the coefficient matrix condition number and solve the LS problem
-    Eigen::JacobiSVD<Eigen::MatrixXd> svd(Coeff, Eigen::ComputeThinU | Eigen::ComputeThinV);
+    Eigen::JacobiSVD<Eigen::MatrixXd> svd(coeffs, Eigen::ComputeThinU | Eigen::ComputeThinV);
     double cond = svd.singularValues()(0) / svd.singularValues()(svd.singularValues().size() - 1);
     if (cond < 3)
     {
@@ -100,7 +94,7 @@ bool UwbInitializer::try_to_initialize_anchors(std::map<size_t, Eigen::Vector3d>
 
         // Compute estimation Covariance
         Eigen::MatrixXd Cov =
-            (std::pow((Coeff * LSSolution - measurements).norm(), 2) / (Coeff.rows() * Coeff.cols())) *
+            (std::pow((coeffs * LSSolution - measurements).norm(), 2) / (coeffs.rows() * coeffs.cols())) *
             (svd.matrixV().inverse().transpose() * svd.singularValues().asDiagonal().inverse() *
              svd.singularValues().asDiagonal().inverse() * svd.matrixV().inverse());
         Eigen::Matrix4d distance_bias_squared_P_AinG_Cov = Cov.block(0, 0, 3, 3);

@@ -54,7 +54,7 @@ void UwbInitWrapper::cb_posestamped(const geometry_msgs::PoseStamped::ConstPtr& 
   p_UinG = p_UinG + q_UinG.toRotationMatrix() * p_r_ItoU_;
 
   // feed current pose to initializer
-  uwb_initializer_.feed_pose(p_UinG);
+  uwb_initializer_.feed_pose(msg->header.stamp.toSec(), p_UinG);
 }
 
 void UwbInitWrapper::cb_uwbstamped(const evb1000_driver::TagDistanceConstPtr& msg)

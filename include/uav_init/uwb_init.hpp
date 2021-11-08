@@ -25,6 +25,7 @@
 #include <tuple>
 #include <unordered_map>
 #include <vector>
+#include <deque>
 
 namespace uav_init
 {
@@ -56,22 +57,102 @@ struct UwbData
     : timestamp(_timestamp), valid(_valid), distance(_distance), id(_id){};
 };
 
+class PositionBuffer
+{
+private:
+  double buffer_size_s_{ 0.0 };  //!< buffer size in s of measurements
+
+  // buffer
+  /// buffer of measurements in the form [timestamp, position]
+  std::deque<std::pair<double, Eigen::Vector3d>> buffer_;
+
+public:
+  PositionBuffer(double buffer_size_s = 0.0)
+  {
+    if (buffer_size_s <= 0.0)
+    {
+      ROS_WARN("Initializing infinite position buffer");
+      buffer_size_s_ = 0.0;
+    }
+    else
+      buffer_size_s_ = buffer_size_s;
+
+    // self reset
+    reset();
+  }
+
+  void reset()
+  {
+    buffer_.clear();
+  }
+
+  bool push_back(double timestamp, Eigen::Vector3d position)
+  {
+    // perform checks on buffer time and input time
+    if (buffer_.size() > 0)
+    {
+      // check for timestamp jump
+      if (buffer_.back().first > timestamp)
+      {
+        ROS_ERROR("Timejump in buffer detected, not adding entry.");
+        return false;
+      }
+
+      // check if buffer is bigger than targeted size in s
+      if (buffer_size_s_ > 0.0)
+      {
+        // delete all entries, whose timestamp is outside of buffer timestamp size
+        while (buffer_.size() > 0 && timestamp - buffer_.front().first > buffer_size_s_)
+        {
+          buffer_.pop_front();
+        }
+      }
+    }
+
+    // add entry to buffer
+    buffer_.push_back(std::make_pair(timestamp, position));
+  }
+
+  ///
+  /// \brief get_closest returns the entry of the buffer closes to the
+  /// \param timestamp
+  /// \return
+  ///
+  Eigen::Vector3d get_closest(double timestamp)
+  {
+    if (buffer_.empty())
+    {
+      ROS_ERROR("PositionBuffer still empty.");
+      return Eigen::Vector3d(0.0, 0.0, 0.0);
+    }
+
+    // TODO(scm) this can be upgraded to interpolate (extrapolate) the positions if time does not match exactly
+
+    // get closest position vector, where the closest is taken as the measurement which is smaller/equal to the current
+    // measurement time iterate from back to front thus
+    for (uint i = buffer_.size() - 1; i >= 0; --i)
+    {
+      if (buffer_.at(i).first <= timestamp)
+        return buffer_.at(i).second;
+    }
+
+    // in case we have not returned any we do not have a measurement in the buffer anymore
+    ROS_WARN_STREAM("We do not have any position in the buffer for time " << timestamp << " anymore." << std::endl);
+    return buffer_.front().second;
+  }
+}; // class PositionBuffer
+
 class UwbInitializer
 {
 public:
-  /**
-   * @brief Default constructor
-   */
-  UwbInitializer(int n_anchors) : n_anchors_(n_anchors)
+  ///
+  /// \brief UwbInitializer default constructor
+  /// \param n_anchors number of anchors in use
+  ///
+  UwbInitializer(int n_anchors = 0) : n_anchors_(n_anchors)
   {
+    buffer_p_UinG_ = PositionBuffer(buffer_size_s_);
   }
-
-  /**
-   * @brief Stores incoming uwb (valid) readings
-   *
-   * @param timestamp Timestamp of uwb reading
-   * @param valid uwb readings associated with anchor
-   */
 
   ///
   /// \brief feed_uwb stores incoming UWB (valid) readings
@@ -79,7 +160,7 @@ public:
   ///
   void feed_uwb(const std::vector<UwbData> uwb_measurements);
 
-  void feed_pose(const Eigen::Vector3d p_UinG);
+  void feed_pose(const double timestamp, const Eigen::Vector3d p_UinG);
 
   /**
    * @brief Try to initialize anchors and measurement bias through LS
@@ -93,15 +174,17 @@ public:
 
 protected:
   // anchor and measurement handeling
-  uint n_anchors_;              //!< number of anchors in use
-  Eigen::Vector3d cur_p_UinG_;  //!< current position of the UWB module in global frame
+  uint n_anchors_;                //!< number of anchors in use
+  double buffer_size_s_{1.0};     //!< buffer size in s of UWB module positions
+  Eigen::Vector3d cur_p_UinG_;    //!< current position of the UWB module in global frame
+  PositionBuffer buffer_p_UinG_;  //!< buffer of UWB module positions in global frame
 
   /// Our history of uwb readings [anchor, [p_UinG, timestamp, distance]]
   //  std::multimap<size_t, std::tuple<Eigen::Vector3d, double, double>> uwb_data;
   std::map<uint16_t, std::vector<UwbData>> uwb_data_buffer_;
 
   /// Set of measurement associated with a specific anchor [p_UinG, timestamp, distance]
-  std::vector<std::tuple<Eigen::Vector3d, double, double>> single_anchor_uwb_data;
+  //  std::vector<std::tuple<Eigen::Vector3d, double, double>> single_anchor_uwb_data;
 };
 
 }  // namespace uav_init
