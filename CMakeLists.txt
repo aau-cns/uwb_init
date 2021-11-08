@@ -130,11 +130,14 @@ list(
 
 set(headers
     include/uwb_wrapper.hpp
+    include/uav_init/uwb_init.hpp
+    include/uav_init/uwb_init.cpp
 )
 
 set(sources
     src/main.cpp
-    src/uwb_wrapper.cpp)
+    src/uwb_wrapper.cpp
+)
 
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
