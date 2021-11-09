@@ -28,7 +28,7 @@ message(STATUS "CMAKE_CXX_FLAGES: ${CMAKE_CXX_FLAGS}")
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp dynamic_reconfigure message_generation std_msgs nav_msgs sensor_msgs geometry_msgs cv_bridge)
+find_package(catkin REQUIRED COMPONENTS roscpp dynamic_reconfigure message_generation std_msgs nav_msgs sensor_msgs geometry_msgs cv_bridge evb1000_driver)
 
 ## System dependencies are found with CMake's conventions
 find_package(Boost REQUIRED)
@@ -77,9 +77,9 @@ message(STATUS "OPENCV VERSION: " ${OpenCV_VERSION})
 ################################################
 
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
-# generate_dynamic_reconfigure_options(
-#  cfg/DynReconf1.cfg cfg/DynReconf2.cfg
-# )
+generate_dynamic_reconfigure_options(
+ cfg/UwbInit.cfg
+)
 
 ###################################
 ## catkin specific configuration ##
@@ -92,7 +92,7 @@ message(STATUS "OPENCV VERSION: " ${OpenCV_VERSION})
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-  CATKIN_DEPENDS std_msgs nav_msgs sensor_msgs geometry_msgs #message_runtime
+  CATKIN_DEPENDS std_msgs nav_msgs sensor_msgs geometry_msgs evb1000_driver #message_runtime
 #  LIBRARIES custom_libraries
 #  DEPENDS system_lib
 )
@@ -128,24 +128,34 @@ list(
 ## either from message generation or dynamic reconfigure
 # add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
+set(headers
+    include/uwb_wrapper.hpp
+    include/uav_init/uwb_init.hpp
+    include/uav_init/uwb_init.cpp
+)
+
+set(sources
+    src/main.cpp
+    src/uwb_wrapper.cpp
+)
+
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(${PROJECT_NAME}_uwb_init_cpp src/uwb_init_cpp.cpp src/uwb_init_cpp_node.cpp)
+add_executable(${PROJECT_NAME} ${headers} ${sources})
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
 ## e.g. "rosrun someones_pkg node" instead of "rosrun someones_pkg someones_pkg_node"
-set_target_properties(${PROJECT_NAME}_uwb_init_cpp PROPERTIES OUTPUT_NAME uwb_init_cpp PREFIX "")
+set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME uwb_init_cpp PREFIX "")
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-add_dependencies(${PROJECT_NAME}_uwb_init_cpp ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(${PROJECT_NAME}_uwb_init_cpp ${thirdparty_libraries})
-# target_link_libraries(${PROJECT_NAME}_camera_downsample custom_libraries)
+target_link_libraries(${PROJECT_NAME} ${thirdparty_libraries})
 
 #############
 ## Install ##

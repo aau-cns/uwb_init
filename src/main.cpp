@@ -13,45 +13,40 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-
 #include <ros/ros.h>
+
 #include <Eigen/Eigen>
+
 #include "utils/colors.hpp"
-#include "uwb_init_cpp.hpp"
+#include "uwb_wrapper.hpp"
 
+// Main function
+int main(int argc, char** argv)
+{
+  // Launch ros node
+  ros::init(argc, argv, "uwb_init_cpp");
+  ros::NodeHandle nh("~");
 
+#ifdef NDEBUG
+  // nondebug
+  if( ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info) ) {
+    ros::console::notifyLoggerLevelsChanged();
+  }
+#else
+  // debug
+  if( ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug) ) {
+    ros::console::notifyLoggerLevelsChanged();
+  }
+#endif
 
-UwbInitCpp::UwbInitCpp(ros::NodeHandle &nh) :
-  nh_(nh) {
-  
-  
-  // Subscribers
-  sub_posestamped = nh.subscribe("/ov_msckf/poseimu", 1, &UwbInitCpp::callback_posestamped, this);
+  // Instanciate UwbInitCpp
+  uav_init::UwbInitWrapper UwbInitWrapper(nh);
 
-  
-  // Print topics where we are subscribing to
+  // ROS Spin
+  ros::spin();
+
+  // Done!
   std::cout << std::endl;
-  std::cout << "Subscribing: " << sub_posestamped.getTopic().c_str() << std::endl;
-
-  
-  // Publishers
-  
-  
-  // Print topics where we are publishing on
-  std::cout << std::endl;
-  
-
-  // Write your code here...
-  
+  ROS_INFO("Done!");
+  return EXIT_SUCCESS;
 }
-
-
-void UwbInitCpp::callback_posestamped(const geometry_msgs::PoseStamped::ConstPtr& msg) {
-
-  // Write your code here ...
-
-}
-
-
-
-
