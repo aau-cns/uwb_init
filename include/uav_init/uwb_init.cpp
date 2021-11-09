@@ -25,11 +25,13 @@ void UwbInitializer::feed_uwb(const std::vector<UwbData> uwb_measurements)
     // check validity
     if (uwb_measurements[i].valid)
     {
-      uwb_data_buffer_.at(uwb_measurements[i].id).push_back(uwb_measurements[i]);
+      ROS_DEBUG_STREAM("Adding measurment " << uwb_measurements[i].distance << " from anchor "
+                                            << uwb_measurements[i].id);
+      uwb_data_buffer_[uwb_measurements[i].id].push_back(uwb_measurements[i]);
     }
     else
     {
-      ROS_DEBUG_STREAM("Discarding measurment " << uwb_measurements[i].distance << " from anchor "
+      ROS_DEBUG_STREAM("DISCARDING measurment " << uwb_measurements[i].distance << " from anchor "
                                                 << uwb_measurements[i].id);
     }
   }
@@ -54,6 +56,7 @@ bool UwbInitializer::try_to_initialize_anchors(std::map<size_t, Eigen::Vector3d>
   // For each anchor
   for (uint anchor_id = 0; anchor_id < n_anchors_; ++anchor_id)
   {
+    ROS_DEBUG_STREAM("A" << anchor_id << ": calculating solution ...");
     std::vector single_anchor_uwb_data = uwb_data_buffer_.at(anchor_id);
 
     // Coefficient matrix and measurement vector initialization
@@ -72,11 +75,15 @@ bool UwbInitializer::try_to_initialize_anchors(std::map<size_t, Eigen::Vector3d>
       measurements(i) = std::pow(single_anchor_uwb_data.at(i).distance, 2);
     }
 
+    ROS_DEBUG_STREAM("A" << anchor_id << " created problem:\n"
+                         << "\tcoeffs:\n" << coeffs << "\n"
+                         << "\tmeasurements:\n" << measurements);
+
     // Alessandro: [check] efficiency
     // Check the coefficient matrix condition number and solve the LS problem
     Eigen::JacobiSVD<Eigen::MatrixXd> svd(coeffs, Eigen::ComputeThinU | Eigen::ComputeThinV);
     double cond = svd.singularValues()(0) / svd.singularValues()(svd.singularValues().size() - 1);
-    if (cond < 3)
+    if (cond < 10000)  // 3
     {
       // [      0     ,       1     ,       2     ,  3 , 4,          5          ]
       // [b^2*p_AinG_x, b^2*p_AinG_y, b^2*p_AinG_z, b^2, k, b^2*norm(p_AinG)-k^2]
@@ -84,6 +91,12 @@ bool UwbInitializer::try_to_initialize_anchors(std::map<size_t, Eigen::Vector3d>
       Eigen::Vector3d p_AinG = LSSolution.segment(0, 3) / LSSolution[3];
       double distance_bias_squared = LSSolution[3];
       double const_bias = LSSolution[4];
+
+      ROS_DEBUG_STREAM("A" << anchor_id << " solution:\n"
+                           << "\tLS:         " << LSSolution.transpose() << "\n"
+                           << "\tp_AinG:     " << p_AinG.transpose() << "\n"
+                           << "\td_bias_sq:  " << distance_bias_squared << "\n"
+                           << "\tconst_bias: " << const_bias);
 
       if ((LSSolution[5] - (distance_bias_squared * std::pow(p_AinG.norm(), 2) - std::pow(const_bias, 2))) < 1)
       {
@@ -97,15 +110,17 @@ bool UwbInitializer::try_to_initialize_anchors(std::map<size_t, Eigen::Vector3d>
             (std::pow((coeffs * LSSolution - measurements).norm(), 2) / (coeffs.rows() * coeffs.cols())) *
             (svd.matrixV().inverse().transpose() * svd.singularValues().asDiagonal().inverse() *
              svd.singularValues().asDiagonal().inverse() * svd.matrixV().inverse());
-//        Eigen::Matrix4d distance_bias_squared_P_AinG_Cov = Cov.block(0, 0, 3, 3);
-//        double distance_bias_squared_Cov = Cov(4, 4);
-//        double const_bias_Cov = Cov(5, 5);
+        //        Eigen::Matrix4d distance_bias_squared_P_AinG_Cov = Cov.block(0, 0, 3, 3);
+        //        double distance_bias_squared_Cov = Cov(4, 4);
+        //        double const_bias_Cov = Cov(5, 5);
+        ROS_DEBUG_STREAM("\n\tCov:        " << Cov);
 
         // Retrive P_AinG Covariance applying error propagation law and assign to Anchors_Covs
         Eigen::MatrixXd J = Eigen::MatrixXd::Zero(1, 4);
-        J(0, 0) = 1 / distance_bias_squared;
-        J.block(0, 1, 1, 3) = -p_AinG / distance_bias_squared;
-        Anchors_Covs.insert({ anchor_id, J * Cov.block(0, 0, 4, 4) * J.transpose() });
+        J(0, 0) = 1.0 / distance_bias_squared;
+        J.block(0, 1, 1, 3) = -p_AinG.transpose() / distance_bias_squared;
+        ROS_DEBUG_STREAM("\n\tJ:        " << J);
+        //        Anchors_Covs.insert({ anchor_id, J * Cov.block(0, 0, 4, 4) * J.transpose() });
 
         // Retrive Covariance of b and k applying error propagation law
         distance_biases_Covs.push_back(1 / (4 * distance_bias_squared) * Cov(3, 3));
@@ -113,11 +128,16 @@ bool UwbInitializer::try_to_initialize_anchors(std::map<size_t, Eigen::Vector3d>
       }
       else
       {
+        ROS_WARN_STREAM("Anchor " << anchor_id << ": issue with LS solution ("
+                                  << (LSSolution[5] -
+                                      (distance_bias_squared * std::pow(p_AinG.norm(), 2) - std::pow(const_bias, 2)))
+                                  << ")");
         return false;
       }
     }
     else
     {
+      ROS_WARN_STREAM("Anchor " << anchor_id << ": issue with condition number (" << cond << ")" << std::endl);
       return false;
     }
   }

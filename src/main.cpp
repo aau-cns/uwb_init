@@ -27,6 +27,18 @@ int main(int argc, char** argv)
   ros::init(argc, argv, "uwb_init_cpp");
   ros::NodeHandle nh("~");
 
+#ifdef NDEBUG
+  // nondebug
+  if( ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info) ) {
+    ros::console::notifyLoggerLevelsChanged();
+  }
+#else
+  // debug
+  if( ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug) ) {
+    ros::console::notifyLoggerLevelsChanged();
+  }
+#endif
+
   // Instanciate UwbInitCpp
   uav_init::UwbInitWrapper UwbInitWrapper(nh);
 

@@ -87,8 +87,9 @@ void UwbInitWrapper::cb_dynamicconfig(UwbInitConfig_t& config, uint32_t level)
     std::map<size_t, Eigen::Matrix3d> A_covs;
 
     // perform anchor claculation
-    uwb_initializer_.try_to_initialize_anchors(p_AinG, distance_bias, const_bias, A_covs, distance_bias_cov,
-                                               const_bias_cov);
+    if (uwb_initializer_.try_to_initialize_anchors(p_AinG, distance_bias, const_bias, A_covs, distance_bias_cov,
+                                                   const_bias_cov))
+    {
 
     // output result
     ROS_INFO_STREAM("Result:" << std::endl);
@@ -105,6 +106,11 @@ void UwbInitWrapper::cb_dynamicconfig(UwbInitConfig_t& config, uint32_t level)
     }
     ROS_INFO_STREAM("\td_bias:" << distance_bias << std::endl);
     ROS_INFO_STREAM("\tc_bias:" << const_bias << std::endl);
+    }
+    else
+    {
+      ROS_ERROR_STREAM("Could not initialize anchors");
+    }
 
     config.calculate = false;
   }
