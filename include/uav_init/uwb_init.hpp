@@ -20,12 +20,12 @@
 #include <ros/ros.h>
 
 #include <Eigen/Dense>
+#include <deque>
 #include <map>
 #include <numeric>
 #include <tuple>
 #include <unordered_map>
 #include <vector>
-#include <deque>
 
 namespace uav_init
 {
@@ -111,6 +111,7 @@ public:
 
     // add entry to buffer
     buffer_.push_back(std::make_pair(timestamp, position));
+    return true;
   }
 
   ///
@@ -140,7 +141,7 @@ public:
     ROS_WARN_STREAM("We do not have any position in the buffer for time " << timestamp << " anymore." << std::endl);
     return buffer_.front().second;
   }
-}; // class PositionBuffer
+};  // class PositionBuffer
 
 class UwbInitializer
 {
@@ -174,10 +175,10 @@ public:
 
 protected:
   // anchor and measurement handeling
-  uint n_anchors_;                //!< number of anchors in use
-  double buffer_size_s_{1.0};     //!< buffer size in s of UWB module positions
-  Eigen::Vector3d cur_p_UinG_;    //!< current position of the UWB module in global frame
-  PositionBuffer buffer_p_UinG_;  //!< buffer of UWB module positions in global frame
+  uint n_anchors_;                 //!< number of anchors in use
+  double buffer_size_s_{ 100.0 };  //!< buffer size in s of UWB module positions
+  Eigen::Vector3d cur_p_UinG_;     //!< current position of the UWB module in global frame
+  PositionBuffer buffer_p_UinG_;   //!< buffer of UWB module positions in global frame
 
   /// Our history of uwb readings [anchor, [p_UinG, timestamp, distance]]
   //  std::multimap<size_t, std::tuple<Eigen::Vector3d, double, double>> uwb_data;

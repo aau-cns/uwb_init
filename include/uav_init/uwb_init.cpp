@@ -97,9 +97,9 @@ bool UwbInitializer::try_to_initialize_anchors(std::map<size_t, Eigen::Vector3d>
             (std::pow((coeffs * LSSolution - measurements).norm(), 2) / (coeffs.rows() * coeffs.cols())) *
             (svd.matrixV().inverse().transpose() * svd.singularValues().asDiagonal().inverse() *
              svd.singularValues().asDiagonal().inverse() * svd.matrixV().inverse());
-        Eigen::Matrix4d distance_bias_squared_P_AinG_Cov = Cov.block(0, 0, 3, 3);
-        double distance_bias_squared_Cov = Cov(4, 4);
-        double const_bias_Cov = Cov(5, 5);
+//        Eigen::Matrix4d distance_bias_squared_P_AinG_Cov = Cov.block(0, 0, 3, 3);
+//        double distance_bias_squared_Cov = Cov(4, 4);
+//        double const_bias_Cov = Cov(5, 5);
 
         // Retrive P_AinG Covariance applying error propagation law and assign to Anchors_Covs
         Eigen::MatrixXd J = Eigen::MatrixXd::Zero(1, 4);

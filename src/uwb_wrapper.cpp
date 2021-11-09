@@ -32,10 +32,13 @@ UwbInitWrapper::UwbInitWrapper(ros::NodeHandle& nh) : nh_(nh)
     return;
   }
 
-
   // Subscribers
   sub_posestamped = nh.subscribe("pose", 1, &UwbInitWrapper::cb_posestamped, this);
   sub_uwbstamped = nh.subscribe("uwb", 1, &UwbInitWrapper::cb_uwbstamped, this);
+
+  // set up dynamic parameters
+  ReconfServer_t::CallbackType f = boost::bind(&UwbInitWrapper::cb_dynamicconfig, this, _1, _2);
+  reconf_server_.setCallback(f);
 
   // Print topics where we are subscribing to
   std::cout << std::endl;
@@ -72,6 +75,38 @@ void UwbInitWrapper::cb_uwbstamped(const evb1000_driver::TagDistanceConstPtr& ms
 
   // feed measurements to initializer
   uwb_initializer_.feed_uwb(uwb_ranges);
+}
+
+void UwbInitWrapper::cb_dynamicconfig(UwbInitConfig_t& config, uint32_t level)
+{
+  if (config.calculate)
+  {
+    std::map<size_t, Eigen::Vector3d> p_AinG;
+    double distance_bias, const_bias, distance_bias_cov, const_bias_cov;
+    std::map<size_t, Eigen::Matrix3d> A_covs;
+
+    // perform anchor claculation
+    uwb_initializer_.try_to_initialize_anchors(p_AinG, distance_bias, const_bias, A_covs, distance_bias_cov,
+                                               const_bias_cov);
+
+    // output result
+    ROS_INFO_STREAM("Result:" << std::endl);
+#if (__cplusplus == 201703L)
+    for (const auto& [key, pos] : p_AinG)
+    {
+#else
+    for (const auto& kv : p_AinG)
+    {
+      const auto key = kv.first;
+      const auto pos = kv.second;
+#endif
+      ROS_INFO_STREAM("\tPos A" << key << ": " << pos.transpose() << std::endl);
+    }
+    ROS_INFO_STREAM("\td_bias:" << distance_bias << std::endl);
+    ROS_INFO_STREAM("\tc_bias:" << const_bias << std::endl);
+
+    config.calculate = false;
+  }
 }
 
 }  // namespace uav_init
