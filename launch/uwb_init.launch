@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+  <!-- topic parameters -->
+  <arg name="topic_pose_in"   default="/mus/ground_truth_pose_imu" />
+  <arg name="topic_uwb_in"    default="/mus/uwb" />
+
+  <!-- calibration -->
+  <arg name="calib_r_ItoU"    default="[0.0, 0.0, 0.0]" />
+
+  <!-- node parameters -->
+  <arg name="num_anchors"     default="4" />
+
+  <node name="uwb_init_cpp" pkg="uwb_init_cpp" type="uwb_init_cpp" args="" output="screen" respawn="false">
+    <!-- node parameters -->
+    <param name="n_anchors"   value="$(arg num_anchors)"  type="int" />
+    <rosparam param="r_ItoU"   subst_value="True">$(arg calib_r_ItoU)</rosparam>
+
+    <!-- topic remaps -->
+    <remap from="~pose"  to="$(arg topic_pose_in)" />
+    <remap from="~uwb"   to="$(arg topic_uwb_in)" />
+  </node>
+</launch>

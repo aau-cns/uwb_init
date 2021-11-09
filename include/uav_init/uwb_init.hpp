@@ -67,11 +67,11 @@ private:
   std::deque<std::pair<double, Eigen::Vector3d>> buffer_;
 
 public:
-  PositionBuffer(double buffer_size_s = 0.0)
+  PositionBuffer(double buffer_size_s)
   {
     if (buffer_size_s <= 0.0)
     {
-      ROS_WARN("Initializing infinite position buffer");
+      ROS_WARN("Initializing infinite position buffer (%f)", buffer_size_s);
       buffer_size_s_ = 0.0;
     }
     else
@@ -80,6 +80,7 @@ public:
     // self reset
     reset();
   }
+  PositionBuffer() : PositionBuffer(0.0) {};
 
   void reset()
   {
@@ -152,6 +153,7 @@ public:
   ///
   UwbInitializer(int n_anchors = 0) : n_anchors_(n_anchors)
   {
+    std::cout << "pre_buffer_size: " << buffer_size_s_ << std::endl;
     buffer_p_UinG_ = PositionBuffer(buffer_size_s_);
   }
 

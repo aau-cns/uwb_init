@@ -41,14 +41,9 @@ public:
   UwbInitWrapper(ros::NodeHandle& nh);
 
 private:
-  /**
-   * @brief Callbacks
-   * @param Message const pointer
-   */
+
   void cb_posestamped(const geometry_msgs::PoseStamped::ConstPtr& msg);
-
   void cb_uwbstamped(const evb1000_driver::TagDistanceConstPtr& msg);
-
   void cb_dynamicconfig(UwbInitConfig_t& config, uint32_t level);
 
   /// Ros node handler

@@ -27,17 +27,6 @@ int main(int argc, char** argv)
   ros::init(argc, argv, "uwb_init_cpp");
   ros::NodeHandle nh("~");
 
-  // Parameters from launchfile
-  std::string param;
-
-  // Check existance of parameter
-  if (!nh.getParam("param", param))
-  {
-    std::cout << std::endl;
-    ROS_ERROR("No param defined");
-    std::exit(EXIT_FAILURE);
-  }
-
   // Instanciate UwbInitCpp
   uav_init::UwbInitWrapper UwbInitWrapper(nh);
 

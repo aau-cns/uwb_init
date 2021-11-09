@@ -29,7 +29,7 @@ UwbInitWrapper::UwbInitWrapper(ros::NodeHandle& nh) : nh_(nh)
   if (!nh.param<int>("n_anchors", n_anchors, 0))
   {
     ROS_ERROR_STREAM("No number of anchors in use give. Exiting...");
-    return;
+    std::exit(EXIT_FAILURE);
   }
 
   // Subscribers
@@ -43,6 +43,7 @@ UwbInitWrapper::UwbInitWrapper(ros::NodeHandle& nh) : nh_(nh)
   // Print topics where we are subscribing to
   std::cout << std::endl;
   std::cout << "Subscribing: " << sub_posestamped.getTopic().c_str() << std::endl;
+  std::cout << "Subscribing: " << sub_uwbstamped.getTopic().c_str() << std::endl;
 
   // create initializer
   uwb_initializer_ = UwbInitializer(n_anchors);
