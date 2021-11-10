@@ -17,34 +17,34 @@
 
 namespace uav_init
 {
-UwbInitWrapper::UwbInitWrapper(ros::NodeHandle& nh) : nh_(nh)
+UwbInitWrapper::UwbInitWrapper(ros::NodeHandle& nh, UwbInitOptions& params) : nh_(nh), params_(params), uwb_initializer_(params_)
 {
-  // read parameters
-  std::vector<double> r_ItoU;
-  std::vector<double> r_ItoU_default = { 0.0, 0.0, 0.0 };
-  nh.param<std::vector<double>>("r_ItoU", r_ItoU, r_ItoU_default);
-  p_r_ItoU_ << r_ItoU.at(0), r_ItoU.at(1), r_ItoU.at(2);
+  //  // read parameters
+  //  std::vector<double> r_ItoU;
+  //  std::vector<double> r_ItoU_default = { 0.0, 0.0, 0.0 };
+  //  nh.param<std::vector<double>>("r_ItoU", r_ItoU, r_ItoU_default);
+  //  p_r_ItoU_ << r_ItoU.at(0), r_ItoU.at(1), r_ItoU.at(2);
 
-  int n_anchors;
-  if (!nh.param<int>("n_anchors", n_anchors, 0))
-  {
-    ROS_ERROR_STREAM("No number of anchors in use give. Exiting...");
-    std::exit(EXIT_FAILURE);
-  }
+  //  int n_anchors;
+  //  if (!nh.param<int>("n_anchors", n_anchors, 0))
+  //  {
+  //    ROS_ERROR_STREAM("No number of anchors in use give. Exiting...");
+  //    std::exit(EXIT_FAILURE);
+  //  }
 
-  if (!nh.param<double>("buffer_size_s", p_buffer_size_s_, 10.0))
-  {
-    ROS_WARN_STREAM("No buffer size give, using 10.0s");
-  }
+  //  if (!nh.param<double>("buffer_size_s", p_buffer_size_s_, 10.0))
+  //  {
+  //    ROS_WARN_STREAM("No buffer size give, using 10.0s");
+  //  }
 
-  if (!nh.param<double>("init_check_duration", p_check_duration_, 5.0))
-  {
-    ROS_WARN_STREAM("No parameter for init_check_duration found, using 5.0s");
-  }
+  //  if (!nh.param<double>("init_check_duration", p_check_duration_, 5.0))
+  //  {
+  //    ROS_WARN_STREAM("No parameter for init_check_duration found, using 5.0s");
+  //  }
 
   // subscribers
-  sub_posestamped = nh.subscribe("pose", 1, &UwbInitWrapper::cb_posestamped, this);
-  sub_uwbstamped = nh.subscribe("uwb", 1, &UwbInitWrapper::cb_uwbstamped, this);
+  sub_posestamped = nh.subscribe(params_.topic_sub_pose, 1, &UwbInitWrapper::cb_posestamped, this);
+  sub_uwbstamped = nh.subscribe(params_.topic_sub_uwb, 1, &UwbInitWrapper::cb_uwbstamped, this);
 
   // publishers
 
@@ -57,15 +57,12 @@ UwbInitWrapper::UwbInitWrapper(ros::NodeHandle& nh) : nh_(nh)
   std::cout << "Subscribing: " << sub_posestamped.getTopic().c_str() << std::endl;
   std::cout << "Subscribing: " << sub_uwbstamped.getTopic().c_str() << std::endl;
 
-  // create initializer
-  uwb_initializer_ = UwbInitializer(n_anchors);
-
   // init anchor buffer
-  anchor_buffer_.init(p_buffer_size_s_);
+  anchor_buffer_.init(params_.buffer_size_s);
 
   // setup timer
-  init_check_timer_ = nh.createTimer(ros::Duration(p_check_duration_),
-                                     &uav_init::UwbInitWrapper::cb_timerinit, this);
+  init_check_timer_ =
+      nh.createTimer(ros::Duration(params_.init_check_duration_s), &uav_init::UwbInitWrapper::cb_timerinit, this);
 }
 
 void UwbInitWrapper::perform_initialization()
@@ -114,7 +111,7 @@ void UwbInitWrapper::cb_posestamped(const geometry_msgs::PoseStamped::ConstPtr& 
   Eigen::Vector3d p_UinG(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z);
   Eigen::Quaterniond q_UinG(msg->pose.orientation.w, msg->pose.orientation.x, msg->pose.orientation.y,
                             msg->pose.orientation.z);
-  p_UinG = p_UinG + q_UinG.toRotationMatrix() * p_r_ItoU_;
+  p_UinG = p_UinG + q_UinG.toRotationMatrix() * params_.p_ItoU;
 
   // feed current pose to initializer
   uwb_initializer_.feed_pose(msg->header.stamp.toSec(), p_UinG);
@@ -151,7 +148,7 @@ void UwbInitWrapper::cb_dynamicconfig(UwbInitConfig_t& config, uint32_t level)
   }
 }
 
-void UwbInitWrapper::cb_timerinit(const ros::TimerEvent &)
+void UwbInitWrapper::cb_timerinit(const ros::TimerEvent&)
 {
   ROS_DEBUG_STREAM("UwbInitWrapper: timer event for initalization triggered");
   perform_initialization();

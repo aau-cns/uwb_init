@@ -143,11 +143,18 @@ set(headers_types
     include/types/types.hpp
 )
 
+set(headers_utils
+    include/utils/parse_ros.hpp
+
+)
+
 set(headers
+    ${headers_types}
+    ${headers_utils}
+    include/options/uwb_init_options.hpp
     include/uwb_wrapper.hpp
     include/uav_init/uwb_init.hpp
     include/uav_init/uwb_init.cpp
-    ${headers_types}
 )
 
 set(sources

@@ -27,6 +27,7 @@
 #include "uav_init/uwb_init.hpp"
 #include "utils/colors.hpp"
 #include "uwb_init_cpp/UwbInitConfig.h"
+#include "options/uwb_init_options.hpp"
 
 namespace uav_init
 {
@@ -42,7 +43,7 @@ public:
   /// \brief UwbInitWrapper default constructor for UwbInitWrapper
   /// \param nh ros nodehandle
   ///
-  UwbInitWrapper(ros::NodeHandle& nh);
+  UwbInitWrapper(ros::NodeHandle& nh, UwbInitOptions& params);
 
   void cb_timerinit(const ros::TimerEvent&);
 
@@ -59,6 +60,9 @@ private:
   // Ros node handler
   ros::NodeHandle nh_;  //!< ROS nodehandle given through constructor
 
+  // UwbInit parameters
+  UwbInitOptions params_;  //!< launched parameter options
+
   // Subscribers
   ros::Subscriber sub_posestamped;  //!< ROS subscriber for poses of IMU (or body) in global frame
   ros::Subscriber sub_uwbstamped;   //!< ROS subscirber for UWB distance measurements
@@ -67,10 +71,11 @@ private:
   ros::Publisher pub_wplist;  //!< ROS publisher for wp list
 
   // Calibration and Parameters
-  Eigen::Vector3d p_r_ItoU_;        //!< distance (r) from the IMU(body) to UWB frame expressed in IMU frame
-  double p_min_dist{ 0.2 };         //!< minimal distance for measurements to be added (w.r.t. to last measurement)
-  double p_buffer_size_s_{ 10.0 };  //!< buffer size in s
-  double p_check_duration_{ 0.5 };  //!< duration to check init
+  //  Eigen::Vector3d p_r_ItoU_;        //!< distance (r) from the IMU(body) to UWB frame expressed in IMU frame
+  //  double p_min_dist{ 0.2 };         //!< minimal distance for measurements to be added (w.r.t. to last
+  //measurement)
+  //  double p_buffer_size_s_{ 10.0 };  //!< buffer size in s
+  //  double p_check_duration_{ 0.5 };  //!< duration to check init
 
   // dynamic reconfigure
   ReconfServer_t reconf_server_;
@@ -81,7 +86,7 @@ private:
   bool f_all_known_anchors_initialized_;  //!< flag determining if all currently known anchors are initialized
 
   // timer variables
-  ros::Timer init_check_timer_;
+  ros::Timer init_check_timer_;  //!< timer used to check and perform initialization
 };
 
 }  // namespace uav_init

@@ -28,49 +28,22 @@
 #include <vector>
 
 #include "types/types.hpp"
+#include "options/uwb_init_options.hpp"
 
 namespace uav_init
 {
-//struct UwbData
-//{
-//  double timestamp{ 0.0 };  //!< timestamp of measurement
-//  bool valid{ false };      //!< validity flag, determines if distance is valid
-//  double distance{ -1.0 };  //!< distance between anchor and tag
-//  u_int16_t id{ 0 };        //!< anchor ID
-
-//  ///
-//  /// \brief UwbData advanced constructor for measurement, using ros::Time::now() for timestamp
-//  /// \param _valid validity flag
-//  /// \param _distance distance measurement
-//  ///
-//  UwbData(bool _valid, double _distance) : valid(_valid), distance(_distance)
-//  {
-//    timestamp = ros::Time::now().toSec();
-//  };
-
-//  ///
-//  /// \brief UwbData default constructor for measruement
-//  /// \param _timestamp timestamp of measurement
-//  /// \param _valid validity flag
-//  /// \param _distance distance measurement
-//  /// \param _id anchor ID
-//  ///
-//  UwbData(double _timestamp, bool _valid, double _distance, u_int16_t _id)
-//    : timestamp(_timestamp), valid(_valid), distance(_distance), id(_id){};
-//};
 
 class UwbInitializer
 {
 public:
   ///
   /// \brief UwbInitializer default constructor
-  /// \param n_anchors number of anchors in use
+  /// \param params parameter/options used for UWB initialization
   ///
-  UwbInitializer(int n_anchors = 0) : n_anchors_(n_anchors)
+  UwbInitializer(UwbInitOptions &params) : params_(params)
   {
-    std::cout << "pre_buffer_size: " << buffer_size_s_ << std::endl;
-    buffer_p_UinG_.init(buffer_size_s_);
-    uwb_data_buffer_.init(buffer_size_s_);
+    buffer_p_UinG_.init(params_.buffer_size_s);
+    uwb_data_buffer_.init(params_.buffer_size_s);
   }
 
   ///
@@ -93,9 +66,11 @@ public:
   bool try_to_initialize_anchors(UwbAnchorBuffer &anchor_buffer);
 
 protected:
+  UwbInitOptions params_;
+
   // anchor and measurement handeling
   uint n_anchors_;                 //!< number of anchors in use
-  double buffer_size_s_{ 100.0 };  //!< buffer size in s of UWB module positions
+//  double buffer_size_s_{ 100.0 };  //!< buffer size in s of UWB module positions
   Eigen::Vector3d cur_p_UinG_;     //!< current position of the UWB module in global frame
   //  PositionBuffer buffer_p_UinG_;   //!< buffer of UWB module positions in global frame
 //  TimedBuffer<Eigen::Vector3d> buffer_p_UinG_;  //!< buffer of UWB module positions in global frame

@@ -18,6 +18,7 @@
 #include <Eigen/Eigen>
 
 #include "utils/colors.hpp"
+#include "utils/parse_ros.hpp"
 #include "uwb_wrapper.hpp"
 
 // Main function
@@ -41,33 +42,14 @@ int main(int argc, char** argv)
   }
 #endif
 
-  double check_duration;
-  if (!nh.param<double>("init_check_duration", check_duration, 5.0))
-  {
-    ROS_WARN_STREAM("No parameter for init_check_duration found, using 5.0s");
-  }
+  // parse parameters
+  uav_init::UwbInitOptions params = uav_init::parse_ros_nodehandle(nh);
 
   // Instanciate UwbInitCpp
-  uav_init::UwbInitWrapper UwbInitWrapper(nh);
-
-  // setup check timer
-//  auto cb_timer = std::bind(&uav_init::UwbInitWrapper::cb_timerinit, UwbInitWrapper, std::placeholders::_1);
-//  ros::Timer init_check_timer = nh.createTimer(
-//      ros::Duration(check_duration),
-//      &uav_init::UwbInitWrapper::cb_timerinit, UwbInitWrapper);
+  uav_init::UwbInitWrapper UwbInitWrapper(nh, params);
 
   // ROS Spin
-//  double t_last_check = ros::Time::now().toSec();
-//  while (ros::ok())
-//  {
-//    ros::spinOnce();
-//    if (ros::Time::now().toSec() - t_last_check >= check_duration)
-//    {
-//      t_last_check = ros::Time::now().toSec();
-//      UwbInitWrapper.perform_initialization();
-//    }
-//  }
-    ros::spin();
+  ros::spin();
 
   // Done!
   std::cout << std::endl;

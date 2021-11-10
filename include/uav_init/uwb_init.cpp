@@ -100,7 +100,7 @@ bool UwbInitializer::try_to_initialize_anchors(UwbAnchorBuffer& anchor_buffer)
         // Check the coefficient matrix condition number and solve the LS problem
         Eigen::JacobiSVD<Eigen::MatrixXd> svd(coeffs, Eigen::ComputeThinU | Eigen::ComputeThinV);
         double cond = svd.singularValues()(0) / svd.singularValues()(svd.singularValues().size() - 1);
-        if (cond < 10000)  // 3
+        if (cond < params_.max_cond_num)  // 3
         {
           // [      0     ,       1     ,       2     ,  3 , 4,          5          ]
           // [b^2*p_AinG_x, b^2*p_AinG_y, b^2*p_AinG_z, b^2, k, b^2*norm(p_AinG)-k^2]
