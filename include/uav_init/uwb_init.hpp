@@ -70,6 +70,7 @@ public:
   {
     std::cout << "pre_buffer_size: " << buffer_size_s_ << std::endl;
     buffer_p_UinG_.init(buffer_size_s_);
+    uwb_data_buffer_.init(buffer_size_s_);
   }
 
   ///
@@ -101,7 +102,8 @@ protected:
 
   /// Our history of uwb readings [anchor, [p_UinG, timestamp, distance]]
   //  std::multimap<size_t, std::tuple<Eigen::Vector3d, double, double>> uwb_data;
-  std::map<uint16_t, std::vector<UwbData>> uwb_data_buffer_;
+//  std::map<uint16_t, std::vector<UwbData>> uwb_data_buffer_;
+  UwbDataBuffer uwb_data_buffer_;
 
   /// Set of measurement associated with a specific anchor [p_UinG, timestamp, distance]
   //  std::vector<std::tuple<Eigen::Vector3d, double, double>> single_anchor_uwb_data;

@@ -28,7 +28,8 @@ void UwbInitializer::feed_uwb(const std::vector<UwbData> uwb_measurements)
     {
       ROS_DEBUG_STREAM("Adding measurment " << uwb_measurements[i].distance << " from anchor "
                                             << uwb_measurements[i].id);
-      uwb_data_buffer_[uwb_measurements[i].id].push_back(uwb_measurements[i]);
+//      uwb_data_buffer_[uwb_measurements[i].id].push_back(uwb_measurements[i]);
+      uwb_data_buffer_.push_back(uwb_measurements[i].id,uwb_measurements[i].timestamp, uwb_measurements[i]);
     }
     else
     {
@@ -58,7 +59,8 @@ bool UwbInitializer::try_to_initialize_anchors(std::map<size_t, Eigen::Vector3d>
   for (uint anchor_id = 0; anchor_id < n_anchors_; ++anchor_id)
   {
     ROS_DEBUG_STREAM("A" << anchor_id << ": calculating solution ...");
-    std::vector single_anchor_uwb_data = uwb_data_buffer_.at(anchor_id);
+//    std::vector single_anchor_uwb_data = uwb_data_buffer_.at(anchor_id);
+    std::deque single_anchor_uwb_data = uwb_data_buffer_.get_buffer_values(anchor_id);
 
     // Coefficient matrix and measurement vector initialization
     Eigen::MatrixXd coeffs = Eigen::MatrixXd::Zero(single_anchor_uwb_data.size(), 6);
@@ -68,12 +70,18 @@ bool UwbInitializer::try_to_initialize_anchors(std::map<size_t, Eigen::Vector3d>
     for (uint i = 0; i < single_anchor_uwb_data.size(); ++i)
     {
       // get closest UWB module position
-      Eigen::Vector3d closest_p_UinG = buffer_p_UinG_.get_closest(single_anchor_uwb_data.at(i).timestamp);
+//      Eigen::Vector3d closest_p_UinG = buffer_p_UinG_.get_closest(single_anchor_uwb_data.at(i).timestamp);
+//      Eigen::VectorXd row(6);
+//      row << -2 * closest_p_UinG.x(), -2 * closest_p_UinG.y(), -2 * closest_p_UinG.z(),
+//          std::pow(closest_p_UinG.norm(), 2), 2 * single_anchor_uwb_data.at(i).distance, 1;
+//      coeffs.row(i) = row.transpose();
+//      measurements(i) = std::pow(single_anchor_uwb_data.at(i).distance, 2);
+      Eigen::Vector3d closest_p_UinG = buffer_p_UinG_.get_closest(single_anchor_uwb_data.at(i).first);
       Eigen::VectorXd row(6);
       row << -2 * closest_p_UinG.x(), -2 * closest_p_UinG.y(), -2 * closest_p_UinG.z(),
-          std::pow(closest_p_UinG.norm(), 2), 2 * single_anchor_uwb_data.at(i).distance, 1;
+          std::pow(closest_p_UinG.norm(), 2), 2 * single_anchor_uwb_data.at(i).second.distance, 1;
       coeffs.row(i) = row.transpose();
-      measurements(i) = std::pow(single_anchor_uwb_data.at(i).distance, 2);
+      measurements(i) = std::pow(single_anchor_uwb_data.at(i).second.distance, 2);
     }
 
     ROS_DEBUG_STREAM("A" << anchor_id << " created problem:\n"

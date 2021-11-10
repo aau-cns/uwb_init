@@ -106,7 +106,7 @@ public:
     {
 #else
     typename std::map<uint, TimedBuffer<bufferType>>::iterator it = buffer_.find(data_id);
-    if (it != buffer_.end())
+    if (it == buffer_.end())
     {
 #endif
       // key not found
@@ -156,8 +156,8 @@ public:
     if (!buffer_.contains(data_id))
     {
 #else
-    typename std::map<uint, TimedBuffer<bufferType>>::iterator it = buffer_.find(data_id);
-    if (it != buffer_.end())
+    typename std::map<uint, TimedBuffer<bufferType>>::const_iterator it = buffer_.find(data_id);
+    if (it == buffer_.end())
     {
 #endif
       // key not found
@@ -166,7 +166,7 @@ public:
     }
 
     // return values
-    return buffer_[data_id].get_buffer();
+    return buffer_.at(data_id).get_buffer();
   }
 
 };  // class DataBuffer

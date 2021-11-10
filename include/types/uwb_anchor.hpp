@@ -25,6 +25,8 @@ struct UwbAnchor
   double cov_bias_d{ 0.0 };
   double cov_bias_c{ 0.0 };
 
+  bool initialized{ false };
+
 };  // struct UwbAnchor
 }  // namespace uav_init
 
