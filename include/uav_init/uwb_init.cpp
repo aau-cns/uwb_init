@@ -1,7 +1,8 @@
-// Copyright (C) 2021 Martin Scheiber,
+// Copyright (C) 2021 Martin Scheiber, Alessandro Fornasier
 // Control of Networked Systems, Universitaet Klagenfurt, Austria
 //
-// You can contact the author at <martin.scheiber@aau.at>
+// You can contact the authors at <martin.scheiber@aau.at> and
+// <alessandro.fornasier@aau.at>
 //
 // All rights reserved.
 //

@@ -32,9 +32,11 @@ UwbInitWrapper::UwbInitWrapper(ros::NodeHandle& nh) : nh_(nh)
     std::exit(EXIT_FAILURE);
   }
 
-  // Subscribers
+  // subscribers
   sub_posestamped = nh.subscribe("pose", 1, &UwbInitWrapper::cb_posestamped, this);
   sub_uwbstamped = nh.subscribe("uwb", 1, &UwbInitWrapper::cb_uwbstamped, this);
+
+  // publishers
 
   // set up dynamic parameters
   ReconfServer_t::CallbackType f = boost::bind(&UwbInitWrapper::cb_dynamicconfig, this, _1, _2);
@@ -47,6 +49,17 @@ UwbInitWrapper::UwbInitWrapper(ros::NodeHandle& nh) : nh_(nh)
 
   // create initializer
   uwb_initializer_ = UwbInitializer(n_anchors);
+}
+
+void UwbInitWrapper::perform_initialization()
+{
+  // values for returning initialization results
+  // in the form [anchor, <value>]
+  std::map<size_t, Eigen::Vector3d> p_AinG;
+  std::map<size_t, double> distance_bias, const_bias, distance_bias_cov, const_bias_cov;
+  std::map<size_t, Eigen::Matrix3d> A_covs;
+
+  // perform initialization here
 }
 
 void UwbInitWrapper::cb_posestamped(const geometry_msgs::PoseStamped::ConstPtr& msg)

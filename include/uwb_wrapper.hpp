@@ -32,26 +32,36 @@ namespace uav_init
 class UwbInitWrapper
 {
 public:
+  /// dynamic reconfigure config typedef
   typedef uwb_init_cpp::UwbInitConfig UwbInitConfig_t;
+  /// dynamic recofnigure server typedef
   typedef dynamic_reconfigure::Server<UwbInitConfig_t> ReconfServer_t;
-  /**
-   * @brief Constructor
-   * @param Ros NodeHandle
-   */
+
+  ///
+  /// \brief UwbInitWrapper default constructor for UwbInitWrapper
+  /// \param nh ros nodehandle
+  ///
   UwbInitWrapper(ros::NodeHandle& nh);
 
-private:
+  ///
+  /// \brief perform_initialization tries to initialize all anchors, for which messages were received
+  ///
+  void perform_initialization();
 
+private:
   void cb_posestamped(const geometry_msgs::PoseStamped::ConstPtr& msg);
   void cb_uwbstamped(const evb1000_driver::TagDistanceConstPtr& msg);
   void cb_dynamicconfig(UwbInitConfig_t& config, uint32_t level);
 
-  /// Ros node handler
-  ros::NodeHandle nh_;
+  // Ros node handler
+  ros::NodeHandle nh_;  //!< ROS nodehandle given through constructor
 
-  /// Subscribers
-  ros::Subscriber sub_posestamped;
-  ros::Subscriber sub_uwbstamped;
+  // Subscribers
+  ros::Subscriber sub_posestamped;  //!< ROS subscriber for poses of IMU (or body) in global frame
+  ros::Subscriber sub_uwbstamped;   //!< ROS subscirber for UWB distance measurements
+
+  // Publishers
+  ros::Publisher pub_wplist;  //!< ROS publisher for wp list
 
   // Initializer
   UwbInitializer uwb_initializer_;
