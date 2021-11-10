@@ -1,0 +1,175 @@
+// Copyright (C) 2021 Martin Scheiber, Control of Networked Systems, University of Klagenfurt, Austria.
+//
+// All rights reserved.
+//
+// This software is licensed under the terms of the BSD-2-Clause-License with
+// no commercial use allowed, the full terms of which are made available
+// in the LICENSE file. No license in patents is granted.
+//
+// You can contact the author at <martin.scheiber@aau.at>
+
+#ifndef UAV_INIT_TYPES_DATA_BUFFER_HPP_
+#define UAV_INIT_TYPES_DATA_BUFFER_HPP_
+
+#include <ros/ros.h>
+
+#include <map>
+
+#include "types/buffers/timed_buffer.hpp"
+
+namespace uav_init
+{
+template <typename bufferType>
+///
+/// \brief The DataBuffer class
+///
+class DataBuffer
+{
+protected:
+  std::map<uint, TimedBuffer<bufferType>> buffer_;  //!< main buffer variable storing the values with timestamps
+                                                    //!< encoded
+
+  double buffer_size_s_{ 0.0 };  //!< buffer size in s. If this is <= 0.0 the buffer is assumed to be infinite in size
+  bufferType zero_value_;        //!< zero value to return if no entry can be found
+
+  bool f_is_initialized{ false };  //!< flag to deterime if buffer is initialized
+
+public:
+  ///
+  /// \brief DataBuffer default constructor for any TimedBuffer
+  ///
+  /// The timed buffer creates a queue of messages, which are timestamped. The messages are assumed to be added in
+  /// order, thus currently no checks on where to add the message is eing made.
+  ///
+  /// \todo add a feature to be able to add messages regardless of their arrival time (timestamp) in an ordered fashion.
+  ///
+  DataBuffer(){};
+
+  ///
+  /// \brief init initialize the TimedBuffer
+  /// \param buffer_size_s buffer size in s
+  /// \param zero_value
+  ///
+  virtual void init(const double buffer_size_s, const bufferType zero_value)
+  {
+    // setup buffer size in s
+    if (buffer_size_s <= 0.0)
+    {
+      ROS_WARN("Initializing infinite position buffer (%f)", buffer_size_s);
+      buffer_size_s_ = 0.0;
+    }
+    else
+      buffer_size_s_ = buffer_size_s;
+
+    // set zero value
+    zero_value_ = zero_value;
+
+    // self reset
+    reset();
+
+    // set initialized flag
+    f_is_initialized = true;
+  }
+
+  ///
+  /// \brief reset resets the buffer
+  ///
+  void reset()
+  {
+    buffer_.clear();
+  }
+
+  ///
+  /// \brief push_back adds the value to the buffer and performs checks on its size
+  /// \param timestamp timestamp of value to add
+  /// \param value value to add to the buffer
+  /// \return true if the addition of the value was successful, otherwise false
+  ///
+  /// \warning This implementation currently only allows to add entries which arrive in an ordered manner. Values with
+  /// timestamps older than the 'newest' entry in the buffer are not added and false is returned.
+  ///
+  /// \todo Implement addition of values out-of-order.
+  ///
+  bool push_back(uint data_id, double timestamp, bufferType value)
+  {
+    // check if buffer is initialized
+    if (!f_is_initialized)
+    {
+      ROS_ERROR("DataBuffer not initialized yet.");
+      return false;
+    }
+
+    // perform check if data_id is already existent
+#if (__cplusplus >= 202002L)
+    // new function for finding keys in maps in >= c++20
+    if (!buffer_.contains(data_id))
+    {
+#else
+    typename std::map<uint, TimedBuffer<bufferType>>::iterator it = buffer_.find(data_id);
+    if (it != buffer_.end())
+    {
+#endif
+      // key not found
+      ROS_DEBUG_STREAM("DataBuffer: key '" << data_id << "' not found, adding new entry");
+      buffer_[data_id] = TimedBuffer<bufferType>();
+      buffer_[data_id].init(buffer_size_s_, zero_value_);
+    }
+
+    // add value to buffer
+    buffer_[data_id].push_back(timestamp, value);
+    return true;
+  }
+
+  ///
+  /// \brief get_closest returns the entry of the buffer closes to the given timestamp
+  /// \param timestamp
+  /// \return
+  ///
+  bufferType get_closest(const double timestamp) const
+  {
+    if (buffer_.empty())
+    {
+      ROS_ERROR("PositionBuffer still empty.");
+      return zero_value_;
+    }
+
+    // TODO(scm) this can be upgraded to interpolate (extrapolate) the positions if time does not match exactly
+
+    // get closest position vector, where the closest is taken as the measurement which is smaller/equal to the current
+    // measurement time iterate from back to front thus
+    for (uint i = buffer_.size() - 1; i >= 0; --i)
+    {
+      if (buffer_.at(i).first <= timestamp)
+        return buffer_.at(i).second;
+    }
+
+    // in case we have not returned any we do not have a measurement in the buffer anymore
+    ROS_WARN_STREAM("We do not have any value in the buffer for time " << timestamp << " anymore." << std::endl);
+    return buffer_.front().second;
+  }
+
+  const std::deque<std::pair<double, bufferType>>& get_buffer_values(const uint data_id) const
+  {
+    // perform check if data_id is exists
+#if (__cplusplus >= 202002L)
+    // new function for finding keys in maps in >= c++20
+    if (!buffer_.contains(data_id))
+    {
+#else
+    typename std::map<uint, TimedBuffer<bufferType>>::iterator it = buffer_.find(data_id);
+    if (it != buffer_.end())
+    {
+#endif
+      // key not found
+      ROS_ERROR_STREAM("DataBuffer: key '" << data_id << "' not found, cannot return values");
+      return TimedBuffer<bufferType>().get_buffer();
+    }
+
+    // return values
+    return buffer_[data_id].get_buffer();
+  }
+
+};  // class DataBuffer
+}  // namespace uav_init
+
+#endif  // UAV_INIT_TYPES_DATA_BUFFER_HPP_

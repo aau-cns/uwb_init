@@ -106,7 +106,7 @@ void UwbInitWrapper::cb_dynamicconfig(UwbInitConfig_t& config, uint32_t level)
 
     // output result
     ROS_INFO_STREAM("Result:" << std::endl);
-#if (__cplusplus == 201703L)
+#if (__cplusplus >= 201703L)
     for (const auto& [key, pos] : p_AinG)
     {
 #else

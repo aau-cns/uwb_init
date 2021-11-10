@@ -27,122 +27,37 @@
 #include <unordered_map>
 #include <vector>
 
+#include "types/types.hpp"
+
 namespace uav_init
 {
-struct UwbData
-{
-  double timestamp{ 0.0 };  //!< timestamp of measurement
-  bool valid{ false };      //!< validity flag, determines if distance is valid
-  double distance{ -1.0 };  //!< distance between anchor and tag
-  u_int16_t id{ 0 };        //!< anchor ID
+//struct UwbData
+//{
+//  double timestamp{ 0.0 };  //!< timestamp of measurement
+//  bool valid{ false };      //!< validity flag, determines if distance is valid
+//  double distance{ -1.0 };  //!< distance between anchor and tag
+//  u_int16_t id{ 0 };        //!< anchor ID
 
-  ///
-  /// \brief UwbData advanced constructor for measurement, using ros::Time::now() for timestamp
-  /// \param _valid validity flag
-  /// \param _distance distance measurement
-  ///
-  UwbData(bool _valid, double _distance) : valid(_valid), distance(_distance)
-  {
-    timestamp = ros::Time::now().toSec();
-  };
+//  ///
+//  /// \brief UwbData advanced constructor for measurement, using ros::Time::now() for timestamp
+//  /// \param _valid validity flag
+//  /// \param _distance distance measurement
+//  ///
+//  UwbData(bool _valid, double _distance) : valid(_valid), distance(_distance)
+//  {
+//    timestamp = ros::Time::now().toSec();
+//  };
 
-  ///
-  /// \brief UwbData default constructor for measruement
-  /// \param _timestamp timestamp of measurement
-  /// \param _valid validity flag
-  /// \param _distance distance measurement
-  /// \param _id anchor ID
-  ///
-  UwbData(double _timestamp, bool _valid, double _distance, u_int16_t _id)
-    : timestamp(_timestamp), valid(_valid), distance(_distance), id(_id){};
-};
-
-class PositionBuffer
-{
-private:
-  double buffer_size_s_{ 0.0 };  //!< buffer size in s of measurements
-
-  // buffer
-  /// buffer of measurements in the form [timestamp, position]
-  std::deque<std::pair<double, Eigen::Vector3d>> buffer_;
-
-public:
-  PositionBuffer(double buffer_size_s)
-  {
-    if (buffer_size_s <= 0.0)
-    {
-      ROS_WARN("Initializing infinite position buffer (%f)", buffer_size_s);
-      buffer_size_s_ = 0.0;
-    }
-    else
-      buffer_size_s_ = buffer_size_s;
-
-    // self reset
-    reset();
-  }
-  PositionBuffer() : PositionBuffer(0.0) {};
-
-  void reset()
-  {
-    buffer_.clear();
-  }
-
-  bool push_back(double timestamp, Eigen::Vector3d position)
-  {
-    // perform checks on buffer time and input time
-    if (buffer_.size() > 0)
-    {
-      // check for timestamp jump
-      if (buffer_.back().first > timestamp)
-      {
-        ROS_ERROR("Timejump in buffer detected, not adding entry.");
-        return false;
-      }
-
-      // check if buffer is bigger than targeted size in s
-      if (buffer_size_s_ > 0.0)
-      {
-        // delete all entries, whose timestamp is outside of buffer timestamp size
-        while (buffer_.size() > 0 && timestamp - buffer_.front().first > buffer_size_s_)
-        {
-          buffer_.pop_front();
-        }
-      }
-    }
-
-    // add entry to buffer
-    buffer_.push_back(std::make_pair(timestamp, position));
-    return true;
-  }
-
-  ///
-  /// \brief get_closest returns the entry of the buffer closes to the
-  /// \param timestamp
-  /// \return
-  ///
-  Eigen::Vector3d get_closest(double timestamp)
-  {
-    if (buffer_.empty())
-    {
-      ROS_ERROR("PositionBuffer still empty.");
-      return Eigen::Vector3d(0.0, 0.0, 0.0);
-    }
-
-    // TODO(scm) this can be upgraded to interpolate (extrapolate) the positions if time does not match exactly
-
-    // get closest position vector, where the closest is taken as the measurement which is smaller/equal to the current
-    // measurement time iterate from back to front thus
-    for (uint i = buffer_.size() - 1; i >= 0; --i)
-    {
-      if (buffer_.at(i).first <= timestamp)
-        return buffer_.at(i).second;
-    }
-
-    // in case we have not returned any we do not have a measurement in the buffer anymore
-    ROS_WARN_STREAM("We do not have any position in the buffer for time " << timestamp << " anymore." << std::endl);
-    return buffer_.front().second;
-  }
-};  // class PositionBuffer
+//  ///
+//  /// \brief UwbData default constructor for measruement
+//  /// \param _timestamp timestamp of measurement
+//  /// \param _valid validity flag
+//  /// \param _distance distance measurement
+//  /// \param _id anchor ID
+//  ///
+//  UwbData(double _timestamp, bool _valid, double _distance, u_int16_t _id)
+//    : timestamp(_timestamp), valid(_valid), distance(_distance), id(_id){};
+//};
 
 class UwbInitializer
 {
@@ -154,7 +69,7 @@ public:
   UwbInitializer(int n_anchors = 0) : n_anchors_(n_anchors)
   {
     std::cout << "pre_buffer_size: " << buffer_size_s_ << std::endl;
-    buffer_p_UinG_ = PositionBuffer(buffer_size_s_);
+    buffer_p_UinG_.init(buffer_size_s_);
   }
 
   ///
@@ -180,7 +95,9 @@ protected:
   uint n_anchors_;                 //!< number of anchors in use
   double buffer_size_s_{ 100.0 };  //!< buffer size in s of UWB module positions
   Eigen::Vector3d cur_p_UinG_;     //!< current position of the UWB module in global frame
-  PositionBuffer buffer_p_UinG_;   //!< buffer of UWB module positions in global frame
+  //  PositionBuffer buffer_p_UinG_;   //!< buffer of UWB module positions in global frame
+//  TimedBuffer<Eigen::Vector3d> buffer_p_UinG_;  //!< buffer of UWB module positions in global frame
+  PositionBufferTimed buffer_p_UinG_;  //!< buffer of UWB module positions in global frame
 
   /// Our history of uwb readings [anchor, [p_UinG, timestamp, distance]]
   //  std::multimap<size_t, std::tuple<Eigen::Vector3d, double, double>> uwb_data;
