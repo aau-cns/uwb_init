@@ -32,6 +32,11 @@ UwbInitWrapper::UwbInitWrapper(ros::NodeHandle& nh) : nh_(nh)
     std::exit(EXIT_FAILURE);
   }
 
+  if (!nh.param<double>("buffer_size_s", p_buffer_size_s_, 10.0))
+  {
+    ROS_WARN_STREAM("No buffer size give, using 10.0s");
+  }
+
   // subscribers
   sub_posestamped = nh.subscribe("pose", 1, &UwbInitWrapper::cb_posestamped, this);
   sub_uwbstamped = nh.subscribe("uwb", 1, &UwbInitWrapper::cb_uwbstamped, this);
@@ -49,6 +54,9 @@ UwbInitWrapper::UwbInitWrapper(ros::NodeHandle& nh) : nh_(nh)
 
   // create initializer
   uwb_initializer_ = UwbInitializer(n_anchors);
+
+  // init anchor buffer
+  anchor_buffer_.init(p_buffer_size_s_);
 }
 
 void UwbInitWrapper::perform_initialization()
@@ -95,34 +103,32 @@ void UwbInitWrapper::cb_dynamicconfig(UwbInitConfig_t& config, uint32_t level)
 {
   if (config.calculate)
   {
-    std::map<size_t, Eigen::Vector3d> p_AinG;
-    double distance_bias, const_bias, distance_bias_cov, const_bias_cov;
-    std::map<size_t, Eigen::Matrix3d> A_covs;
-
     // perform anchor claculation
-    if (uwb_initializer_.try_to_initialize_anchors(p_AinG, distance_bias, const_bias, A_covs, distance_bias_cov,
-                                                   const_bias_cov))
+    if (uwb_initializer_.try_to_initialize_anchors(anchor_buffer_))
     {
-
-    // output result
-    ROS_INFO_STREAM("Result:" << std::endl);
-#if (__cplusplus >= 201703L)
-    for (const auto& [key, pos] : p_AinG)
-    {
-#else
-    for (const auto& kv : p_AinG)
-    {
-      const auto key = kv.first;
-      const auto pos = kv.second;
-#endif
-      ROS_INFO_STREAM("\tPos A" << key << ": " << pos.transpose() << std::endl);
-    }
-    ROS_INFO_STREAM("\td_bias:" << distance_bias << std::endl);
-    ROS_INFO_STREAM("\tc_bias:" << const_bias << std::endl);
+      ROS_INFO_STREAM("All UWB anchors successfully initialized");
     }
     else
     {
-      ROS_ERROR_STREAM("Could not initialize anchors");
+      ROS_ERROR_STREAM("Could not initialize all UWB anchors");
+    }
+
+    // output result
+    ROS_INFO_STREAM("Initialization Result:");
+#if (__cplusplus >= 201703L)
+    for (const auto& [anchor_id, anchor_values] : anchor_buffer_.get_buffer())
+    {
+#else
+    for (const auto& kv : anchor_buffer_.get_buffer())
+    {
+      const auto anchor_id = kv.first;
+      const auto anchor_values = kv.second;
+#endif
+      const auto anchor_value = anchor_values.get_buffer().back().second;
+      ROS_INFO_STREAM("\tAnchor " << anchor_id << ": " << anchor_value.initialized);
+      ROS_INFO_STREAM("\t\tpos   : " << anchor_value.p_AinG.transpose());
+      ROS_INFO_STREAM("\t\td_bias: " << anchor_value.bias_d);
+      ROS_INFO_STREAM("\t\tc_bias: " << anchor_value.bias_c << std::endl);
     }
 
     config.calculate = false;

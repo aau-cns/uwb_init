@@ -23,6 +23,7 @@
 
 #include <Eigen/Eigen>
 
+#include "types/types.hpp"
 #include "uav_init/uwb_init.hpp"
 #include "utils/colors.hpp"
 #include "uwb_init_cpp/UwbInitConfig.h"
@@ -63,15 +64,17 @@ private:
   // Publishers
   ros::Publisher pub_wplist;  //!< ROS publisher for wp list
 
-  // Initializer
-  UwbInitializer uwb_initializer_;
-
   // Calibration and Parameters
-  Eigen::Vector3d p_r_ItoU_;  //!< distance (r) from the IMU(body) to UWB frame expressed in IMU frame
-  double p_min_dist{ 0.2 };   //!< minimal distance for measurements to be added (w.r.t. to last measurement)
+  Eigen::Vector3d p_r_ItoU_;        //!< distance (r) from the IMU(body) to UWB frame expressed in IMU frame
+  double p_min_dist{ 0.2 };         //!< minimal distance for measurements to be added (w.r.t. to last measurement)
+  double p_buffer_size_s_{ 10.0 };  //!< buffer size in s
 
   // dynamic reconfigure
   ReconfServer_t reconf_server_;
+
+  // Initializer
+  UwbInitializer uwb_initializer_;  //!< initializer class for UWB modules
+  UwbAnchorBuffer anchor_buffer_;   //!< buffer containing the anchor calculated positions
 };
 
 }  // namespace uav_init

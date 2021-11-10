@@ -148,25 +148,42 @@ public:
     return buffer_.front().second;
   }
 
-  const std::deque<std::pair<double, bufferType>>& get_buffer_values(const uint data_id) const
+  const std::map<uint, TimedBuffer<bufferType>>& get_buffer() const
+  {
+    return buffer_;
+  }
+
+  const bool get_buffer_values(const uint data_id, std::deque<std::pair<double, bufferType>>& buffer_values) const
   {
     // perform check if data_id is exists
-#if (__cplusplus >= 202002L)
-    // new function for finding keys in maps in >= c++20
-    if (!buffer_.contains(data_id))
+    if (!contains_id(data_id))
     {
-#else
-    typename std::map<uint, TimedBuffer<bufferType>>::const_iterator it = buffer_.find(data_id);
-    if (it == buffer_.end())
-    {
-#endif
       // key not found
-      ROS_ERROR_STREAM("DataBuffer: key '" << data_id << "' not found, cannot return values");
-      return TimedBuffer<bufferType>().get_buffer();
+      return false;
     }
 
     // return values
-    return buffer_.at(data_id).get_buffer();
+    buffer_values = buffer_.at(data_id).get_buffer();
+    return true;
+  }
+
+  const bool contains_id(const uint data_id) const
+  {
+#if (__cplusplus >= 202002L)
+    // new function for finding keys in maps in >= c++20
+    if (buffer_.contains(data_id))
+    {
+#else
+    typename std::map<uint, TimedBuffer<bufferType>>::const_iterator it = buffer_.find(data_id);
+    if (it != buffer_.end())
+    {
+#endif
+      // key found
+      return true;
+    }
+
+    // key not found
+    return false;
   }
 
 };  // class DataBuffer

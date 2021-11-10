@@ -11,50 +11,71 @@
 #ifndef UAV_INIT_TYPES_HPP_
 #define UAV_INIT_TYPES_HPP_
 
+#include <Eigen/Eigen>
+
 #include "types/buffers.hpp"
 #include "types/uwb_anchor.hpp"
 #include "types/uwb_data.hpp"
 
-#include <Eigen/Eigen>
-
 namespace uav_init
 {
-
 class PositionBufferTimed : public TimedBuffer<Eigen::Vector3d>
 {
 public:
   using TimedBuffer::init;
-  PositionBufferTimed() {};
+  PositionBufferTimed(){};
   void init(const double buffer_size_s)
   {
-    init(buffer_size_s, Eigen::Vector3d(0,0,0));
+    init(buffer_size_s, Eigen::Vector3d(0, 0, 0));
   }
-}; // class PositionBufferTimed
+};  // class PositionBufferTimed
 
 class UwbDataBuffer : public DataBuffer<UwbData>
 {
 public:
   using DataBuffer::init;
-  UwbDataBuffer() {};
+  UwbDataBuffer(){};
   void init(const double buffer_size_s)
   {
     init(buffer_size_s, UwbData());
   }
-}; // class UwbDataBuffer
+};  // class UwbDataBuffer
 
+///
+/// \brief The UwbAnchorBuffer class is a DataBuffer buffer handler for UwbAnchors.
+///
 class UwbAnchorBuffer : public DataBuffer<UwbAnchor>
 {
 public:
   using DataBuffer::init;
+  ///
+  /// \brief UwbAnchorBuffer default constructor for the UwbAnchorBuffer. This already sets the buffer size to 1.0 s and
+  /// the data type to UwbAnchor.
+  ///
   UwbAnchorBuffer()
   {
     init(1.0, UwbAnchor());
   }
+
+  ///
+  /// \brief init optional init function with just the buffer size in s to give
+  /// \param buffer_size_s buffer size in s (since last update)
+  ///
   void init(const double buffer_size_s)
   {
     init(buffer_size_s, UwbAnchor());
   }
-}; // class UwbAnchorBuffer
+
+  ///
+  /// \brief is_initialized checks if the anchor with the given ID has been initialized
+  /// \param anchor_id ID of anchor to check
+  /// \return true if the anchor id exists and has been initialized
+  ///
+  const bool is_initialized(const uint anchor_id) const
+  {
+    return contains_id(anchor_id) && buffer_.at(anchor_id).get_buffer().back().second.initialized;
+  }
+};  // class UwbAnchorBuffer
 
 }  // namespace uav_init
 

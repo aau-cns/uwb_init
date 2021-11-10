@@ -90,6 +90,7 @@ public:
   bool try_to_initialize_anchors(std::map<size_t, Eigen::Vector3d>& p_ANCHORSinG, double& distance_bias,
                                  double& const_bias, std::map<size_t, Eigen::Matrix3d>& Anchors_Covs,
                                  double& distance_bias_Cov, double& const_bias_Cov);
+  bool try_to_initialize_anchors(UwbAnchorBuffer &anchor_buffer);
 
 protected:
   // anchor and measurement handeling

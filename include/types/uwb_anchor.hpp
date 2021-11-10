@@ -17,6 +17,7 @@ namespace uav_init
 {
 struct UwbAnchor
 {
+  uint id {0};
   Eigen::Vector3d p_AinG{ Eigen::VectorXd::Zero(3) };
   double bias_d{ 0.0 };
   double bias_c{ 0.0 };
@@ -26,6 +27,9 @@ struct UwbAnchor
   double cov_bias_c{ 0.0 };
 
   bool initialized{ false };
+
+  UwbAnchor() {};
+  UwbAnchor(uint _id) : id(_id) {};
 
 };  // struct UwbAnchor
 }  // namespace uav_init
