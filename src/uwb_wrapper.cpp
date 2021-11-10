@@ -61,13 +61,42 @@ UwbInitWrapper::UwbInitWrapper(ros::NodeHandle& nh) : nh_(nh)
 
 void UwbInitWrapper::perform_initialization()
 {
-  // values for returning initialization results
-  // in the form [anchor, <value>]
-  std::map<size_t, Eigen::Vector3d> p_AinG;
-  std::map<size_t, double> distance_bias, const_bias, distance_bias_cov, const_bias_cov;
-  std::map<size_t, Eigen::Matrix3d> A_covs;
-
   // perform initialization here
+  if (uwb_initializer_.try_to_initialize_anchors(anchor_buffer_))
+  {
+    ROS_INFO_STREAM("All UWB anchors successfully initialized");
+    f_all_known_anchors_initialized_ = true;
+  }
+  else
+  {
+    ROS_ERROR_STREAM("Could not initialize all UWB anchors");
+  }
+
+  if (anchor_buffer_.get_buffer().empty())
+  {
+    ROS_DEBUG_STREAM("No anchors yet...");
+    return;
+  }
+  else
+  {
+    // output result
+    ROS_INFO_STREAM("Initialization Result:");
+#if (__cplusplus >= 201703L)
+    for (const auto& [anchor_id, anchor_values] : anchor_buffer_.get_buffer())
+    {
+#else
+    for (const auto& kv : anchor_buffer_.get_buffer())
+    {
+      const auto anchor_id = kv.first;
+      const auto anchor_values = kv.second;
+#endif
+      const auto anchor_value = anchor_values.get_buffer().back().second;
+      ROS_INFO_STREAM("\tAnchor " << anchor_id << ": " << anchor_value.initialized);
+      ROS_INFO_STREAM("\t\tpos   : " << anchor_value.p_AinG.transpose());
+      ROS_INFO_STREAM("\t\td_bias: " << anchor_value.bias_d);
+      ROS_INFO_STREAM("\t\tc_bias: " << anchor_value.bias_c << std::endl);
+    }
+  }
 }
 
 void UwbInitWrapper::cb_posestamped(const geometry_msgs::PoseStamped::ConstPtr& msg)
@@ -89,10 +118,13 @@ void UwbInitWrapper::cb_uwbstamped(const evb1000_driver::TagDistanceConstPtr& ms
   std::vector<UwbData> uwb_ranges;  // anchor_id (0,1,2,3,...), validity_flag, distance measurement
 
   // Fill the map with the
-  u_int n = msg->valid.size();
-  for (u_int i = 0; i < n; ++i)
+  uint n = msg->valid.size();
+  for (uint i = 0; i < n; ++i)
   {
     uwb_ranges.push_back(UwbData(time, msg->valid[i], msg->distance[i], i));
+
+    // check if new anchor was added and reset flag if the id is not known yet
+    f_all_known_anchors_initialized_ &= !anchor_buffer_.contains_id(i);
   }
 
   // feed measurements to initializer
@@ -104,32 +136,7 @@ void UwbInitWrapper::cb_dynamicconfig(UwbInitConfig_t& config, uint32_t level)
   if (config.calculate)
   {
     // perform anchor claculation
-    if (uwb_initializer_.try_to_initialize_anchors(anchor_buffer_))
-    {
-      ROS_INFO_STREAM("All UWB anchors successfully initialized");
-    }
-    else
-    {
-      ROS_ERROR_STREAM("Could not initialize all UWB anchors");
-    }
-
-    // output result
-    ROS_INFO_STREAM("Initialization Result:");
-#if (__cplusplus >= 201703L)
-    for (const auto& [anchor_id, anchor_values] : anchor_buffer_.get_buffer())
-    {
-#else
-    for (const auto& kv : anchor_buffer_.get_buffer())
-    {
-      const auto anchor_id = kv.first;
-      const auto anchor_values = kv.second;
-#endif
-      const auto anchor_value = anchor_values.get_buffer().back().second;
-      ROS_INFO_STREAM("\tAnchor " << anchor_id << ": " << anchor_value.initialized);
-      ROS_INFO_STREAM("\t\tpos   : " << anchor_value.p_AinG.transpose());
-      ROS_INFO_STREAM("\t\td_bias: " << anchor_value.bias_d);
-      ROS_INFO_STREAM("\t\tc_bias: " << anchor_value.bias_c << std::endl);
-    }
+    perform_initialization();
 
     config.calculate = false;
   }

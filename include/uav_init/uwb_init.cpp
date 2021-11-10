@@ -142,6 +142,9 @@ bool UwbInitializer::try_to_initialize_anchors(UwbAnchorBuffer& anchor_buffer)
             // Retrive Covariance of b and k applying error propagation law
             new_uwb_anchor.cov_bias_d = 1.0 / (4.0 * distance_bias_squared) * Cov(3, 3);
             new_uwb_anchor.cov_bias_c = Cov(4, 4);
+
+            // set initialization to true
+            new_uwb_anchor.initialized = true;
           }
           else
           {

@@ -73,8 +73,9 @@ private:
   ReconfServer_t reconf_server_;
 
   // Initializer
-  UwbInitializer uwb_initializer_;  //!< initializer class for UWB modules
-  UwbAnchorBuffer anchor_buffer_;   //!< buffer containing the anchor calculated positions
+  UwbInitializer uwb_initializer_;        //!< initializer class for UWB modules
+  UwbAnchorBuffer anchor_buffer_;         //!< buffer containing the anchor calculated positions
+  bool f_all_known_anchors_initialized_;  //!< flag determining if all currently known anchors are initialized
 };
 
 }  // namespace uav_init

@@ -43,7 +43,18 @@ int main(int argc, char** argv)
   uav_init::UwbInitWrapper UwbInitWrapper(nh);
 
   // ROS Spin
-  ros::spin();
+  double check_duration = 5.0;
+  double t_last_check = ros::Time::now().toSec();
+  while(ros::ok())
+  {
+    ros::spinOnce();
+    if (ros::Time::now().toSec() - t_last_check >= check_duration)
+    {
+      t_last_check = ros::Time::now().toSec();
+      UwbInitWrapper.perform_initialization();
+    }
+  }
+//  ros::spin();
 
   // Done!
   std::cout << std::endl;
