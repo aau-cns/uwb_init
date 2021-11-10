@@ -37,6 +37,11 @@ UwbInitWrapper::UwbInitWrapper(ros::NodeHandle& nh) : nh_(nh)
     ROS_WARN_STREAM("No buffer size give, using 10.0s");
   }
 
+  if (!nh.param<double>("init_check_duration", p_check_duration_, 5.0))
+  {
+    ROS_WARN_STREAM("No parameter for init_check_duration found, using 5.0s");
+  }
+
   // subscribers
   sub_posestamped = nh.subscribe("pose", 1, &UwbInitWrapper::cb_posestamped, this);
   sub_uwbstamped = nh.subscribe("uwb", 1, &UwbInitWrapper::cb_uwbstamped, this);
@@ -57,6 +62,10 @@ UwbInitWrapper::UwbInitWrapper(ros::NodeHandle& nh) : nh_(nh)
 
   // init anchor buffer
   anchor_buffer_.init(p_buffer_size_s_);
+
+  // setup timer
+  init_check_timer_ = nh.createTimer(ros::Duration(p_check_duration_),
+                                     &uav_init::UwbInitWrapper::cb_timerinit, this);
 }
 
 void UwbInitWrapper::perform_initialization()
@@ -140,6 +149,12 @@ void UwbInitWrapper::cb_dynamicconfig(UwbInitConfig_t& config, uint32_t level)
 
     config.calculate = false;
   }
+}
+
+void UwbInitWrapper::cb_timerinit(const ros::TimerEvent &)
+{
+  ROS_DEBUG_STREAM("UwbInitWrapper: timer event for initalization triggered");
+  perform_initialization();
 }
 
 }  // namespace uav_init

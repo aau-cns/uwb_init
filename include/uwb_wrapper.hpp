@@ -44,15 +44,17 @@ public:
   ///
   UwbInitWrapper(ros::NodeHandle& nh);
 
-  ///
-  /// \brief perform_initialization tries to initialize all anchors, for which messages were received
-  ///
-  void perform_initialization();
+  void cb_timerinit(const ros::TimerEvent&);
 
 private:
   void cb_posestamped(const geometry_msgs::PoseStamped::ConstPtr& msg);
   void cb_uwbstamped(const evb1000_driver::TagDistanceConstPtr& msg);
   void cb_dynamicconfig(UwbInitConfig_t& config, uint32_t level);
+
+  ///
+  /// \brief perform_initialization tries to initialize all anchors, for which messages were received
+  ///
+  void perform_initialization();
 
   // Ros node handler
   ros::NodeHandle nh_;  //!< ROS nodehandle given through constructor
@@ -68,6 +70,7 @@ private:
   Eigen::Vector3d p_r_ItoU_;        //!< distance (r) from the IMU(body) to UWB frame expressed in IMU frame
   double p_min_dist{ 0.2 };         //!< minimal distance for measurements to be added (w.r.t. to last measurement)
   double p_buffer_size_s_{ 10.0 };  //!< buffer size in s
+  double p_check_duration_{ 0.5 };  //!< duration to check init
 
   // dynamic reconfigure
   ReconfServer_t reconf_server_;
@@ -76,6 +79,9 @@ private:
   UwbInitializer uwb_initializer_;        //!< initializer class for UWB modules
   UwbAnchorBuffer anchor_buffer_;         //!< buffer containing the anchor calculated positions
   bool f_all_known_anchors_initialized_;  //!< flag determining if all currently known anchors are initialized
+
+  // timer variables
+  ros::Timer init_check_timer_;
 };
 
 }  // namespace uav_init
