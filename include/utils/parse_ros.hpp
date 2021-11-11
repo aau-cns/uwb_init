@@ -33,6 +33,8 @@ UwbInitOptions parse_ros_nodehandle(ros::NodeHandle& nh)
   nh.param<std::vector<double>>("p_ItoU", p_ItoU, p_ItoU_default);
   params.p_ItoU << p_ItoU.at(0), p_ItoU.at(1), p_ItoU.at(2);
 
+  params.print_wrapper();
+
   // UWB INITIALIZER ==========================================================
 
   nh.param<double>("buffer_size_s", params.buffer_size_s, params.buffer_size_s);
@@ -41,6 +43,8 @@ UwbInitOptions parse_ros_nodehandle(ros::NodeHandle& nh)
   int n_anchors;
   nh.param<int>("n_anchors", n_anchors, params.n_anchors);
   params.n_anchors = static_cast<uint>(n_anchors);
+
+  params.print_initializer();
 
   // return
   return params;

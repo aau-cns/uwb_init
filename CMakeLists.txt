@@ -180,6 +180,13 @@ add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EX
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME} ${thirdparty_libraries})
 
+if(DEFINED UWB_FULL_VERBOSE)
+    message("full verbose output is activated")
+    set_property(TARGET ${PROJECT_NAME} PROPERTY COMPILE_DEFINITIONS FULL_VERBOSE)
+else()
+    message("full verbose output is deactivated")
+endif()
+
 #############
 ## Install ##
 #############
@@ -234,3 +241,26 @@ target_link_libraries(${PROJECT_NAME} ${thirdparty_libraries})
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+
+###################
+## Documentation ##
+###################
+
+
+# Meta information about the project
+set(META_PROJECT_NAME        "uwb_init_cpp")
+set(META_PROJECT_DESCRIPTION "UWB Intitialization ROS Wrapper")
+set(META_AUTHOR_ORGANIZATION "University Klagenfurt: CNS")
+set(META_AUTHOR_DOMAIN       "https://gitlab.aau.at/mascheiber/uwb_init_cpp")
+set(META_AUTHOR_MAINTAINER   "martin.scheiber@aau.at")
+set(META_VERSION_MAJOR       "0")
+set(META_VERSION_MINOR       "1")
+set(META_VERSION_PATCH       "0")
+set(META_VERSION_REVISION    "${GIT_REV}")
+set(META_VERSION             "${META_VERSION_MAJOR}.${META_VERSION_MINOR}.${META_VERSION_PATCH}")
+set(META_NAME_VERSION        "${META_PROJECT_NAME} v${META_VERSION} (${META_VERSION_REVISION})")
+set(META_CMAKE_INIT_SHA      "${GIT_REV}")
+
+
+option(OPTION_BUILD_DOCS      "Build documentation."                                   ON)
+add_subdirectory(docs)
