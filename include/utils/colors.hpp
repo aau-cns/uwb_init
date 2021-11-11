@@ -1,9 +1,10 @@
-// Copyright (C) 2021 Alessandro Fornasier,
-// Control of Networked Systems, Universitaet Klagenfurt, Austria
-//
-// You can contact the author at <alessandro.fornasier@ieee.org>
+// Copyright (C) 2021 Alessandro Fornasier, Control of Networked Systems, Universitaet Klagenfurt, Austria
 //
 // All rights reserved.
+//
+// This software is licensed under the terms of the BSD-2-Clause-License with
+// no commercial use allowed, the full terms of which are made available
+// in the LICENSE file. No license in patents is granted.
 //
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -12,6 +13,8 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
+//
+// You can contact the author at <alessandro.fornasier@ieee.org>
 
 #ifndef _COLORS_
 #define _COLORS_
@@ -40,4 +43,4 @@
 #define BOLD(x) "\x1B[1m" x RESET
 #define UNDERLINE(x) "\x1B[4m" x RESET
 
-#endif  /* _COLORS_ */
+#endif  // _COLORS_

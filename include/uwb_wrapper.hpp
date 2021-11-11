@@ -1,9 +1,10 @@
-// Copyright (C) 2021 Martin Scheiber,
-// Control of Networked Systems, Universitaet Klagenfurt, Austria
-//
-// You can contact the author at <martin.scheiber@aau.at>
+// Copyright (C) 2021 Martin Scheiber, Control of Networked Systems, University of Klagenfurt, Austria.
 //
 // All rights reserved.
+//
+// This software is licensed under the terms of the BSD-2-Clause-License with
+// no commercial use allowed, the full terms of which are made available
+// in the LICENSE file. No license in patents is granted.
 //
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -12,6 +13,8 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
+//
+// You can contact the author at <martin.scheiber@aau.at>
 
 #ifndef UAV_INIT_UWB_WRAPPER_HPP_
 #define UAV_INIT_UWB_WRAPPER_HPP_
@@ -70,15 +73,8 @@ private:
   // Publishers
   ros::Publisher pub_wplist;  //!< ROS publisher for wp list
 
-  // Calibration and Parameters
-  //  Eigen::Vector3d p_r_ItoU_;        //!< distance (r) from the IMU(body) to UWB frame expressed in IMU frame
-  //  double p_min_dist{ 0.2 };         //!< minimal distance for measurements to be added (w.r.t. to last
-  //measurement)
-  //  double p_buffer_size_s_{ 10.0 };  //!< buffer size in s
-  //  double p_check_duration_{ 0.5 };  //!< duration to check init
-
   // dynamic reconfigure
-  ReconfServer_t reconf_server_;
+  ReconfServer_t reconf_server_; //!< dynamic reconfigure server for ROS dynamic reconfigure
 
   // Initializer
   UwbInitializer uwb_initializer_;        //!< initializer class for UWB modules

@@ -1,10 +1,11 @@
 // Copyright (C) 2021 Martin Scheiber, Alessandro Fornasier
 // Control of Networked Systems, Universitaet Klagenfurt, Austria
 //
-// You can contact the authors at <martin.scheiber@aau.at> and
-// <alessandro.fornasier@aau.at>
-//
 // All rights reserved.
+//
+// This software is licensed under the terms of the BSD-2-Clause-License with
+// no commercial use allowed, the full terms of which are made available
+// in the LICENSE file. No license in patents is granted.
 //
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -13,6 +14,9 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
+//
+// You can contact the authors at <martin.scheiber@aau.at> and
+// <alessandro.fornasier@aau.at>
 
 #ifndef UAV_INIT_UWB_INIT_HPP_
 #define UAV_INIT_UWB_INIT_HPP_
@@ -22,17 +26,16 @@
 #include <Eigen/Dense>
 #include <deque>
 #include <map>
-#include <numeric>
-#include <tuple>
-#include <unordered_map>
-#include <vector>
 
-#include "types/types.hpp"
 #include "options/uwb_init_options.hpp"
+#include "types/types.hpp"
 
 namespace uav_init
 {
-
+///
+/// \brief The UwbInitializer class is an object used for UWB data handeling for the purpose of initializing the UWB
+/// anchors.
+///
 class UwbInitializer
 {
 public:
@@ -40,8 +43,9 @@ public:
   /// \brief UwbInitializer default constructor
   /// \param params parameter/options used for UWB initialization
   ///
-  UwbInitializer(UwbInitOptions &params) : params_(params)
+  UwbInitializer(UwbInitOptions& params) : params_(params)
   {
+    // initialize buffers
     buffer_p_UinG_.init(params_.buffer_size_s);
     uwb_data_buffer_.init(params_.buffer_size_s);
   }
@@ -50,39 +54,46 @@ public:
   /// \brief feed_uwb stores incoming UWB (valid) readings
   /// \param uwb_measurements UwbData vector of measurements
   ///
+  /// \todo allow feeding of old(er) measurements
+  ///
   void feed_uwb(const std::vector<UwbData> uwb_measurements);
 
+  ///
+  /// \brief feed_pose stores incoming positions of the UAV in the global frame
+  /// \param uwb_measurements Eigen::Vector3d of positions of the UAV in global frame
+  ///
+  /// \todo allow feeding of old(er) measurements
+  ///
   void feed_pose(const double timestamp, const Eigen::Vector3d p_UinG);
 
-  /**
-   * @brief Try to initialize anchors and measurement bias through LS
-   *
-   * @param vector of anchors position
-   * @param measuremnt (distance dependent) bias
-   */
-  bool try_to_initialize_anchors(std::map<size_t, Eigen::Vector3d>& p_ANCHORSinG, double& distance_bias,
-                                 double& const_bias, std::map<size_t, Eigen::Matrix3d>& Anchors_Covs,
-                                 double& distance_bias_Cov, double& const_bias_Cov);
-  bool try_to_initialize_anchors(UwbAnchorBuffer &anchor_buffer);
+  ///
+  /// \brief try_to_initialize_anchors tries to initialize all anchors for which readings exist
+  /// \param anchor_buffer
+  /// \return true if all anchors were successfully initialized
+  ///
+  /// This function performs a least-squares initialization using the per anchor measurments given the measurement model
+  /// from Blueml et al. It will try to initialize each anchor (validated per ID) individually. If an anchor was already
+  /// successfully initialized in the past it is skipped.
+  /// It will also return 'true' if all anchors, for which measurements are present were successfully initialized at
+  /// some point.
+  ///
+  /// \cite Bluemel J., Fornasier A., and Weiss S., "Bias Compensated UWB Anchor Initialization using
+  /// Information-Theoretic Supported Triangulation Points", 2021 IEEE International Conference on Robotics and
+  /// Automation (ICRA21), IEEE, 2021.
+  ///
+  /// \todo allow initialization of anchors, if condition number is better, also after they have been already
+  /// initialized
+  ///
+  bool try_to_initialize_anchors(UwbAnchorBuffer& anchor_buffer);
 
 protected:
-  UwbInitOptions params_;
+  UwbInitOptions params_;  //!< initializer parameters
 
   // anchor and measurement handeling
-  uint n_anchors_;                 //!< number of anchors in use
-//  double buffer_size_s_{ 100.0 };  //!< buffer size in s of UWB module positions
-  Eigen::Vector3d cur_p_UinG_;     //!< current position of the UWB module in global frame
-  //  PositionBuffer buffer_p_UinG_;   //!< buffer of UWB module positions in global frame
-//  TimedBuffer<Eigen::Vector3d> buffer_p_UinG_;  //!< buffer of UWB module positions in global frame
+  Eigen::Vector3d cur_p_UinG_;         //!< current position of the UWB module in global frame
   PositionBufferTimed buffer_p_UinG_;  //!< buffer of UWB module positions in global frame
 
-  /// Our history of uwb readings [anchor, [p_UinG, timestamp, distance]]
-  //  std::multimap<size_t, std::tuple<Eigen::Vector3d, double, double>> uwb_data;
-//  std::map<uint16_t, std::vector<UwbData>> uwb_data_buffer_;
-  UwbDataBuffer uwb_data_buffer_;
-
-  /// Set of measurement associated with a specific anchor [p_UinG, timestamp, distance]
-  //  std::vector<std::tuple<Eigen::Vector3d, double, double>> single_anchor_uwb_data;
+  UwbDataBuffer uwb_data_buffer_;  //!< history of uwb readings in DataBuffer
 };
 
 }  // namespace uav_init

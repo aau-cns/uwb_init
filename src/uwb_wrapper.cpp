@@ -1,9 +1,10 @@
-// Copyright (C) 2021 Martin Scheiber,
-// Control of Networked Systems, Universitaet Klagenfurt, Austria
-//
-// You can contact the author at <martin.scheiber@aau.at>
+// Copyright (C) 2021 Martin Scheiber, Control of Networked Systems, University of Klagenfurt, Austria.
 //
 // All rights reserved.
+//
+// This software is licensed under the terms of the BSD-2-Clause-License with
+// no commercial use allowed, the full terms of which are made available
+// in the LICENSE file. No license in patents is granted.
 //
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -12,36 +13,16 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
+//
+// You can contact the author at <martin.scheiber@aau.at>
 
 #include "uwb_wrapper.hpp"
 
 namespace uav_init
 {
-UwbInitWrapper::UwbInitWrapper(ros::NodeHandle& nh, UwbInitOptions& params) : nh_(nh), params_(params), uwb_initializer_(params_)
+UwbInitWrapper::UwbInitWrapper(ros::NodeHandle& nh, UwbInitOptions& params)
+  : nh_(nh), params_(params), uwb_initializer_(params_)
 {
-  //  // read parameters
-  //  std::vector<double> r_ItoU;
-  //  std::vector<double> r_ItoU_default = { 0.0, 0.0, 0.0 };
-  //  nh.param<std::vector<double>>("r_ItoU", r_ItoU, r_ItoU_default);
-  //  p_r_ItoU_ << r_ItoU.at(0), r_ItoU.at(1), r_ItoU.at(2);
-
-  //  int n_anchors;
-  //  if (!nh.param<int>("n_anchors", n_anchors, 0))
-  //  {
-  //    ROS_ERROR_STREAM("No number of anchors in use give. Exiting...");
-  //    std::exit(EXIT_FAILURE);
-  //  }
-
-  //  if (!nh.param<double>("buffer_size_s", p_buffer_size_s_, 10.0))
-  //  {
-  //    ROS_WARN_STREAM("No buffer size give, using 10.0s");
-  //  }
-
-  //  if (!nh.param<double>("init_check_duration", p_check_duration_, 5.0))
-  //  {
-  //    ROS_WARN_STREAM("No parameter for init_check_duration found, using 5.0s");
-  //  }
-
   // subscribers
   sub_posestamped = nh.subscribe(params_.topic_sub_pose, 1, &UwbInitWrapper::cb_posestamped, this);
   sub_uwbstamped = nh.subscribe(params_.topic_sub_uwb, 1, &UwbInitWrapper::cb_uwbstamped, this);
@@ -63,7 +44,7 @@ UwbInitWrapper::UwbInitWrapper(ros::NodeHandle& nh, UwbInitOptions& params) : nh
   // setup timer
   init_check_timer_ =
       nh.createTimer(ros::Duration(params_.init_check_duration_s), &uav_init::UwbInitWrapper::cb_timerinit, this);
-}
+} // UwbInitWrapper::UwbInitWrapper(...)
 
 void UwbInitWrapper::perform_initialization()
 {
@@ -103,7 +84,7 @@ void UwbInitWrapper::perform_initialization()
       ROS_INFO_STREAM("\t\tc_bias: " << anchor_value.bias_c << std::endl);
     }
   }
-}
+} // void UwbInitWrapper::perform_initialization()
 
 void UwbInitWrapper::cb_posestamped(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
@@ -115,7 +96,7 @@ void UwbInitWrapper::cb_posestamped(const geometry_msgs::PoseStamped::ConstPtr& 
 
   // feed current pose to initializer
   uwb_initializer_.feed_pose(msg->header.stamp.toSec(), p_UinG);
-}
+} // void UwbInitWrapper::cb_posestamped(...)
 
 void UwbInitWrapper::cb_uwbstamped(const evb1000_driver::TagDistanceConstPtr& msg)
 {
@@ -135,7 +116,7 @@ void UwbInitWrapper::cb_uwbstamped(const evb1000_driver::TagDistanceConstPtr& ms
 
   // feed measurements to initializer
   uwb_initializer_.feed_uwb(uwb_ranges);
-}
+} // void UwbInitWrapper::cb_uwbstamped(...)
 
 void UwbInitWrapper::cb_dynamicconfig(UwbInitConfig_t& config, uint32_t level)
 {
@@ -146,12 +127,12 @@ void UwbInitWrapper::cb_dynamicconfig(UwbInitConfig_t& config, uint32_t level)
 
     config.calculate = false;
   }
-}
+} // void UwbInitWrapper::cb_dynamicconfig(...)
 
 void UwbInitWrapper::cb_timerinit(const ros::TimerEvent&)
 {
   ROS_DEBUG_STREAM("UwbInitWrapper: timer event for initalization triggered");
   perform_initialization();
-}
+} // void UwbInitWrapper::cb_timerinit(...)
 
 }  // namespace uav_init
