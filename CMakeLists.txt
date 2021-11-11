@@ -146,7 +146,7 @@ set(headers_types
 
 set(headers_utils
     include/utils/parse_ros.hpp
-
+    include/utils/logging.hpp
 )
 
 set(headers

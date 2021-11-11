@@ -17,6 +17,7 @@
 // You can contact the author at <martin.scheiber@aau.at>
 
 #include "uwb_wrapper.hpp"
+#include "utils/logging.hpp"
 
 namespace uav_init
 {
@@ -34,14 +35,8 @@ UwbInitWrapper::UwbInitWrapper(ros::NodeHandle& nh, UwbInitOptions& params)
   ReconfServer_t::CallbackType f = boost::bind(&UwbInitWrapper::cb_dynamicconfig, this, _1, _2);
   reconf_server_.setCallback(f);
 
-  // print subscribed topics
-  std::cout << std::endl;
-  std::cout << "Subscribing: " << sub_posestamped.getTopic().c_str() << std::endl;
-  std::cout << "Subscribing: " << sub_uwbstamped.getTopic().c_str() << std::endl;
-
-  // print advertised topics
-  std::cout << std::endl;
-  std::cout << "Publishing: " << pub_anchor.getTopic().c_str() << std::endl;
+  // print topic information
+  uav_init::print_all_topics();
 
   // init anchor buffer
   anchor_buffer_.init(params_.buffer_size_s);
@@ -56,23 +51,23 @@ void UwbInitWrapper::perform_initialization()
   // perform initialization here
   if (uwb_initializer_.try_to_initialize_anchors(anchor_buffer_))
   {
-    ROS_INFO_STREAM("All UWB anchors successfully initialized");
+    INIT_INFO_STREAM("All UWB anchors successfully initialized");
     f_all_known_anchors_initialized_ = true;
   }
   else
   {
-    ROS_ERROR_STREAM("Could not initialize all UWB anchors");
+    INIT_ERROR_STREAM("Could not initialize all UWB anchors");
   }
 
   if (anchor_buffer_.get_buffer().empty())
   {
-    ROS_DEBUG_STREAM("No anchors yet...");
+    INIT_DEBUG_STREAM("No anchors yet...");
     return;
   }
   else
   {
     // output result
-    ROS_INFO_STREAM("Initialization Result:");
+    INIT_INFO_STREAM("Initialization Result:");
 #if (__cplusplus >= 201703L)
     for (const auto& [anchor_id, anchor_values] : anchor_buffer_.get_buffer())
     {
@@ -83,10 +78,10 @@ void UwbInitWrapper::perform_initialization()
       const auto anchor_values = kv.second;
 #endif
       const auto anchor_value = anchor_values.get_buffer().back().second;
-      ROS_INFO_STREAM("\tAnchor " << anchor_id << ": " << anchor_value.initialized);
-      ROS_INFO_STREAM("\t\tpos   : " << anchor_value.p_AinG.transpose());
-      ROS_INFO_STREAM("\t\td_bias: " << anchor_value.bias_d);
-      ROS_INFO_STREAM("\t\tc_bias: " << anchor_value.bias_c << std::endl);
+      INIT_INFO_STREAM("\tAnchor " << anchor_id << ": " << anchor_value.initialized);
+      INIT_INFO_STREAM("\t\tpos   : " << anchor_value.p_AinG.transpose());
+      INIT_INFO_STREAM("\t\td_bias: " << anchor_value.bias_d);
+      INIT_INFO_STREAM("\t\tc_bias: " << anchor_value.bias_c << std::endl);
     }
   }
 }  // void UwbInitWrapper::perform_initialization()
@@ -136,7 +131,7 @@ void UwbInitWrapper::cb_dynamicconfig(UwbInitConfig_t& config, uint32_t level)
 
 void UwbInitWrapper::cb_timerinit(const ros::TimerEvent&)
 {
-  ROS_DEBUG_STREAM("UwbInitWrapper: timer event for initalization triggered");
+  INIT_DEBUG_STREAM("UwbInitWrapper: timer event for initalization triggered");
   perform_initialization();
 
   // publish result

@@ -19,6 +19,7 @@
 // <alessandro.fornasier@aau.at>
 
 #include "uav_init/uwb_init.hpp"
+#include "utils/logging.hpp"
 
 namespace uav_init
 {
@@ -30,15 +31,15 @@ void UwbInitializer::feed_uwb(const std::vector<UwbData> uwb_measurements)
     // check validity
     if (uwb_measurements[i].valid)
     {
-      ROS_DEBUG_STREAM("Adding measurment " << uwb_measurements[i].distance << " from anchor "
-                                            << uwb_measurements[i].id);
+      INIT_DEBUG_STREAM("Adding measurment " << uwb_measurements[i].distance << " from anchor "
+                                             << uwb_measurements[i].id);
       //      uwb_data_buffer_[uwb_measurements[i].id].push_back(uwb_measurements[i]);
       uwb_data_buffer_.push_back(uwb_measurements[i].id, uwb_measurements[i].timestamp, uwb_measurements[i]);
     }
     else
     {
-      ROS_DEBUG_STREAM("DISCARDING measurment " << uwb_measurements[i].distance << " from anchor "
-                                                << uwb_measurements[i].id);
+      INIT_DEBUG_STREAM("DISCARDING measurment " << uwb_measurements[i].distance << " from anchor "
+                                                 << uwb_measurements[i].id);
     }
   }
 }
@@ -63,13 +64,13 @@ bool UwbInitializer::try_to_initialize_anchors(UwbAnchorBuffer& anchor_buffer)
   {
     // get ID of anchor and its data
     const auto anchor_id = kv.first;
-    ROS_DEBUG_STREAM("A" << anchor_id << ": calculating solution ...");
+    INIT_DEBUG_STREAM("A" << anchor_id << ": calculating solution ...");
 
     // check if anchor is already initialized
     if (anchor_buffer.contains_id(anchor_id) && anchor_buffer.is_initialized(anchor_id))
     {
       // anchor already initialized
-      ROS_DEBUG_STREAM("A" << anchor_id << ": already initialized");
+      INIT_DEBUG_STREAM("A" << anchor_id << ": already initialized");
       is_successfull_initialized &= true;
     }
     else
@@ -107,11 +108,11 @@ bool UwbInitializer::try_to_initialize_anchors(UwbAnchorBuffer& anchor_buffer)
           double distance_bias_squared = LSSolution[3];
           double const_bias = LSSolution[4];
 
-          ROS_DEBUG_STREAM("A" << anchor_id << " solution:\n"
-                               << "\tLS:         " << LSSolution.transpose() << "\n"
-                               << "\tp_AinG:     " << p_AinG.transpose() << "\n"
-                               << "\td_bias_sq:  " << distance_bias_squared << "\n"
-                               << "\tconst_bias: " << const_bias);
+          INIT_DEBUG_STREAM("A" << anchor_id << " solution:\n"
+                                << "\tLS:         " << LSSolution.transpose() << "\n"
+                                << "\tp_AinG:     " << p_AinG.transpose() << "\n"
+                                << "\td_bias_sq:  " << distance_bias_squared << "\n"
+                                << "\tconst_bias: " << const_bias);
 
           if ((LSSolution[5] - (distance_bias_squared * std::pow(p_AinG.norm(), 2) - std::pow(const_bias, 2))) < 1)
           {
@@ -128,13 +129,13 @@ bool UwbInitializer::try_to_initialize_anchors(UwbAnchorBuffer& anchor_buffer)
             //        Eigen::Matrix4d distance_bias_squared_P_AinG_Cov = Cov.block(0, 0, 3, 3);
             //        double distance_bias_squared_Cov = Cov(4, 4);
             //        double const_bias_Cov = Cov(5, 5);
-            ROS_DEBUG_STREAM("\n\tCov:        " << Cov);
+            INIT_DEBUG_STREAM("\n\tCov:        " << Cov);
 
             // Retrive P_AinG Covariance applying error propagation law and assign to Anchors_Covs
             Eigen::MatrixXd J = Eigen::MatrixXd::Zero(1, 4);
             J(0, 0) = 1.0 / distance_bias_squared;
             J.block(0, 1, 1, 3) = -p_AinG.transpose() / distance_bias_squared;
-            ROS_DEBUG_STREAM("\n\tJ:        " << J);
+            INIT_DEBUG_STREAM("\n\tJ:        " << J);
             //        Anchors_Covs.insert({ anchor_id, J * Cov.block(0, 0, 4, 4) * J.transpose() });
 
             // Retrive Covariance of b and k applying error propagation law
@@ -146,17 +147,17 @@ bool UwbInitializer::try_to_initialize_anchors(UwbAnchorBuffer& anchor_buffer)
           }
           else
           {
-            ROS_WARN_STREAM("Anchor " << anchor_id << ": issue with LS solution ("
-                                      << (LSSolution[5] - (distance_bias_squared * std::pow(p_AinG.norm(), 2) -
-                                                           std::pow(const_bias, 2)))
-                                      << ")");
+            INIT_WARN_STREAM("Anchor " << anchor_id << ": issue with LS solution ("
+                                       << (LSSolution[5] - (distance_bias_squared * std::pow(p_AinG.norm(), 2) -
+                                                            std::pow(const_bias, 2)))
+                                       << ")");
             new_uwb_anchor.initialized = false;
             is_successfull_initialized &= false;
           }
         }
         else
         {
-          ROS_WARN_STREAM("Anchor " << anchor_id << ": issue with condition number (" << cond << ")" << std::endl);
+          INIT_WARN_STREAM("Anchor " << anchor_id << ": issue with condition number (" << cond << ")" << std::endl);
           new_uwb_anchor.initialized = false;
           is_successfull_initialized &= false;
         }  // if anchor data found
