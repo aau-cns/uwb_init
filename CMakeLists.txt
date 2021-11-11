@@ -3,11 +3,17 @@ project(uwb_init_cpp)
 
 ## Try to compile with newer versions of C++
 include(CheckCXXCompilerFlag)
+CHECK_CXX_COMPILER_FLAG("-std=c++20" COMPILER_SUPPORTS_CXX20)
 CHECK_CXX_COMPILER_FLAG("-std=c++17" COMPILER_SUPPORTS_CXX17)
+CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
 CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
 CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
-if(COMPILER_SUPPORTS_CXX17)
+if(COMPILER_SUPPORTS_CXX20)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
+elseif(COMPILER_SUPPORTS_CXX17)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+elseif(COMPILER_SUPPORTS_CXX14)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 elseif(COMPILER_SUPPORTS_CXX11)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 elseif(COMPILER_SUPPORTS_CXX0X)
@@ -128,7 +134,24 @@ list(
 ## either from message generation or dynamic reconfigure
 # add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
+set(headers_types
+    include/types/buffers.hpp
+    include/types/buffers/timed_buffer.hpp
+    include/types/buffers/data_buffer.hpp
+    include/types/uwb_anchor.hpp
+    include/types/uwb_data.hpp
+    include/types/types.hpp
+)
+
+set(headers_utils
+    include/utils/parse_ros.hpp
+
+)
+
 set(headers
+    ${headers_types}
+    ${headers_utils}
+    include/options/uwb_init_options.hpp
     include/uwb_wrapper.hpp
     include/uav_init/uwb_init.hpp
     include/uav_init/uwb_init.cpp
@@ -156,6 +179,13 @@ add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EX
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME} ${thirdparty_libraries})
+
+if(DEFINED UWB_FULL_VERBOSE)
+    message("full verbose output is activated")
+    set_property(TARGET ${PROJECT_NAME} PROPERTY COMPILE_DEFINITIONS FULL_VERBOSE)
+else()
+    message("full verbose output is deactivated")
+endif()
 
 #############
 ## Install ##
@@ -211,3 +241,26 @@ target_link_libraries(${PROJECT_NAME} ${thirdparty_libraries})
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+
+###################
+## Documentation ##
+###################
+
+
+# Meta information about the project
+set(META_PROJECT_NAME        "uwb_init_cpp")
+set(META_PROJECT_DESCRIPTION "UWB Intitialization ROS Wrapper")
+set(META_AUTHOR_ORGANIZATION "University Klagenfurt: CNS")
+set(META_AUTHOR_DOMAIN       "https://gitlab.aau.at/mascheiber/uwb_init_cpp")
+set(META_AUTHOR_MAINTAINER   "martin.scheiber@aau.at")
+set(META_VERSION_MAJOR       "0")
+set(META_VERSION_MINOR       "1")
+set(META_VERSION_PATCH       "0")
+set(META_VERSION_REVISION    "${GIT_REV}")
+set(META_VERSION             "${META_VERSION_MAJOR}.${META_VERSION_MINOR}.${META_VERSION_PATCH}")
+set(META_NAME_VERSION        "${META_PROJECT_NAME} v${META_VERSION} (${META_VERSION_REVISION})")
+set(META_CMAKE_INIT_SHA      "${GIT_REV}")
+
+
+option(OPTION_BUILD_DOCS      "Build documentation."                                   ON)
+add_subdirectory(docs)

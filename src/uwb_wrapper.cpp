@@ -1,9 +1,10 @@
-// Copyright (C) 2021 Martin Scheiber,
-// Control of Networked Systems, Universitaet Klagenfurt, Austria
-//
-// You can contact the author at <martin.scheiber@aau.at>
+// Copyright (C) 2021 Martin Scheiber, Control of Networked Systems, University of Klagenfurt, Austria.
 //
 // All rights reserved.
+//
+// This software is licensed under the terms of the BSD-2-Clause-License with
+// no commercial use allowed, the full terms of which are made available
+// in the LICENSE file. No license in patents is granted.
 //
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -12,29 +13,21 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
+//
+// You can contact the author at <martin.scheiber@aau.at>
 
 #include "uwb_wrapper.hpp"
 
 namespace uav_init
 {
-UwbInitWrapper::UwbInitWrapper(ros::NodeHandle& nh) : nh_(nh)
+UwbInitWrapper::UwbInitWrapper(ros::NodeHandle& nh, UwbInitOptions& params)
+  : nh_(nh), params_(params), uwb_initializer_(params_)
 {
-  // read parameters
-  std::vector<double> r_ItoU;
-  std::vector<double> r_ItoU_default = { 0.0, 0.0, 0.0 };
-  nh.param<std::vector<double>>("r_ItoU", r_ItoU, r_ItoU_default);
-  p_r_ItoU_ << r_ItoU.at(0), r_ItoU.at(1), r_ItoU.at(2);
+  // subscribers
+  sub_posestamped = nh.subscribe(params_.topic_sub_pose, 1, &UwbInitWrapper::cb_posestamped, this);
+  sub_uwbstamped = nh.subscribe(params_.topic_sub_uwb, 1, &UwbInitWrapper::cb_uwbstamped, this);
 
-  int n_anchors;
-  if (!nh.param<int>("n_anchors", n_anchors, 0))
-  {
-    ROS_ERROR_STREAM("No number of anchors in use give. Exiting...");
-    std::exit(EXIT_FAILURE);
-  }
-
-  // Subscribers
-  sub_posestamped = nh.subscribe("pose", 1, &UwbInitWrapper::cb_posestamped, this);
-  sub_uwbstamped = nh.subscribe("uwb", 1, &UwbInitWrapper::cb_uwbstamped, this);
+  // publishers
 
   // set up dynamic parameters
   ReconfServer_t::CallbackType f = boost::bind(&UwbInitWrapper::cb_dynamicconfig, this, _1, _2);
@@ -45,9 +38,53 @@ UwbInitWrapper::UwbInitWrapper(ros::NodeHandle& nh) : nh_(nh)
   std::cout << "Subscribing: " << sub_posestamped.getTopic().c_str() << std::endl;
   std::cout << "Subscribing: " << sub_uwbstamped.getTopic().c_str() << std::endl;
 
-  // create initializer
-  uwb_initializer_ = UwbInitializer(n_anchors);
-}
+  // init anchor buffer
+  anchor_buffer_.init(params_.buffer_size_s);
+
+  // setup timer
+  init_check_timer_ =
+      nh.createTimer(ros::Duration(params_.init_check_duration_s), &uav_init::UwbInitWrapper::cb_timerinit, this);
+} // UwbInitWrapper::UwbInitWrapper(...)
+
+void UwbInitWrapper::perform_initialization()
+{
+  // perform initialization here
+  if (uwb_initializer_.try_to_initialize_anchors(anchor_buffer_))
+  {
+    ROS_INFO_STREAM("All UWB anchors successfully initialized");
+    f_all_known_anchors_initialized_ = true;
+  }
+  else
+  {
+    ROS_ERROR_STREAM("Could not initialize all UWB anchors");
+  }
+
+  if (anchor_buffer_.get_buffer().empty())
+  {
+    ROS_DEBUG_STREAM("No anchors yet...");
+    return;
+  }
+  else
+  {
+    // output result
+    ROS_INFO_STREAM("Initialization Result:");
+#if (__cplusplus >= 201703L)
+    for (const auto& [anchor_id, anchor_values] : anchor_buffer_.get_buffer())
+    {
+#else
+    for (const auto& kv : anchor_buffer_.get_buffer())
+    {
+      const auto anchor_id = kv.first;
+      const auto anchor_values = kv.second;
+#endif
+      const auto anchor_value = anchor_values.get_buffer().back().second;
+      ROS_INFO_STREAM("\tAnchor " << anchor_id << ": " << anchor_value.initialized);
+      ROS_INFO_STREAM("\t\tpos   : " << anchor_value.p_AinG.transpose());
+      ROS_INFO_STREAM("\t\td_bias: " << anchor_value.bias_d);
+      ROS_INFO_STREAM("\t\tc_bias: " << anchor_value.bias_c << std::endl);
+    }
+  }
+} // void UwbInitWrapper::perform_initialization()
 
 void UwbInitWrapper::cb_posestamped(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
@@ -55,11 +92,11 @@ void UwbInitWrapper::cb_posestamped(const geometry_msgs::PoseStamped::ConstPtr& 
   Eigen::Vector3d p_UinG(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z);
   Eigen::Quaterniond q_UinG(msg->pose.orientation.w, msg->pose.orientation.x, msg->pose.orientation.y,
                             msg->pose.orientation.z);
-  p_UinG = p_UinG + q_UinG.toRotationMatrix() * p_r_ItoU_;
+  p_UinG = p_UinG + q_UinG.toRotationMatrix() * params_.p_ItoU;
 
   // feed current pose to initializer
   uwb_initializer_.feed_pose(msg->header.stamp.toSec(), p_UinG);
-}
+} // void UwbInitWrapper::cb_posestamped(...)
 
 void UwbInitWrapper::cb_uwbstamped(const evb1000_driver::TagDistanceConstPtr& msg)
 {
@@ -68,52 +105,34 @@ void UwbInitWrapper::cb_uwbstamped(const evb1000_driver::TagDistanceConstPtr& ms
   std::vector<UwbData> uwb_ranges;  // anchor_id (0,1,2,3,...), validity_flag, distance measurement
 
   // Fill the map with the
-  u_int n = msg->valid.size();
-  for (u_int i = 0; i < n; ++i)
+  uint n = msg->valid.size();
+  for (uint i = 0; i < n; ++i)
   {
     uwb_ranges.push_back(UwbData(time, msg->valid[i], msg->distance[i], i));
+
+    // check if new anchor was added and reset flag if the id is not known yet
+    f_all_known_anchors_initialized_ &= !anchor_buffer_.contains_id(i);
   }
 
   // feed measurements to initializer
   uwb_initializer_.feed_uwb(uwb_ranges);
-}
+} // void UwbInitWrapper::cb_uwbstamped(...)
 
 void UwbInitWrapper::cb_dynamicconfig(UwbInitConfig_t& config, uint32_t level)
 {
   if (config.calculate)
   {
-    std::map<size_t, Eigen::Vector3d> p_AinG;
-    double distance_bias, const_bias, distance_bias_cov, const_bias_cov;
-    std::map<size_t, Eigen::Matrix3d> A_covs;
-
     // perform anchor claculation
-    if (uwb_initializer_.try_to_initialize_anchors(p_AinG, distance_bias, const_bias, A_covs, distance_bias_cov,
-                                                   const_bias_cov))
-    {
-
-    // output result
-    ROS_INFO_STREAM("Result:" << std::endl);
-#if (__cplusplus == 201703L)
-    for (const auto& [key, pos] : p_AinG)
-    {
-#else
-    for (const auto& kv : p_AinG)
-    {
-      const auto key = kv.first;
-      const auto pos = kv.second;
-#endif
-      ROS_INFO_STREAM("\tPos A" << key << ": " << pos.transpose() << std::endl);
-    }
-    ROS_INFO_STREAM("\td_bias:" << distance_bias << std::endl);
-    ROS_INFO_STREAM("\tc_bias:" << const_bias << std::endl);
-    }
-    else
-    {
-      ROS_ERROR_STREAM("Could not initialize anchors");
-    }
+    perform_initialization();
 
     config.calculate = false;
   }
-}
+} // void UwbInitWrapper::cb_dynamicconfig(...)
+
+void UwbInitWrapper::cb_timerinit(const ros::TimerEvent&)
+{
+  ROS_DEBUG_STREAM("UwbInitWrapper: timer event for initalization triggered");
+  perform_initialization();
+} // void UwbInitWrapper::cb_timerinit(...)
 
 }  // namespace uav_init

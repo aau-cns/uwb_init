@@ -1,22 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
   <!-- topic parameters -->
-  <arg name="topic_pose_in"   default="/mus/ground_truth_pose_imu" />
-  <arg name="topic_uwb_in"    default="/mus/uwb" />
+  <arg name="topic_pose_in"     default="/mus/ground_truth_pose_imu" />
+  <arg name="topic_uwb_in"      default="/mus/uwb" />
+  <arg name="topic_anchor_out"  default="anchors" />
 
   <!-- calibration -->
-  <arg name="calib_r_ItoU"    default="[0.0, 0.0, 0.0]" />
+  <arg name="calib_p_ItoU"      default="[0.0, 0.0, 0.0]" />
 
   <!-- node parameters -->
-  <arg name="num_anchors"     default="4" />
+  <arg name="num_anchors"       default="4" />
+  <arg name="buffer_size_in_s"  default="50.0" />
+  <arg name="max_cond_number"   default="300.0" />
+
 
   <node name="uwb_init_cpp" pkg="uwb_init_cpp" type="uwb_init_cpp" args="" output="screen" respawn="false">
-    <!-- node parameters -->
-    <param name="n_anchors"   value="$(arg num_anchors)"  type="int" />
-    <rosparam param="r_ItoU"   subst_value="True">$(arg calib_r_ItoU)</rosparam>
+    <!-- topics remaps -->
+    <param name="topic_sub_pose"      type="str"  value="$(arg topic_pose_in)" />
+    <param name="topic_sub_uwb"       type="str"  value="$(arg topic_uwb_in)" />
+    <param name="topic_pub_anchors"   type="str"  value="$(arg topic_anchor_out)" />
 
-    <!-- topic remaps -->
-    <remap from="~pose"  to="$(arg topic_pose_in)" />
-    <remap from="~uwb"   to="$(arg topic_uwb_in)" />
+    <!-- node parameters -->
+    <param name="n_anchors"     type="int"    value="$(arg num_anchors)" />
+    <param name="buffer_size_s" type="double" value="$(arg buffer_size_in_s)" />
+    <param name="max_cond_num"  type="double" value="$(arg max_cond_number)" />
+    <rosparam param="p_ItoU"    subst_value="True">$(arg calib_p_ItoU)</rosparam>
+
   </node>
 </launch>
