@@ -28,15 +28,20 @@ UwbInitWrapper::UwbInitWrapper(ros::NodeHandle& nh, UwbInitOptions& params)
   sub_uwbstamped = nh.subscribe(params_.topic_sub_uwb, 1, &UwbInitWrapper::cb_uwbstamped, this);
 
   // publishers
+  pub_anchor = nh.advertise<uwb_init_cpp::UwbAnchorArrayStamped>(params_.topic_pub_anchors, 1);
 
   // set up dynamic parameters
   ReconfServer_t::CallbackType f = boost::bind(&UwbInitWrapper::cb_dynamicconfig, this, _1, _2);
   reconf_server_.setCallback(f);
 
-  // Print topics where we are subscribing to
+  // print subscribed topics
   std::cout << std::endl;
   std::cout << "Subscribing: " << sub_posestamped.getTopic().c_str() << std::endl;
   std::cout << "Subscribing: " << sub_uwbstamped.getTopic().c_str() << std::endl;
+
+  // print advertised topics
+  std::cout << std::endl;
+  std::cout << "Publishing: " << pub_anchor.getTopic().c_str() << std::endl;
 
   // init anchor buffer
   anchor_buffer_.init(params_.buffer_size_s);
@@ -44,7 +49,7 @@ UwbInitWrapper::UwbInitWrapper(ros::NodeHandle& nh, UwbInitOptions& params)
   // setup timer
   init_check_timer_ =
       nh.createTimer(ros::Duration(params_.init_check_duration_s), &uav_init::UwbInitWrapper::cb_timerinit, this);
-} // UwbInitWrapper::UwbInitWrapper(...)
+}  // UwbInitWrapper::UwbInitWrapper(...)
 
 void UwbInitWrapper::perform_initialization()
 {
@@ -84,7 +89,7 @@ void UwbInitWrapper::perform_initialization()
       ROS_INFO_STREAM("\t\tc_bias: " << anchor_value.bias_c << std::endl);
     }
   }
-} // void UwbInitWrapper::perform_initialization()
+}  // void UwbInitWrapper::perform_initialization()
 
 void UwbInitWrapper::cb_posestamped(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
@@ -96,7 +101,7 @@ void UwbInitWrapper::cb_posestamped(const geometry_msgs::PoseStamped::ConstPtr& 
 
   // feed current pose to initializer
   uwb_initializer_.feed_pose(msg->header.stamp.toSec(), p_UinG);
-} // void UwbInitWrapper::cb_posestamped(...)
+}  // void UwbInitWrapper::cb_posestamped(...)
 
 void UwbInitWrapper::cb_uwbstamped(const evb1000_driver::TagDistanceConstPtr& msg)
 {
@@ -116,7 +121,7 @@ void UwbInitWrapper::cb_uwbstamped(const evb1000_driver::TagDistanceConstPtr& ms
 
   // feed measurements to initializer
   uwb_initializer_.feed_uwb(uwb_ranges);
-} // void UwbInitWrapper::cb_uwbstamped(...)
+}  // void UwbInitWrapper::cb_uwbstamped(...)
 
 void UwbInitWrapper::cb_dynamicconfig(UwbInitConfig_t& config, uint32_t level)
 {
@@ -127,12 +132,38 @@ void UwbInitWrapper::cb_dynamicconfig(UwbInitConfig_t& config, uint32_t level)
 
     config.calculate = false;
   }
-} // void UwbInitWrapper::cb_dynamicconfig(...)
+}  // void UwbInitWrapper::cb_dynamicconfig(...)
 
 void UwbInitWrapper::cb_timerinit(const ros::TimerEvent&)
 {
   ROS_DEBUG_STREAM("UwbInitWrapper: timer event for initalization triggered");
   perform_initialization();
-} // void UwbInitWrapper::cb_timerinit(...)
+
+  // publish result
+  uwb_init_cpp::UwbAnchorArrayStamped msg_anchors;
+  msg_anchors.header.stamp = ros::Time::now();
+  msg_anchors.header.frame_id = "global";
+  msg_anchors.header.seq = pub_anchor_seq_++;
+
+  // retreive anchor data
+  for (const auto& anchor : anchor_buffer_.get_buffer())
+  {
+    uwb_init_cpp::UwbAnchor msg_anchor;
+    UwbAnchor data_anchor = anchor.second.get_buffer().back().second;
+
+    msg_anchor.position.x = data_anchor.p_AinG.x();
+    msg_anchor.position.y = data_anchor.p_AinG.y();
+    msg_anchor.position.z = data_anchor.p_AinG.z();
+    msg_anchor.bias_distance = data_anchor.bias_d;
+    msg_anchor.bias_const = data_anchor.bias_c;
+    msg_anchor.initialized = data_anchor.initialized;
+
+    msg_anchors.anchors.push_back(msg_anchor);
+  }
+
+  // set size and publish
+  msg_anchors.size = msg_anchors.anchors.size();
+  pub_anchor.publish(msg_anchors);
+}  // void UwbInitWrapper::cb_timerinit(...)
 
 }  // namespace uav_init

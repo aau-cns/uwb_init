@@ -56,10 +56,11 @@ message(STATUS "OPENCV VERSION: " ${OpenCV_VERSION})
 ################################################
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#  DIRECTORY msg
-#  FILES Message1.msg Message2.msg
-# )
+add_message_files(DIRECTORY msg
+    FILES
+    UwbAnchor.msg
+    UwbAnchorArrayStamped.msg
+)
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -74,9 +75,9 @@ message(STATUS "OPENCV VERSION: " ${OpenCV_VERSION})
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES std_msgs nav_msgs sensor_msgs geometry_msgs
-# )
+generate_messages(
+  DEPENDENCIES std_msgs geometry_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -98,7 +99,7 @@ generate_dynamic_reconfigure_options(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-  CATKIN_DEPENDS std_msgs nav_msgs sensor_msgs geometry_msgs evb1000_driver #message_runtime
+  CATKIN_DEPENDS message_runtime std_msgs nav_msgs sensor_msgs geometry_msgs evb1000_driver
 #  LIBRARIES custom_libraries
 #  DEPENDS system_lib
 )

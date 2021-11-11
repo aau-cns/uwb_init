@@ -26,11 +26,12 @@
 
 #include <Eigen/Eigen>
 
+#include "options/uwb_init_options.hpp"
 #include "types/types.hpp"
 #include "uav_init/uwb_init.hpp"
 #include "utils/colors.hpp"
+#include "uwb_init_cpp/UwbAnchorArrayStamped.h"
 #include "uwb_init_cpp/UwbInitConfig.h"
-#include "options/uwb_init_options.hpp"
 
 namespace uav_init
 {
@@ -71,10 +72,14 @@ private:
   ros::Subscriber sub_uwbstamped;   //!< ROS subscirber for UWB distance measurements
 
   // Publishers
+  ros::Publisher pub_anchor;  //!< ROS publisher for anchor position and biases
   ros::Publisher pub_wplist;  //!< ROS publisher for wp list
 
+  // publishing variables
+  uint pub_anchor_seq_{ 0 };  //!< sequence number of published anchor msgs
+
   // dynamic reconfigure
-  ReconfServer_t reconf_server_; //!< dynamic reconfigure server for ROS dynamic reconfigure
+  ReconfServer_t reconf_server_;  //!< dynamic reconfigure server for ROS dynamic reconfigure
 
   // Initializer
   UwbInitializer uwb_initializer_;        //!< initializer class for UWB modules
