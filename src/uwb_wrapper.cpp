@@ -33,6 +33,7 @@ UwbInitWrapper::UwbInitWrapper(ros::NodeHandle& nh, UwbInitOptions& params)
 
   // publishers
   pub_anchor = nh.advertise<uwb_init_cpp::UwbAnchorArrayStamped>(params_.topic_pub_anchors, 1);
+  pub_wplist = nh.advertise<mission_sequencer::MissionWaypointArray>(params_.topic_pub_wplist, 1);
 
   // set up dynamic parameters
   ReconfServer_t::CallbackType f = boost::bind(&UwbInitWrapper::cb_dynamicconfig, this, _1, _2);
@@ -188,7 +189,7 @@ void UwbInitWrapper::cb_uwbstamped(const evb1000_driver::TagDistanceConstPtr& ms
   uwb_initializer_.feed_uwb(uwb_ranges);
 }  // void UwbInitWrapper::cb_uwbstamped(...)
 
-void UwbInitWrapper::cb_dynamicconfig(UwbInitConfig_t& config, uint32_t level)
+void UwbInitWrapper::cb_dynamicconfig(UwbInitConfig_t& config, uint32_t /*level*/)
 {
   if (config.calculate)
   {

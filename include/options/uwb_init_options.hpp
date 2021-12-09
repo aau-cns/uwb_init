@@ -46,14 +46,18 @@ struct UwbInitOptions
   /// name of the anchors topic used to publish the UWB anchor positions
   std::string topic_pub_anchors{ "anchors" };
 
+  /// name of the waypoint list topic used to publish the next waypoints
+  std::string topic_pub_wplist{ "waypoints" };
+
   void print_wrapper()
   {
     INIT_PRINT_STREAM("Parameter Summary -- Wrapper");
-    INIT_PRINT_STREAM("\t- init_check_duration_s:  " << init_check_duration_s);
-    INIT_PRINT_STREAM("\t- topic_sub_pose:         " << topic_sub_pose);
-    INIT_PRINT_STREAM("\t- topic_sub_uwb:          " << topic_sub_uwb);
-    INIT_PRINT_STREAM("\t- topic_pub_anchors:      " << topic_pub_anchors);
-    INIT_PRINT_STREAM("\t- p_ItoU:                 " << p_ItoU.transpose());
+    INIT_PRINT_STREAM("\t- init_check_duration_s:       " << init_check_duration_s);
+    INIT_PRINT_STREAM("\t- topic_sub_pose:              " << topic_sub_pose);
+    INIT_PRINT_STREAM("\t- topic_sub_uwb:               " << topic_sub_uwb);
+    INIT_PRINT_STREAM("\t- topic_pub_anchors:           " << topic_pub_anchors);
+    INIT_PRINT_STREAM("\t- topic_pub_wplist:            " << topic_pub_wplist);
+    INIT_PRINT_STREAM("\t- p_ItoU:                      " << p_ItoU.transpose());
   }
 
   // UWB INITIALIZER ==========================================================
@@ -71,9 +75,9 @@ struct UwbInitOptions
   void print_initializer()
   {
     INIT_PRINT_STREAM("Parameter Summary -- Initializer");
-    INIT_PRINT_STREAM("\t- n_anchors:              " << n_anchors);
-    INIT_PRINT_STREAM("\t- buffer_size_s:          " << buffer_size_s);
-    INIT_PRINT_STREAM("\t- max_cond_num:           " << max_cond_num);
+    INIT_PRINT_STREAM("\t- n_anchors:                   " << n_anchors);
+    INIT_PRINT_STREAM("\t- buffer_size_s:               " << buffer_size_s);
+    INIT_PRINT_STREAM("\t- max_cond_num:                " << max_cond_num);
   }
 
   // WAYPOINT GENERATION ======================================================
@@ -83,6 +87,13 @@ struct UwbInitOptions
 
   /// height of waypoints for initialization purpose
   double wp_height{ 2.0 };
+
+  void print_waypoint()
+  {
+    INIT_PRINT_STREAM("Parameter Summary -- Initializer");
+    INIT_PRINT_STREAM("\t- wp_generation_max_distance:  " << wp_generation_max_distance);
+    INIT_PRINT_STREAM("\t- wp_height:                   " << wp_height);
+  }
 
 };  // class UwbInitOptions
 }  // namespace uav_init

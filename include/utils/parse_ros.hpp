@@ -35,6 +35,7 @@ UwbInitOptions parse_ros_nodehandle(ros::NodeHandle& nh)
   nh.param<std::string>("topic_sub_pose", params.topic_sub_pose, params.topic_sub_pose);
   nh.param<std::string>("topic_sub_uwb", params.topic_sub_uwb, params.topic_sub_uwb);
   nh.param<std::string>("topic_pub_anchors", params.topic_pub_anchors, params.topic_pub_anchors);
+  nh.param<std::string>("topic_pub_waypoints", params.topic_pub_wplist, params.topic_pub_wplist);
 
   std::vector<double> p_ItoU;
   std::vector<double> p_ItoU_default = { 0.0, 0.0, 0.0 };
@@ -53,6 +54,12 @@ UwbInitOptions parse_ros_nodehandle(ros::NodeHandle& nh)
   params.n_anchors = static_cast<uint>(n_anchors);
 
   params.print_initializer();
+
+
+  // WAYPOINT GENERATION ======================================================
+
+  nh.param<double>("waypoint_max_dist_m", params.wp_generation_max_distance, params.wp_generation_max_distance);
+  nh.param<double>("waypoint_height_m", params.wp_height, params.wp_height);
 
   // return
   return params;
