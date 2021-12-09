@@ -76,6 +76,14 @@ struct UwbInitOptions
     INIT_PRINT_STREAM("\t- max_cond_num:           " << max_cond_num);
   }
 
+  // WAYPOINT GENERATION ======================================================
+
+  /// maximum distance between two waypoints generated
+  double wp_generation_max_distance{ 1.0 };
+
+  /// height of waypoints for initialization purpose
+  double wp_height{ 2.0 };
+
 };  // class UwbInitOptions
 }  // namespace uav_init
 

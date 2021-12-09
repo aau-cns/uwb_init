@@ -17,6 +17,9 @@
 // You can contact the author at <martin.scheiber@aau.at>
 
 #include "uwb_wrapper.hpp"
+
+#include <mission_sequencer/MissionWaypoint.h>
+
 #include "utils/logging.hpp"
 
 namespace uav_init
@@ -44,6 +47,11 @@ UwbInitWrapper::UwbInitWrapper(ros::NodeHandle& nh, UwbInitOptions& params)
   // setup timer
   init_check_timer_ =
       nh.createTimer(ros::Duration(params_.init_check_duration_s), &uav_init::UwbInitWrapper::cb_timerinit, this);
+
+  // setup waypoint list
+  cur_waypoints_.action = mission_sequencer::MissionWaypointArray::CLEAR;
+  cur_waypoints_.waypoints.clear();
+
 }  // UwbInitWrapper::UwbInitWrapper(...)
 
 void UwbInitWrapper::perform_initialization()
@@ -86,13 +94,75 @@ void UwbInitWrapper::perform_initialization()
   }
 }  // void UwbInitWrapper::perform_initialization()
 
+void UwbInitWrapper::calculate_waypoints()
+{
+  // clear current waypoint list
+  cur_waypoints_.waypoints.clear();
+
+  // check if anchor buffer is empty
+  if (anchor_buffer_.get_buffer().empty())
+  {
+    INIT_DEBUG_STREAM("No anchors to calculate waypoints yet.");
+    return;
+  }
+  else if (f_all_known_anchors_initialized_)
+  {
+    INIT_DEBUG_STREAM("All anchors are already initialized, no need to calculate WPs!");
+    return;
+  }
+
+  // get pose for each uninitialized anchor
+  std::vector<Eigen::Vector3d> pos_uninitialized;
+  pos_uninitialized.push_back(cur_p_IinG_);  // push current pose for trajectory gen later
+  for (const auto& anchor : anchor_buffer_.get_buffer())
+  {
+    UwbAnchor anchor_value = anchor.second.get_buffer().back().second;
+    if (!anchor_value.initialized)
+      pos_uninitialized.push_back(anchor_value.p_AinG);
+  }
+
+  // generate trajectory through all poses
+  // METHOD 1 just fly to all of them in straight lines
+  if (pos_uninitialized.size() > 1)
+  {
+    for (uint i = 0; i < pos_uninitialized.size() - 1; ++i)
+    {
+      // calculate distance between wps
+      Eigen::Vector2d dist(pos_uninitialized.at(i + 1).x() - pos_uninitialized.at(i).x(),
+                           pos_uninitialized.at(i + 1).y() - pos_uninitialized.at(i).y());
+      // calculate number of wps needed
+      double num_wps = std::ceil(dist.norm() / params_.wp_generation_max_distance);
+
+      // in case num_wps is 0, we are ontop of the current wps, so do not add anything
+      for (uint j = 0; j < (uint)num_wps; ++j)
+      {
+        mission_sequencer::MissionWaypoint wp;
+        wp.z = params_.wp_height;
+        wp.yaw = 0.0;
+
+        Eigen::Vector2d wpxy = (j * dist.norm() / num_wps) * dist;
+        wp.x = pos_uninitialized.at(i).x() + wpxy.x();
+        wp.y = pos_uninitialized.at(i).y() + wpxy.y();
+
+        cur_waypoints_.waypoints.push_back(wp);
+      }
+    }
+  }
+  else
+  {
+    INIT_DEBUG_STREAM("All anchors initialized, no more waypoints needed");
+    return;
+  }
+
+}  // namespace uav_init
+
 void UwbInitWrapper::cb_posestamped(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
   // calculate position of UWB module in G frame
-  Eigen::Vector3d p_UinG(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z);
+  cur_p_IinG_ = Eigen::Vector3d(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z);
   Eigen::Quaterniond q_UinG(msg->pose.orientation.w, msg->pose.orientation.x, msg->pose.orientation.y,
                             msg->pose.orientation.z);
-  p_UinG = p_UinG + q_UinG.toRotationMatrix() * params_.p_ItoU;
+  Eigen::Vector3d p_UinG = cur_p_IinG_ + q_UinG.toRotationMatrix() * params_.p_ItoU;
 
   // feed current pose to initializer
   uwb_initializer_.feed_pose(msg->header.stamp.toSec(), p_UinG);
@@ -132,33 +202,52 @@ void UwbInitWrapper::cb_dynamicconfig(UwbInitConfig_t& config, uint32_t level)
 void UwbInitWrapper::cb_timerinit(const ros::TimerEvent&)
 {
   INIT_DEBUG_STREAM("UwbInitWrapper: timer event for initalization triggered");
-  perform_initialization();
-
-  // publish result
-  uwb_init_cpp::UwbAnchorArrayStamped msg_anchors;
-  msg_anchors.header.stamp = ros::Time::now();
-  msg_anchors.header.frame_id = "global";
-  msg_anchors.header.seq = pub_anchor_seq_++;
-
-  // retreive anchor data
-  for (const auto& anchor : anchor_buffer_.get_buffer())
+  // only perform initialization if not all known anchors have been initialized
+  if (!f_all_known_anchors_initialized_)
   {
-    uwb_init_cpp::UwbAnchor msg_anchor;
-    UwbAnchor data_anchor = anchor.second.get_buffer().back().second;
+    // perform init
+    perform_initialization();
 
-    msg_anchor.position.x = data_anchor.p_AinG.x();
-    msg_anchor.position.y = data_anchor.p_AinG.y();
-    msg_anchor.position.z = data_anchor.p_AinG.z();
-    msg_anchor.bias_distance = data_anchor.bias_d;
-    msg_anchor.bias_const = data_anchor.bias_c;
-    msg_anchor.initialized = data_anchor.initialized;
+    // calc waypoints
+    calculate_waypoints();
 
-    msg_anchors.anchors.push_back(msg_anchor);
-  }
+    // publish result
+    uwb_init_cpp::UwbAnchorArrayStamped msg_anchors;
+    ros::Time pub_time = ros::Time::now();
+    msg_anchors.header.stamp = pub_time;
+    msg_anchors.header.frame_id = "global";
+    msg_anchors.header.seq = pub_anchor_seq_++;
 
-  // set size and publish
-  msg_anchors.size = msg_anchors.anchors.size();
-  pub_anchor.publish(msg_anchors);
+    // retreive anchor data
+    for (const auto& anchor : anchor_buffer_.get_buffer())
+    {
+      uwb_init_cpp::UwbAnchor msg_anchor;
+      UwbAnchor data_anchor = anchor.second.get_buffer().back().second;
+
+      msg_anchor.position.x = data_anchor.p_AinG.x();
+      msg_anchor.position.y = data_anchor.p_AinG.y();
+      msg_anchor.position.z = data_anchor.p_AinG.z();
+      msg_anchor.bias_distance = data_anchor.bias_d;
+      msg_anchor.bias_const = data_anchor.bias_c;
+      msg_anchor.initialized = data_anchor.initialized;
+
+      msg_anchors.anchors.push_back(msg_anchor);
+    }
+
+    // set size and publish
+    msg_anchors.size = msg_anchors.anchors.size();
+    pub_anchor.publish(msg_anchors);
+
+    // publish waypoint data
+    if (!cur_waypoints_.waypoints.empty())
+    {
+      cur_waypoints_.header.stamp = pub_time;
+      cur_waypoints_.header.frame_id = "global";
+      cur_waypoints_.header.seq = pub_waypoint_seq_;
+
+      pub_wplist.publish(cur_waypoints_);
+    }
+  }  // if (!f_all_known_anchors_initialized_)
 }  // void UwbInitWrapper::cb_timerinit(...)
 
 }  // namespace uav_init
