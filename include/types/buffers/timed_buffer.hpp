@@ -149,10 +149,15 @@ public:
 
     // get closest position vector, where the closest is taken as the measurement which is smaller/equal to the current
     // measurement time iterate from back to front thus
-    for (uint i = buffer_.size() - 1; i >= 0; --i)
+    //    for (uint i = buffer_.size() - 1; i >= 0; --i)
+    //    {
+    //      if (buffer_.at(i).first <= timestamp)
+    //        return buffer_.at(i).second;
+    //    }
+    for (auto it = buffer_.rbegin(); it != buffer_.rend(); ++it)
     {
-      if (buffer_.at(i).first <= timestamp)
-        return buffer_.at(i).second;
+      if ((*it).first <= timestamp)
+        return (*it).second;
     }
 
     // in case we have not returned any we do not have a measurement in the buffer anymore
@@ -167,6 +172,15 @@ public:
   const std::deque<std::pair<double, bufferType>>& get_buffer() const
   {
     return buffer_;
+  }
+
+  ///
+  /// \brief is_emtpy determines if the buffer is still empty
+  /// \return
+  ///
+  const bool is_emtpy() const
+  {
+    return buffer_.empty();
   }
 
 };  // class TimedBuffer

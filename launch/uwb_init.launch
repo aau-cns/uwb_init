@@ -1,22 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
   <!-- topic parameters -->
-  <arg name="topic_pose_in"     default="/mus/ground_truth_pose_imu" />
-  <arg name="topic_uwb_in"      default="/mus/uwb" />
-  <arg name="topic_anchor_out"  default="~anchors" />
-  <arg name="topic_wp_out"      default="~waypoints"
+  <arg name="topic_pose_in"             default="/mus/ground_truth_pose_imu" />
+  <arg name="topic_uwb_in"              default="/mus/uwb" />
+  <arg name="topic_anchor_out"          default="~anchors" />
+  <arg name="topic_wp_out"              default="~waypoints" />
 
   <!-- calibration -->
-  <arg name="calib_p_ItoU"      default="[0.0, 0.0, 0.0]" />
+  <arg name="calib_p_ItoU"              default="[0.0, 0.0, 0.0]" />
 
   <!-- node parameters -->
-  <arg name="num_anchors"       default="4" />
-  <arg name="buffer_size_in_s"  default="50.0" />
-  <arg name="max_cond_number"   default="300.0" />
+  <arg name="num_anchors"               default="4" />
+  <arg name="buffer_size_in_s"          default="50.0" />
+  <arg name="max_cond_number"           default="300.0" />
+  <arg name="init_check_duration_in_s"  default="5.0" />
 
   <!-- waypoint generation -->
-  <arg name="wp_max_dist_in_m"  default="1.0" />
-  <arg name="wp_height_in_m"    default="2.0" />
+  <arg name="wp_max_dist_in_m"          default="1.0" />
+  <arg name="wp_height_in_m"            default="2.0" />
 
 
   <node name="uwb_init_cpp" pkg="uwb_init_cpp" type="uwb_init_cpp" args="" output="screen" respawn="false">
@@ -27,10 +28,11 @@
     <param name="topic_pub_waypoints" type="str"  value="$(arg topic_wp_out)" />
 
     <!-- node parameters -->
-    <param name="n_anchors"     type="int"    value="$(arg num_anchors)" />
-    <param name="buffer_size_s" type="double" value="$(arg buffer_size_in_s)" />
-    <param name="max_cond_num"  type="double" value="$(arg max_cond_number)" />
-    <rosparam param="p_ItoU"    subst_value="True">$(arg calib_p_ItoU)</rosparam>
+    <param name="init_check_duration"   type="double" value="$(arg init_check_duration_in_s)" />
+    <param name="n_anchors"             type="int"    value="$(arg num_anchors)" />
+    <param name="buffer_size_s"         type="double" value="$(arg buffer_size_in_s)" />
+    <param name="max_cond_num"          type="double" value="$(arg max_cond_number)" />
+    <rosparam param="p_ItoU"            subst_value="True">$(arg calib_p_ItoU)</rosparam>
 
     <!-- waypoint generation -->
     <param name="waypoint_max_dist_m"   type="double"   value="$(arg wp_max_dist_in_m)" />

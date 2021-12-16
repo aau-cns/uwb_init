@@ -161,9 +161,9 @@ void UwbInitWrapper::cb_posestamped(const geometry_msgs::PoseStamped::ConstPtr& 
 {
   // calculate position of UWB module in G frame
   cur_p_IinG_ = Eigen::Vector3d(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z);
-  Eigen::Quaterniond q_UinG(msg->pose.orientation.w, msg->pose.orientation.x, msg->pose.orientation.y,
+  Eigen::Quaterniond q_IinG(msg->pose.orientation.w, msg->pose.orientation.x, msg->pose.orientation.y,
                             msg->pose.orientation.z);
-  Eigen::Vector3d p_UinG = cur_p_IinG_ + q_UinG.toRotationMatrix() * params_.p_ItoU;
+  Eigen::Vector3d p_UinG = cur_p_IinG_ + q_IinG.toRotationMatrix() * params_.p_ItoU;
 
   // feed current pose to initializer
   uwb_initializer_.feed_pose(msg->header.stamp.toSec(), p_UinG);
@@ -225,6 +225,7 @@ void UwbInitWrapper::cb_timerinit(const ros::TimerEvent&)
       uwb_init_cpp::UwbAnchor msg_anchor;
       UwbAnchor data_anchor = anchor.second.get_buffer().back().second;
 
+      msg_anchor.id = data_anchor.id;
       msg_anchor.position.x = data_anchor.p_AinG.x();
       msg_anchor.position.y = data_anchor.p_AinG.y();
       msg_anchor.position.z = data_anchor.p_AinG.z();
