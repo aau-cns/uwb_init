@@ -48,6 +48,7 @@ UwbInitOptions parse_ros_nodehandle(ros::NodeHandle& nh)
 
   nh.param<double>("buffer_size_s", params.buffer_size_s, params.buffer_size_s);
   nh.param<double>("max_cond_num", params.max_cond_num, params.max_cond_num);
+  nh.param<bool>("do_continous_init", params.f_do_continous_init_, params.f_do_continous_init_);
 
   int n_anchors;
   nh.param<int>("n_anchors", n_anchors, params.n_anchors);
@@ -55,11 +56,12 @@ UwbInitOptions parse_ros_nodehandle(ros::NodeHandle& nh)
 
   params.print_initializer();
 
-
   // WAYPOINT GENERATION ======================================================
 
   nh.param<double>("waypoint_max_dist_m", params.wp_generation_max_distance, params.wp_generation_max_distance);
   nh.param<double>("waypoint_height_m", params.wp_height, params.wp_height);
+
+  params.print_waypoint();
 
   // return
   return params;

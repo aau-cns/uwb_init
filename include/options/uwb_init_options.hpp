@@ -66,11 +66,18 @@ struct UwbInitOptions
   /// \deprecated this will be removed soon
   uint n_anchors{ 0 };
 
+  /// allow continous initialization although solution for anchor was already found
+  bool f_do_continous_init_{ false };
+
   /// buffer size of all buffers in s
   double buffer_size_s{ 10.0 };
 
   /// maximum condition number of the LS matrix for valid initialization
   double max_cond_num{ 100.0 };
+
+  double meas_baseline_m_{ 0.2 };
+
+  uint meas_baseline_idx_{ 10 };
 
   void print_initializer()
   {
@@ -78,6 +85,7 @@ struct UwbInitOptions
     INIT_PRINT_STREAM("\t- n_anchors:                   " << n_anchors);
     INIT_PRINT_STREAM("\t- buffer_size_s:               " << buffer_size_s);
     INIT_PRINT_STREAM("\t- max_cond_num:                " << max_cond_num);
+    INIT_PRINT_STREAM("\t- f_do_continous_init_:        " << f_do_continous_init_);
   }
 
   // WAYPOINT GENERATION ======================================================

@@ -40,6 +40,16 @@ class UwbInitializer
 {
 public:
   ///
+  /// \brief The InitMethod enum describes the method used for initialization
+  ///
+  enum class InitMethod
+  {
+    SINGLE,  //!< use only one measurement to construct LLS matrix
+    DOUBLE,  //!< use a pair of measurements to construct LLS matrix
+  };
+
+public:
+  ///
   /// \brief UwbInitializer default constructor
   /// \param params parameter/options used for UWB initialization
   ///
@@ -86,7 +96,7 @@ public:
   ///
   bool try_to_initialize_anchors(UwbAnchorBuffer& anchor_buffer);
 
-protected:
+private:
   UwbInitOptions params_;  //!< initializer parameters
 
   // anchor and measurement handeling
@@ -94,6 +104,18 @@ protected:
   PositionBufferTimed buffer_p_UinG_;  //!< buffer of UWB module positions in global frame
 
   UwbDataBuffer uwb_data_buffer_;  //!< history of uwb readings in DataBuffer
+
+  // init handeling
+  InitMethod init_method_{ InitMethod::DOUBLE };  //!< determine the initialization method to use
+
+  ///
+  /// \brief initialize_single try to initialize all anchors using the single measurement formulation
+  /// \param anchor_buffer
+  /// \return true if all anchors were successfully initialized
+  ///
+  bool initialize_single(UwbAnchorBuffer& anchor_buffer, const uint& anchor_id, const double& calc_time);
+
+  bool initialize_double(UwbAnchorBuffer& anchor_buffer, const uint& anchor_id, const double& calc_time);
 };
 
 }  // namespace uav_init

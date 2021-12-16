@@ -137,6 +137,8 @@ public:
   /// \param timestamp
   /// \return
   ///
+  /// \authors Martin Scheiber (old implementation), Alessandro Fornasier (lambda implementation)
+  ///
   bufferType get_closest(const double timestamp) const
   {
     if (buffer_.empty())
@@ -154,11 +156,20 @@ public:
     //      if (buffer_.at(i).first <= timestamp)
     //        return buffer_.at(i).second;
     //    }
-    for (auto it = buffer_.rbegin(); it != buffer_.rend(); ++it)
-    {
-      if ((*it).first <= timestamp)
-        return (*it).second;
-    }
+    //    for (auto it = buffer_.rbegin(); it != buffer_.rend(); ++it)
+    //    {
+    //      if ((*it).first <= timestamp)
+    //        return (*it).second;
+    //    }
+
+    // lambda function for getting actual closest value
+    auto it =
+        std::min_element(buffer_.crbegin(), buffer_.crend(),
+                         [&timestamp](std::pair<double, bufferType> elem_pre, std::pair<double, bufferType> elem_post) {
+                           return std::abs(elem_pre.first - timestamp) < std::abs(elem_post.first - timestamp);
+                         });
+    if (it != buffer_.rend())
+      return (*it).second;
 
     // in case we have not returned any we do not have a measurement in the buffer anymore
     ROS_WARN_STREAM("We do not have any value in the buffer for time " << timestamp << " anymore." << std::endl);
