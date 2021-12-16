@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(uwb_init_cpp)
 
+## Determine CMAKE options
+set(CMAKE_BUILD_TYPE "Debug")
+
 ## Try to compile with newer versions of C++
 include(CheckCXXCompilerFlag)
 CHECK_CXX_COMPILER_FLAG("-std=c++20" COMPILER_SUPPORTS_CXX20)
@@ -26,7 +29,16 @@ endif()
 add_definitions(-Wall -Werror)
 
 # Enable compile optimizations
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -fsee -fomit-frame-pointer -fno-signed-zeros -fno-math-errno -funroll-loops")
+
+## Set CMAKE compile flags
+if (CMAKE_BUILD_TYPE STREQUAL "Release")
+#  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -fomit-frame-pointer -fno-signed-zeros")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -fsee -fomit-frame-pointer -fno-signed-zeros -fno-math-errno -funroll-loops")
+elseif (CMAKE_BUILD_TYPE STREQUAL "Debug")
+#  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3 -Wall -Wuninitialized -Wmaybe-uninitialized -fno-omit-frame-pointer")
+endif ()
+
 
 ## Display compiler flags
 message(STATUS "CMAKE_CXX_FLAGES: ${CMAKE_CXX_FLAGS}")

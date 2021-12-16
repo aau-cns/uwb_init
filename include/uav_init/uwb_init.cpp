@@ -239,11 +239,14 @@ bool UwbInitializer::initialize_double(UwbAnchorBuffer& anchor_buffer, const uin
   if (uwb_data_buffer_.get_buffer_values(anchor_id, single_anchor_uwb_data))
   {
     // Coefficient matrix and measurement vector initialization
+    Eigen::MatrixXd coeffs_pre = Eigen::MatrixXd::Zero(single_anchor_uwb_data.size(), 5);
+    Eigen::VectorXd measurements_pre = Eigen::VectorXd::Zero(single_anchor_uwb_data.size());
     //    Eigen::MatrixXd coeffs = Eigen::MatrixXd::Zero(single_anchor_uwb_data.size(), 5);
     //    Eigen::VectorXd measurements = Eigen::VectorXd::Zero(single_anchor_uwb_data.size());
+    uint cnt_rows = 0;
 
-    std::vector<double> coeffs_vec;
-    std::vector<double> meas_vec;
+    //    std::vector<double> coeffs_vec;
+    //    std::vector<double> meas_vec;
 
     INIT_DEBUG_STREAM("Anchor " << anchor_id << ": building coefficient matrix ...");
     // Fill the coefficient matrix and the measurement vector
@@ -264,60 +267,82 @@ bool UwbInitializer::initialize_double(UwbAnchorBuffer& anchor_buffer, const uin
             2 * (closest_p_UinG1.x() - closest_p_UinG2.x()), 2 * (closest_p_UinG1.y() - closest_p_UinG2.y()),
             2 * (closest_p_UinG1.z() - closest_p_UinG2.z()), 2 * diff;
 
-        coeffs_vec.push_back(row(0));
-        coeffs_vec.push_back(row(1));
-        coeffs_vec.push_back(row(2));
-        coeffs_vec.push_back(row(3));
-        coeffs_vec.push_back(row(4));
-        meas_vec.push_back(std::pow(single_anchor_uwb_data.at(i).second.distance, 2) -
-                           std::pow(single_anchor_uwb_data.at(i + params_.meas_baseline_idx_).second.distance, 2));
+        //        coeffs_vec.push_back(row(0));
+        //        coeffs_vec.push_back(row(1));
+        //        coeffs_vec.push_back(row(2));
+        //        coeffs_vec.push_back(row(3));
+        //        coeffs_vec.push_back(row(4));
+        //        meas_vec.push_back(std::pow(single_anchor_uwb_data.at(i).second.distance, 2) -
+        //                           std::pow(single_anchor_uwb_data.at(i + params_.meas_baseline_idx_).second.distance,
+        //                           2));
+        coeffs_pre.row(cnt_rows) = row.transpose();
+        measurements_pre(cnt_rows) =
+            std::pow(single_anchor_uwb_data.at(i).second.distance, 2) -
+            std::pow(single_anchor_uwb_data.at(i + params_.meas_baseline_idx_).second.distance, 2);
+        // increas counter
+        ++cnt_rows;
       }
     }
-    INIT_DEBUG_STREAM("Anchor " << anchor_id << ": assigning coefficients and measurements\n"
-                                << "\t coeffs_size: " << coeffs_vec.size() << "\n"
-                                << "\t meas_size:   " << meas_vec.size());
+    //    INIT_DEBUG_STREAM("Anchor " << anchor_id << ": assigning coefficients and measurements\n"
+    //                                << "\t coeffs_size: " << coeffs_vec.size() << "\n"
+    //                                << "\t meas_size:   " << meas_vec.size());
 
-    assert(coeffs_vec.size() == 5 * meas_vec.size());
-    if (coeffs_vec.size() > 0 && meas_vec.size() > 0)
+    //    assert(coeffs_vec.size() == 5 * meas_vec.size());
+    //    if (coeffs_vec.size() > 0 && meas_vec.size() > 0)
+    //    {
+
+    if (cnt_rows > 5)
     {
+      //      Eigen::MatrixXd coeffs = Eigen::MatrixXd::Zero(coeffs_vec.size() / 5, 5);
+      //      Eigen::VectorXd measurements = Eigen::VectorXd::Zero(meas_vec.size());
+      //      coeffs =
+      //          Eigen::MatrixXd(Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      //              coeffs_vec.data(), coeffs_vec.size() / 5, 5));
+      //      measurements = Eigen::VectorXd(Eigen::Map<Eigen::MatrixXd>(meas_vec.data(), meas_vec.size(), 1));
+      //      measurements = Eigen::VectorXd(Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic,
+      //      Eigen::Dynamic>>(meas_vec.data(), meas_vec.size(), 1));
 
-//      Eigen::MatrixXd coeffs = Eigen::MatrixXd::Zero(coeffs_vec.size() / 5, 5);
-//      Eigen::VectorXd measurements = Eigen::VectorXd::Zero(meas_vec.size());
-//      coeffs =
-//          Eigen::MatrixXd(Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-//              coeffs_vec.data(), coeffs_vec.size() / 5, 5));
-//      measurements = Eigen::VectorXd(Eigen::Map<Eigen::MatrixXd>(meas_vec.data(), meas_vec.size(), 1));
-//      measurements = Eigen::VectorXd(Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>>(meas_vec.data(), meas_vec.size(), 1));
+      //      auto map_coeffs = Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+      //          coeffs_vec.data(), coeffs_vec.size() / 5, 5);
+      //      auto map_meas = Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>>(meas_vec.data(),
+      //      meas_vec.size(), 1); Eigen::MatrixXd coeffs = map_coeffs; Eigen::VectorXd measurements = map_meas;
 
-      auto map_coeffs = Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-          coeffs_vec.data(), coeffs_vec.size() / 5, 5);
-      auto map_meas = Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>>(meas_vec.data(), meas_vec.size(), 1);
-      Eigen::MatrixXd coeffs = map_coeffs;
-      Eigen::VectorXd measurements = map_meas;
+      // slice matrix
+      //      Eigen::MatrixXd coeffs = coeffs_pre.block(0, 0, cnt_rows, 5);
+      //      Eigen::VectorXd measurements = measurements_pre.block(0, 0, cnt_rows, 1);
+
+      // setup matrices with for loop
+      Eigen::MatrixXd coeffs = Eigen::MatrixXd::Zero(cnt_rows, 5);
+      Eigen::VectorXd measurements = Eigen::VectorXd::Zero(cnt_rows);
+      for (uint i = 0; i < cnt_rows; ++i)
+      {
+        coeffs.row(i) << coeffs_pre(i, 0), coeffs_pre(i, 1), coeffs_pre(i, 2), coeffs_pre(i, 3), coeffs_pre(i, 4);
+        measurements(i) = measurements_pre(i);
+      }
 
       INIT_DEBUG_STREAM("Anchor " << anchor_id << ": matrix=\n" << coeffs);
       INIT_DEBUG_STREAM("Anchor " << anchor_id << ": vec=\n" << measurements);
 
       INIT_DEBUG_STREAM("Anchor " << anchor_id << ": calculating svd ...");
       // Check the coefficient matrix condition number and solve the LS problem
-//      Eigen::BDCSVD<Eigen::MatrixXd> svd(coeffs, Eigen::ComputeThinU | Eigen::ComputeThinV);
-      Eigen::JacobiSVD<Eigen::MatrixXd> svd(coeffs, Eigen::ComputeThinU | Eigen::ComputeThinV);
+      Eigen::BDCSVD<Eigen::MatrixXd> svd(coeffs, Eigen::ComputeThinU | Eigen::ComputeThinV);
+      //      Eigen::JacobiSVD<Eigen::MatrixXd> svd(coeffs, Eigen::ComputeFullU | Eigen::ComputeFullV);
       double cond = svd.singularValues()(0) / svd.singularValues()(svd.singularValues().size() - 1);
-      //        Eigen::FullPivHouseholderQR<Eigen::MatrixXd> qr = coeffs.fullPivHouseholderQr();
+      //      Eigen::FullPivHouseholderQR<Eigen::MatrixXd> qr = coeffs.fullPivHouseholderQr();
       //        Eigen::JacobiSVD<Eigen::MatrixXd> svd(qr.matrixQR(), Eigen::ComputeThinU | Eigen::ComputeThinV);
       //        double cond = svd.singularValues()(0) / svd.singularValues()(svd.singularValues().size() - 1);
       if (cond < params_.max_cond_num)  // 3
       {
-        INIT_DEBUG_STREAM("Anchor " << anchor_id << ": solving svd ...");
+        INIT_DEBUG_STREAM("Anchor " << anchor_id << ": solving LS ...");
         // [      0     ,       1     ,       2     ,  3 , 4,          5              ]
         // [b^2*p_AinG_x, b^2*p_AinG_y, b^2*p_AinG_z, b^2, k, b^2*(norm(p_AinG)^2-k^2)]
         Eigen::VectorXd LSSolution = svd.solve(measurements);
-        //          Eigen::VectorXd LSSolution = qr.solve(measurements);
+        //        Eigen::VectorXd LSSolution = qr.solve(measurements);
 
         // check that the squared value is positive
         if (LSSolution[0] > 0)
         {
-          Eigen::Vector3d p_AinG = LSSolution.segment(1, 4) / LSSolution[0];
+          Eigen::Vector3d p_AinG = LSSolution.segment(1, 3) / LSSolution[0];
           double distance_bias_squared = LSSolution[0];
           double const_bias = LSSolution[4];
 
@@ -358,7 +383,7 @@ bool UwbInitializer::initialize_double(UwbAnchorBuffer& anchor_buffer, const uin
         }
         else  // if (LSSolution[0] > 0)
         {
-          INIT_WARN_STREAM("Anchor " << anchor_id << ": issue with LS positiveness (bias_squared) (" << LSSolution[3]
+          INIT_WARN_STREAM("Anchor " << anchor_id << ": issue with LS positiveness (bias_squared) (" << LSSolution[0]
                                      << ")");
           new_uwb_anchor.initialized = false;
           successfully_initialized = false;
@@ -373,8 +398,10 @@ bool UwbInitializer::initialize_double(UwbAnchorBuffer& anchor_buffer, const uin
     }
     else
     {
-      INIT_WARN_STREAM("Anchor " << anchor_id << ": issue with measurement baselines (c:" << coeffs_vec.size()
-                                 << " m:" << meas_vec.size() << ")" << std::endl);
+      //      INIT_WARN_STREAM("Anchor " << anchor_id << ": issue with measurement baselines (c:" << coeffs_vec.size()
+      //                                 << " m:" << meas_vec.size() << ")" << std::endl);
+      INIT_WARN_STREAM("Anchor " << anchor_id << ": issue with measurement baselines (rows:" << cnt_rows << ")"
+                                 << std::endl);
       new_uwb_anchor.initialized = false;
       successfully_initialized = false;
     }
