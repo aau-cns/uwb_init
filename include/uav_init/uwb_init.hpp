@@ -44,8 +44,9 @@ public:
   ///
   enum class InitMethod
   {
-    SINGLE,  //!< use only one measurement to construct LLS matrix
-    DOUBLE,  //!< use a pair of measurements to construct LLS matrix
+    SINGLE,   //!< use only one measurement to construct LLS matrix
+    DOUBLE,   //!< use a pair of measurements to construct LLS matrix
+    NO_BIAS,  //!< use only one measurement and exclude bias from LLS calculation
   };
 
 public:
@@ -116,6 +117,7 @@ private:
   bool initialize_single(UwbAnchorBuffer& anchor_buffer, const uint& anchor_id, const double& calc_time);
 
   bool initialize_double(UwbAnchorBuffer& anchor_buffer, const uint& anchor_id, const double& calc_time);
+  bool initialize_biasfree(UwbAnchorBuffer& anchor_buffer, const uint& anchor_id, const double& calc_time);
 };
 
 }  // namespace uav_init

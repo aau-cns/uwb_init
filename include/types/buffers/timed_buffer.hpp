@@ -23,6 +23,8 @@
 
 #include <deque>
 
+#include "utils/logging.hpp"
+
 namespace uav_init
 {
 template <typename bufferType>
@@ -169,11 +171,16 @@ public:
                            return std::abs(elem_pre.first - timestamp) < std::abs(elem_post.first - timestamp);
                          });
     if (it != buffer_.rend())
+    {
+      INIT_DEBUG_STREAM("\tTime diff: " << (timestamp - (*it).first));
       return (*it).second;
+    }
+    // it is most likeley always finding a value that satisifes the above criteria (has to be min) but it might not be
+    // feasible (i.e. in general should be below 1/2 of period of frequency)
 
     // in case we have not returned any we do not have a measurement in the buffer anymore
     ROS_WARN_STREAM("We do not have any value in the buffer for time " << timestamp << " anymore." << std::endl);
-    return buffer_.front().second;
+    return zero_value_;
   }
 
   ///

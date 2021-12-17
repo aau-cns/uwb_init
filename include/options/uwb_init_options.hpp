@@ -75,9 +75,9 @@ struct UwbInitOptions
   /// maximum condition number of the LS matrix for valid initialization
   double max_cond_num{ 100.0 };
 
-  double meas_baseline_m_{ 0.2 };
+  double meas_baseline_m_{ 0.05 };
 
-  uint meas_baseline_idx_{ 10 };
+  uint meas_baseline_idx_{ 50 };
 
   void print_initializer()
   {
