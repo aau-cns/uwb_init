@@ -261,31 +261,38 @@ bool UwbInitializer::initialize_double(UwbAnchorBuffer& anchor_buffer, const uin
       if (std::abs(diff) > params_.meas_baseline_m_)
       {
         // get closest UWB module position
-        Eigen::Vector3d closest_p_UinG1 = buffer_p_UinG_.get_closest(single_anchor_uwb_data.at(i).first);
-        Eigen::Vector3d closest_p_UinG2 =
-            buffer_p_UinG_.get_closest(single_anchor_uwb_data.at(i + params_.meas_baseline_idx_).first);
+        //        Eigen::Vector3d closest_p_UinG1 = buffer_p_UinG_.get_closest(single_anchor_uwb_data.at(i).first);
+        //        Eigen::Vector3d closest_p_UinG2 =
+        //            buffer_p_UinG_.get_closest(single_anchor_uwb_data.at(i + params_.meas_baseline_idx_).first);
 
-        Eigen::VectorXd row(5);
-        row << std::pow(closest_p_UinG1.norm(), 2) - std::pow(closest_p_UinG2.norm(), 2),
-            -2 * (closest_p_UinG1.x() - closest_p_UinG2.x()), -2 * (closest_p_UinG1.y() - closest_p_UinG2.y()),
-            -2 * (closest_p_UinG1.z() - closest_p_UinG2.z()), 2 * diff;
+        // get closest UWB module position and check if closes was actually reached
+        Eigen::Vector3d closest_p_UinG1, closest_p_UinG2;
+        if (buffer_p_UinG_.get_closest(single_anchor_uwb_data.at(i).first, closest_p_UinG1) &&
+            buffer_p_UinG_.get_closest(single_anchor_uwb_data.at(i + params_.meas_baseline_idx_).first,
+                                       closest_p_UinG2))
+        {
+          Eigen::VectorXd row(5);
+          row << std::pow(closest_p_UinG1.norm(), 2) - std::pow(closest_p_UinG2.norm(), 2),
+              -2 * (closest_p_UinG1.x() - closest_p_UinG2.x()), -2 * (closest_p_UinG1.y() - closest_p_UinG2.y()),
+              -2 * (closest_p_UinG1.z() - closest_p_UinG2.z()), 2 * diff;
 
-        //        coeffs_vec.push_back(row(0));
-        //        coeffs_vec.push_back(row(1));
-        //        coeffs_vec.push_back(row(2));
-        //        coeffs_vec.push_back(row(3));
-        //        coeffs_vec.push_back(row(4));
-        //        meas_vec.push_back(std::pow(single_anchor_uwb_data.at(i).second.distance, 2) -
-        //                           std::pow(single_anchor_uwb_data.at(i + params_.meas_baseline_idx_).second.distance,
-        //                           2));
-        coeffs_pre.row(cnt_rows) = row.transpose();
-        measurements_pre(cnt_rows) =
-            std::pow(single_anchor_uwb_data.at(i).second.distance, 2) -
-            std::pow(single_anchor_uwb_data.at(i + params_.meas_baseline_idx_).second.distance, 2);
-        // increas counter
-        ++cnt_rows;
-      }
-    }
+          //        coeffs_vec.push_back(row(0));
+          //        coeffs_vec.push_back(row(1));
+          //        coeffs_vec.push_back(row(2));
+          //        coeffs_vec.push_back(row(3));
+          //        coeffs_vec.push_back(row(4));
+          //        meas_vec.push_back(std::pow(single_anchor_uwb_data.at(i).second.distance, 2) -
+          //                           std::pow(single_anchor_uwb_data.at(i +
+          //                           params_.meas_baseline_idx_).second.distance, 2));
+          coeffs_pre.row(cnt_rows) = row.transpose();
+          measurements_pre(cnt_rows) =
+              std::pow(single_anchor_uwb_data.at(i).second.distance, 2) -
+              std::pow(single_anchor_uwb_data.at(i + params_.meas_baseline_idx_).second.distance, 2);
+          // increas counter
+          ++cnt_rows;
+        }  // if (closest available)
+      }    // if (baseline check)
+    }      // for (all anchor measurements)
     //    INIT_DEBUG_STREAM("Anchor " << anchor_id << ": assigning coefficients and measurements\n"
     //                                << "\t coeffs_size: " << coeffs_vec.size() << "\n"
     //                                << "\t meas_size:   " << meas_vec.size());

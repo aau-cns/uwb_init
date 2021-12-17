@@ -183,6 +183,42 @@ public:
     return zero_value_;
   }
 
+  bool get_closest(const double timestamp, bufferType& closest_val, const double max_t_diff = 1.0/10.0) const
+  {
+    if (buffer_.empty())
+    {
+      ROS_ERROR("PositionBuffer still empty.");
+      closest_val = zero_value_;
+      return false;
+    }
+
+    // TODO(scm) this can be upgraded to interpolate (extrapolate) the positions if time does not match exactly
+
+    // lambda function for getting actual closest value
+    auto it =
+        std::min_element(buffer_.crbegin(), buffer_.crend(),
+                         [&timestamp](std::pair<double, bufferType> elem_pre, std::pair<double, bufferType> elem_post) {
+                           return std::abs(elem_pre.first - timestamp) < std::abs(elem_post.first - timestamp);
+                         });
+    if (it != buffer_.rend() && std::abs((*it).first - timestamp) < max_t_diff)
+    {
+      INIT_DEBUG_STREAM("\tTime diff: " << (timestamp - (*it).first));
+      closest_val = (*it).second;
+      return true;
+    }
+    else
+    {
+      INIT_DEBUG_STREAM("\tTime diff not satisfied or element does not exist.");
+    }
+    // it is most likeley always finding a value that satisifes the above criteria (has to be min) but it might not be
+    // feasible (i.e. in general should be below 1/2 of period of frequency)
+
+    // in case we have not returned any we do not have a measurement in the buffer anymore
+    ROS_WARN_STREAM("We do not have any value in the buffer for time " << timestamp << " anymore." << std::endl);
+    closest_val = zero_value_;
+    return false;
+  }
+
   ///
   /// \brief get_buffer returns the full buffer with all values
   /// \return a std::deque containing std::pairs of buffer values in the form [timestamp, value]
