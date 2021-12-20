@@ -19,6 +19,7 @@
 
 #include "utils/colors.hpp"
 #include "utils/parse_ros.hpp"
+#include "utils/logging.hpp"
 #include "uwb_wrapper.hpp"
 
 // Main function
@@ -53,6 +54,6 @@ int main(int argc, char** argv)
 
   // Done!
   std::cout << std::endl;
-  ROS_INFO("Done!");
+  INIT_INFO_STREAM("Done!");
   return EXIT_SUCCESS;
 }

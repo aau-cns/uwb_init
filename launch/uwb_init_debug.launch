@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
+  <arg name="launchprefix" default="gdbserver localhost:10000"/>
+
   <!-- topic parameters -->
   <arg name="topic_pose_in"             default="/mus/ground_truth_pose_imu" />
   <arg name="topic_uwb_in"              default="/mus/uwb" />
@@ -26,7 +28,7 @@
   <arg name="wp_height_in_m"            default="2.0" />
 
 
-  <node name="uwb_init_cpp" pkg="uwb_init_cpp" type="uwb_init_cpp" args="" output="screen" respawn="false">
+  <node name="uwb_init_cpp" pkg="uwb_init_cpp" type="uwb_init_cpp" args="" output="screen" respawn="false" launch-prefix="$(arg launchprefix)">
     <!-- topics remaps -->
     <param name="topic_sub_pose"      type="str"  value="$(arg topic_pose_in)" />
     <param name="topic_sub_uwb"       type="str"  value="$(arg topic_uwb_in)" />

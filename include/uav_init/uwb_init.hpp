@@ -40,6 +40,19 @@ class UwbInitializer
 {
 public:
   ///
+  /// \brief The InitMethod enum describes the method used for initialization
+  /// \deprecated will be removed soon, was moved to uav_init::UwbInitOptions::InitMethod
+  /// \see uav_init::UwbInitOptions::InitMethod
+  ///
+  enum class InitMethod
+  {
+    SINGLE,   //!< use only one measurement to construct LLS matrix
+    DOUBLE,   //!< use a pair of measurements to construct LLS matrix
+    NO_BIAS,  //!< use only one measurement and exclude bias from LLS calculation
+  };
+
+public:
+  ///
   /// \brief UwbInitializer default constructor
   /// \param params parameter/options used for UWB initialization
   ///
@@ -48,6 +61,43 @@ public:
     // initialize buffers
     buffer_p_UinG_.init(params_.buffer_size_s);
     uwb_data_buffer_.init(params_.buffer_size_s);
+
+    switch (params_.init_variables)
+    {
+      case UwbInitOptions::InitVariables::ALL: {
+        if (params_.init_method == UwbInitOptions::InitMethod::SINGLE)
+          fx_init_ = std::bind(&UwbInitializer::initialize_single_all, this, std::placeholders::_1,
+                               std::placeholders::_2, std::placeholders::_3);
+        else if (params_.init_method == UwbInitOptions::InitMethod::DOUBLE)
+          fx_init_ = std::bind(&UwbInitializer::initialize_double_all, this, std::placeholders::_1,
+                               std::placeholders::_2, std::placeholders::_3);
+        else
+        {
+          INIT_ERROR_STREAM("No initialization routine for method-variable pair " << params_.init_method << "-"
+                                                                                  << params_.init_variables);
+          exit(EXIT_FAILURE);
+        }
+        break;
+      }
+      case UwbInitOptions::InitVariables::NO_BIAS: {
+        if (params_.init_method == UwbInitOptions::InitMethod::SINGLE)
+          fx_init_ = std::bind(&UwbInitializer::initialize_single_nobias, this, std::placeholders::_1,
+                               std::placeholders::_2, std::placeholders::_3);
+        else
+        {
+          INIT_ERROR_STREAM("No initialization routine for method-variable pair " << params_.init_method << "-"
+                                                                                  << params_.init_variables);
+          exit(EXIT_FAILURE);
+        }
+        break;
+      }
+      case UwbInitOptions::InitVariables::NO_DISTANCE_BIAS: {
+        INIT_ERROR_STREAM("No initialization routine for method-variable pair " << params_.init_method << "-"
+                                                                                << params_.init_variables);
+        exit(EXIT_FAILURE);
+        break;
+      }
+    }
   }
 
   ///
@@ -86,7 +136,7 @@ public:
   ///
   bool try_to_initialize_anchors(UwbAnchorBuffer& anchor_buffer);
 
-protected:
+private:
   UwbInitOptions params_;  //!< initializer parameters
 
   // anchor and measurement handeling
@@ -94,6 +144,21 @@ protected:
   PositionBufferTimed buffer_p_UinG_;  //!< buffer of UWB module positions in global frame
 
   UwbDataBuffer uwb_data_buffer_;  //!< history of uwb readings in DataBuffer
+
+  // init handeling
+  std::function<bool(UwbAnchorBuffer&, const uint&, const double&)> fx_init_;
+  InitMethod init_method_{ InitMethod::DOUBLE };  //!< determine the initialization method to use \deprecated was moved
+                                                  //!< into params_
+
+  ///
+  /// \brief initialize_single try to initialize all anchors using the single measurement formulation
+  /// \param anchor_buffer
+  /// \return true if all anchors were successfully initialized
+  ///
+  bool initialize_single_all(UwbAnchorBuffer& anchor_buffer, const uint& anchor_id, const double& calc_time);
+
+  bool initialize_double_all(UwbAnchorBuffer& anchor_buffer, const uint& anchor_id, const double& calc_time);
+  bool initialize_single_nobias(UwbAnchorBuffer& anchor_buffer, const uint& anchor_id, const double& calc_time);
 };
 
 }  // namespace uav_init

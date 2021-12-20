@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(uwb_init_cpp)
 
+## Determine CMAKE options
+set(CMAKE_BUILD_TYPE "Debug")
+
 ## Try to compile with newer versions of C++
 include(CheckCXXCompilerFlag)
 CHECK_CXX_COMPILER_FLAG("-std=c++20" COMPILER_SUPPORTS_CXX20)
@@ -26,7 +29,16 @@ endif()
 add_definitions(-Wall -Werror)
 
 # Enable compile optimizations
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -fsee -fomit-frame-pointer -fno-signed-zeros -fno-math-errno -funroll-loops")
+
+## Set CMAKE compile flags
+if (CMAKE_BUILD_TYPE STREQUAL "Release")
+#  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -fomit-frame-pointer -fno-signed-zeros")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -fsee -fomit-frame-pointer -fno-signed-zeros -fno-math-errno -funroll-loops")
+elseif (CMAKE_BUILD_TYPE STREQUAL "Debug")
+#  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3 -Wall -Wuninitialized -Wmaybe-uninitialized -fno-omit-frame-pointer")
+endif ()
+
 
 ## Display compiler flags
 message(STATUS "CMAKE_CXX_FLAGES: ${CMAKE_CXX_FLAGS}")
@@ -34,17 +46,15 @@ message(STATUS "CMAKE_CXX_FLAGES: ${CMAKE_CXX_FLAGS}")
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp dynamic_reconfigure message_generation std_msgs nav_msgs sensor_msgs geometry_msgs cv_bridge evb1000_driver)
+find_package(catkin REQUIRED COMPONENTS roscpp dynamic_reconfigure message_generation std_msgs nav_msgs sensor_msgs geometry_msgs cv_bridge evb1000_driver mission_sequencer)
 
 ## System dependencies are found with CMake's conventions
 find_package(Boost REQUIRED)
 find_package(Eigen3 REQUIRED)
-find_package(OpenCV 4 REQUIRED)
 
 ## Display packages version
 message(STATUS "EIGEN VERSION: " ${EIGEN3_VERSION})
 message(STATUS "BOOST VERSION: " ${Boost_VERSION})
-message(STATUS "OPENCV VERSION: " ${OpenCV_VERSION})
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -56,10 +66,11 @@ message(STATUS "OPENCV VERSION: " ${OpenCV_VERSION})
 ################################################
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#  DIRECTORY msg
-#  FILES Message1.msg Message2.msg
-# )
+add_message_files(DIRECTORY msg
+    FILES
+    UwbAnchor.msg
+    UwbAnchorArrayStamped.msg
+)
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -74,9 +85,9 @@ message(STATUS "OPENCV VERSION: " ${OpenCV_VERSION})
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES std_msgs nav_msgs sensor_msgs geometry_msgs
-# )
+generate_messages(
+  DEPENDENCIES std_msgs geometry_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -98,7 +109,7 @@ generate_dynamic_reconfigure_options(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-  CATKIN_DEPENDS std_msgs nav_msgs sensor_msgs geometry_msgs evb1000_driver #message_runtime
+  CATKIN_DEPENDS message_runtime std_msgs nav_msgs sensor_msgs geometry_msgs evb1000_driver mission_sequencer
 #  LIBRARIES custom_libraries
 #  DEPENDS system_lib
 )
@@ -145,7 +156,7 @@ set(headers_types
 
 set(headers_utils
     include/utils/parse_ros.hpp
-
+    include/utils/logging.hpp
 )
 
 set(headers

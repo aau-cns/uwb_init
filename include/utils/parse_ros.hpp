@@ -6,6 +6,14 @@
 // no commercial use allowed, the full terms of which are made available
 // in the LICENSE file. No license in patents is granted.
 //
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+// THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+// DEALINGS IN THE SOFTWARE.
+//
 // You can contact the author at <martin.scheiber@aau.at>
 
 #ifndef UAV_INIT_UTILS_PARSE_ROS_HPP_
@@ -27,6 +35,7 @@ UwbInitOptions parse_ros_nodehandle(ros::NodeHandle& nh)
   nh.param<std::string>("topic_sub_pose", params.topic_sub_pose, params.topic_sub_pose);
   nh.param<std::string>("topic_sub_uwb", params.topic_sub_uwb, params.topic_sub_uwb);
   nh.param<std::string>("topic_pub_anchors", params.topic_pub_anchors, params.topic_pub_anchors);
+  nh.param<std::string>("topic_pub_waypoints", params.topic_pub_wplist, params.topic_pub_wplist);
 
   std::vector<double> p_ItoU;
   std::vector<double> p_ItoU_default = { 0.0, 0.0, 0.0 };
@@ -39,12 +48,30 @@ UwbInitOptions parse_ros_nodehandle(ros::NodeHandle& nh)
 
   nh.param<double>("buffer_size_s", params.buffer_size_s, params.buffer_size_s);
   nh.param<double>("max_cond_num", params.max_cond_num, params.max_cond_num);
+  nh.param<bool>("do_continous_init", params.f_do_continous_init_, params.f_do_continous_init_);
+  nh.param<double>("meas_baseline_m", params.meas_baseline_m_, params.meas_baseline_m_);
+  nh.param<double>("reg_lambda", params.lamda_, params.lamda_);
+  nh.param<double>("t_pose_diff_s", params.t_pose_diff, params.t_pose_diff);
 
   int n_anchors;
   nh.param<int>("n_anchors", n_anchors, params.n_anchors);
   params.n_anchors = static_cast<uint>(n_anchors);
 
+  int meas_baseline_idx;
+  nh.param<int>("meas_baseline_idx", meas_baseline_idx, params.meas_baseline_idx_);
+  params.meas_baseline_idx_ = static_cast<uint>(meas_baseline_idx);
+
+  std::string init_method, init_variables;
+
+
   params.print_initializer();
+
+  // WAYPOINT GENERATION ======================================================
+
+  nh.param<double>("waypoint_max_dist_m", params.wp_generation_max_distance, params.wp_generation_max_distance);
+  nh.param<double>("waypoint_height_m", params.wp_height, params.wp_height);
+
+  params.print_waypoint();
 
   // return
   return params;

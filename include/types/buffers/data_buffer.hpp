@@ -175,6 +175,11 @@ public:
     return true;
   }
 
+  ///
+  /// \brief contains_id checks if the given id is present in the data buffer
+  /// \param data_id id to check for
+  /// \return true if it is present
+  ///
   const bool contains_id(const uint data_id) const
   {
 #if (__cplusplus >= 202002L)
@@ -192,6 +197,15 @@ public:
 
     // key not found
     return false;
+  }
+
+  ///
+  /// \brief is_emtpy checks if the buffer is empty
+  /// \return true if the buffer is emtpy
+  ///
+  const bool is_emtpy() const
+  {
+    return buffer_.empty();
   }
 
 };  // class DataBuffer

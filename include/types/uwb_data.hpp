@@ -41,7 +41,7 @@ struct UwbData
   };
 
   ///
-  /// \brief UwbData default constructor for measruement
+  /// \brief UwbData default constructor for measurement
   /// \param _timestamp timestamp of measurement
   /// \param _valid validity flag
   /// \param _distance distance measurement

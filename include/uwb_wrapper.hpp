@@ -22,15 +22,17 @@
 #include <dynamic_reconfigure/server.h>
 #include <evb1000_driver/TagDistance.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <mission_sequencer/MissionWaypointArray.h>
 #include <ros/ros.h>
 
 #include <Eigen/Eigen>
 
+#include "options/uwb_init_options.hpp"
 #include "types/types.hpp"
 #include "uav_init/uwb_init.hpp"
 #include "utils/colors.hpp"
+#include "uwb_init_cpp/UwbAnchorArrayStamped.h"
 #include "uwb_init_cpp/UwbInitConfig.h"
-#include "options/uwb_init_options.hpp"
 
 namespace uav_init
 {
@@ -45,6 +47,7 @@ public:
   ///
   /// \brief UwbInitWrapper default constructor for UwbInitWrapper
   /// \param nh ros nodehandle
+  /// \param params node parameters set by the launchfile
   ///
   UwbInitWrapper(ros::NodeHandle& nh, UwbInitOptions& params);
 
@@ -60,6 +63,11 @@ private:
   ///
   void perform_initialization();
 
+  ///
+  /// \brief calculate_waypoints calculates a list of waypoints to fly to such that the anchors are initialized better
+  ///
+  void calculate_waypoints();
+
   // Ros node handler
   ros::NodeHandle nh_;  //!< ROS nodehandle given through constructor
 
@@ -71,15 +79,24 @@ private:
   ros::Subscriber sub_uwbstamped;   //!< ROS subscirber for UWB distance measurements
 
   // Publishers
+  ros::Publisher pub_anchor;  //!< ROS publisher for anchor position and biases
   ros::Publisher pub_wplist;  //!< ROS publisher for wp list
 
+  // publishing variables
+  uint pub_anchor_seq_{ 0 };    //!< sequence number of published anchor msgs
+  uint pub_waypoint_seq_{ 0 };  //!< sequence number of published waypoint list msgs
+
   // dynamic reconfigure
-  ReconfServer_t reconf_server_; //!< dynamic reconfigure server for ROS dynamic reconfigure
+  ReconfServer_t reconf_server_;  //!< dynamic reconfigure server for ROS dynamic reconfigure
 
   // Initializer
   UwbInitializer uwb_initializer_;        //!< initializer class for UWB modules
   UwbAnchorBuffer anchor_buffer_;         //!< buffer containing the anchor calculated positions
   bool f_all_known_anchors_initialized_;  //!< flag determining if all currently known anchors are initialized
+
+  // waypoint publisher
+  Eigen::Vector3d cur_p_IinG_;                             //!< current position of the vehicle in the global frame
+  mission_sequencer::MissionWaypointArray cur_waypoints_;  //!< current/next waypoints for the mission_sequencer
 
   // timer variables
   ros::Timer init_check_timer_;  //!< timer used to check and perform initialization

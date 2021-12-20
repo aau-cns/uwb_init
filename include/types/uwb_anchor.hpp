@@ -25,19 +25,19 @@ namespace uav_init
 {
 struct UwbAnchor
 {
-  uint id {0};
-  Eigen::Vector3d p_AinG{ Eigen::VectorXd::Zero(3) };
-  double bias_d{ 0.0 };
-  double bias_c{ 0.0 };
+  uint id{ 0 };                                        //!< id of anchor
+  Eigen::Vector3d p_AinG{ Eigen::VectorXd::Zero(3) };  //!< position of anchor in 'global' frame
+  double bias_d{ 0.0 };                                //!< beta = (1+alpha) distance bias
+  double bias_c{ 0.0 };                                //!< constant measurement bias
 
-  Eigen::Matrix3d cov_p_AinG{ Eigen::MatrixXd::Zero(3, 3) };
-  double cov_bias_d{ 0.0 };
-  double cov_bias_c{ 0.0 };
+  Eigen::Matrix3d cov_p_AinG{ Eigen::MatrixXd::Zero(3, 3) };  //!< covariance of position
+  double cov_bias_d{ 0.0 };                                   //!< covariance of distance bias
+  double cov_bias_c{ 0.0 };                                   //!< covariance of constant bias
 
-  bool initialized{ false };
+  bool initialized{ false };  //!< flag to determine if anchor is initialized
 
-  UwbAnchor() {};
-  UwbAnchor(uint _id) : id(_id) {};
+  UwbAnchor(){};
+  UwbAnchor(uint _id) : id(_id){};
 
 };  // struct UwbAnchor
 }  // namespace uav_init
