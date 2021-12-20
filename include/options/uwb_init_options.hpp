@@ -83,8 +83,8 @@ struct UwbInitOptions
   uint meas_baseline_idx_{ 50 };
 
   /// Value of lamda used for regularization, if lambda = 0 no regularization is applied
-  /// (maximum suggested value 100)
-  double lamda_{ 0 };
+  /// (suggested value 100)
+  double lamda_{ 100 };
 
   void print_initializer()
   {
@@ -94,7 +94,7 @@ struct UwbInitOptions
     INIT_PRINT_STREAM("\t- max_cond_num:                " << max_cond_num);
     INIT_PRINT_STREAM("\t- f_do_continous_init_:        " << f_do_continous_init_);
     INIT_PRINT_STREAM("\t- lamda_:                      " << lamda_);
-    // TODO: Add if condition to print these only if we use double
+    // TODO(alf): Add if condition to print these only if we use double
     INIT_PRINT_STREAM("\t- meas_baseline_m_:            " << meas_baseline_m_);
     INIT_PRINT_STREAM("\t- meas_baseline_idx_:          " << meas_baseline_idx_);
   }
