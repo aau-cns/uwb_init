@@ -29,8 +29,8 @@ void UwbInitializer::feed_uwb(const std::vector<UwbData> uwb_measurements)
   // add measurements to data buffer
   for (uint i = 0; i < uwb_measurements.size(); ++i)
   {
-    // check validity
-    if (uwb_measurements[i].valid)
+    // check validity and if measurement is actual bigger than 0.0 (otherwise another error happend)
+    if (uwb_measurements[i].valid && uwb_measurements[i].distance > 0.0)
     {
       INIT_DEBUG_STREAM("Adding measurment " << uwb_measurements[i].distance << " from anchor "
                                              << uwb_measurements[i].id);
@@ -47,8 +47,8 @@ void UwbInitializer::feed_uwb(const std::vector<UwbData> uwb_measurements)
 
 void UwbInitializer::feed_pose(const double timestamp, const Eigen::Vector3d p_UinG)
 {
-  // TODO(scm): maybe use buffer here for timesyncing with UWB modules
-  // currently this method does not take delayed UWB measurements into account
+  /// \todo TODO(scm): maybe use buffer here for timesyncing with UWB modules
+  /// currently this method does not take delayed UWB measurements into account
   buffer_p_UinG_.push_back(timestamp, p_UinG);
 }
 
@@ -67,7 +67,7 @@ bool UwbInitializer::try_to_initialize_anchors(UwbAnchorBuffer& anchor_buffer)
   // time of calc
   double calc_time = ros::Time::now().toSec();
 
-  // TODO(scm): this can be improved by making DataBuffer a iterable class
+  /// \todo TODO(scm): this can be improved by making DataBuffer a iterable class
   for (const auto& kv : uwb_data_buffer_.get_buffer())
   {
     // get ID of anchor and its data

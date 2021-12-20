@@ -47,6 +47,7 @@ public:
   ///
   /// \brief UwbInitWrapper default constructor for UwbInitWrapper
   /// \param nh ros nodehandle
+  /// \param params node parameters set by the launchfile
   ///
   UwbInitWrapper(ros::NodeHandle& nh, UwbInitOptions& params);
 
