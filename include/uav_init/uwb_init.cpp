@@ -125,7 +125,8 @@ bool UwbInitializer::initialize_single(UwbAnchorBuffer& anchor_buffer, const uin
     for (uint i = 0; i < single_anchor_uwb_data.size(); ++i)
     {
       // get closest UWB module position
-      Eigen::Vector3d closest_p_UinG = buffer_p_UinG_.get_closest(single_anchor_uwb_data.at(i).first);
+      Eigen::Vector3d closest_p_UinG =
+          buffer_p_UinG_.get_closest(single_anchor_uwb_data.at(i).first - params_.t_pose_diff);
       Eigen::VectorXd row(6);
       row << -2 * closest_p_UinG.x(), -2 * closest_p_UinG.y(), -2 * closest_p_UinG.z(),
           std::pow(closest_p_UinG.norm(), 2), 2 * single_anchor_uwb_data.at(i).second.distance, 1;
@@ -256,18 +257,16 @@ bool UwbInitializer::initialize_double(UwbAnchorBuffer& anchor_buffer, const uin
     // Fill the coefficient matrix and the measurement vector
     for (uint i = 0; i < single_anchor_uwb_data.size() - params_.meas_baseline_idx_; ++i)
     {
-
       // baseline check
       double diff = single_anchor_uwb_data.at(i).second.distance -
                     single_anchor_uwb_data.at(i + params_.meas_baseline_idx_).second.distance;
       if (std::abs(diff) > params_.meas_baseline_m_)
       {
-
         // get closest UWB module position and check if closes was actually reached
         Eigen::Vector3d closest_p_UinG1, closest_p_UinG2;
-        if (buffer_p_UinG_.get_closest(single_anchor_uwb_data.at(i).first, closest_p_UinG1) &&
-            buffer_p_UinG_.get_closest(single_anchor_uwb_data.at(i + params_.meas_baseline_idx_).first,
-                                       closest_p_UinG2))
+        if (buffer_p_UinG_.get_closest(single_anchor_uwb_data.at(i).first - params_.t_pose_diff, closest_p_UinG1) &&
+            buffer_p_UinG_.get_closest(
+                single_anchor_uwb_data.at(i + params_.meas_baseline_idx_).first - params_.t_pose_diff, closest_p_UinG2))
         {
           Eigen::VectorXd row(5);
           row << std::pow(closest_p_UinG1.norm(), 2) - std::pow(closest_p_UinG2.norm(), 2),
@@ -294,15 +293,14 @@ bool UwbInitializer::initialize_double(UwbAnchorBuffer& anchor_buffer, const uin
     assert(coeffs_vec.size() == 5 * meas_vec.size());
 
     // Check to have more than 5 rows in the coefficient matrix
-    if (coeffs_vec.size() > 5*5)
+    if (coeffs_vec.size() > 5 * 5)
     {
-
       // Data augmentation for regularization
-      coeffs_vec.push_back(std::sqrt(params_.lamda_));      //b^2
-      coeffs_vec.push_back(0.0);                            //b^2*p_AinG_x
-      coeffs_vec.push_back(0.0);                            //b^2*p_AinG_y
-      coeffs_vec.push_back(0.0);                            //b^2*p_AinG_z
-      coeffs_vec.push_back(std::sqrt(params_.lamda_));      //k
+      coeffs_vec.push_back(std::sqrt(params_.lamda_));  // b^2
+      coeffs_vec.push_back(0.0);                        // b^2*p_AinG_x
+      coeffs_vec.push_back(0.0);                        // b^2*p_AinG_y
+      coeffs_vec.push_back(0.0);                        // b^2*p_AinG_z
+      coeffs_vec.push_back(std::sqrt(params_.lamda_));  // k
       meas_vec.push_back(0.0);
       meas_vec.push_back(0.0);
       meas_vec.push_back(0.0);
@@ -312,23 +310,21 @@ bool UwbInitializer::initialize_double(UwbAnchorBuffer& anchor_buffer, const uin
       // Map vectors to Eigen matrices
       Eigen::MatrixXd coeffs = Eigen::MatrixXd::Zero(coeffs_vec.size() / 5, 5);
       Eigen::VectorXd measurements = Eigen::VectorXd::Zero(meas_vec.size());
-      coeffs = Eigen::MatrixXd(
-            Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-              coeffs_vec.data(), coeffs_vec.size() / 5, 5));
+      coeffs = Eigen::MatrixXd(Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+          coeffs_vec.data(), coeffs_vec.size() / 5, 5));
       measurements = Eigen::VectorXd(
-            Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>>(
-              meas_vec.data(), meas_vec.size(), 1));
+          Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>>(meas_vec.data(), meas_vec.size(), 1));
 
       INIT_DEBUG_STREAM("Anchor " << anchor_id << ": matrix=\n" << coeffs);
       INIT_DEBUG_STREAM("Anchor " << anchor_id << ": vec=\n" << measurements);
-      INIT_DEBUG_STREAM("Anchor " << anchor_id << ": calculating svd with matrix of size=" << coeffs.rows() << "x" << coeffs.cols());
+      INIT_DEBUG_STREAM("Anchor " << anchor_id << ": calculating svd with matrix of size=" << coeffs.rows() << "x"
+                                  << coeffs.cols());
 
       // Check the coefficient matrix condition number and solve the LS problem
       Eigen::BDCSVD<Eigen::MatrixXd> svd(coeffs, Eigen::ComputeThinU | Eigen::ComputeThinV);
       double cond = svd.singularValues()(0) / svd.singularValues()(svd.singularValues().size() - 1);
       if (cond < params_.max_cond_num)  // 3
       {
-
         INIT_DEBUG_STREAM("Anchor " << anchor_id << ": solving LS ...");
 
         // [ 0 ,       1     ,       2     ,  3          , 4]
@@ -338,7 +334,6 @@ bool UwbInitializer::initialize_double(UwbAnchorBuffer& anchor_buffer, const uin
         // check that the squared value is positive
         if (LSSolution[0] > 0)
         {
-
           Eigen::Vector3d p_AinG = LSSolution.segment(1, 3) / LSSolution[0];
           double distance_bias_squared = LSSolution[0];
           double const_bias = LSSolution[4];
@@ -347,7 +342,7 @@ bool UwbInitializer::initialize_double(UwbAnchorBuffer& anchor_buffer, const uin
                                 << "\tLS:                " << LSSolution.transpose() << "\n"
                                 << "\tp_AinG:            " << p_AinG.transpose() << "\n"
                                 << "\tbeta_sq:           " << distance_bias_squared << "\n"
-                                << "\td_bias(alpha):     " << std::sqrt(distance_bias_squared)-1.0 << "\n"
+                                << "\td_bias(alpha):     " << std::sqrt(distance_bias_squared) - 1.0 << "\n"
                                 << "\tconst_bias(gamma): " << const_bias);
 
           // Assign valid estimated values
@@ -398,8 +393,8 @@ bool UwbInitializer::initialize_double(UwbAnchorBuffer& anchor_buffer, const uin
     {
       //      INIT_WARN_STREAM("Anchor " << anchor_id << ": issue with measurement baselines (c:" << coeffs_vec.size()
       //                                 << " m:" << meas_vec.size() << ")" << std::endl);
-      INIT_WARN_STREAM("Anchor " << anchor_id << ": issue with measurement baselines (rows:" << coeffs_vec.size()/5 << ")"
-                                 << std::endl);
+      INIT_WARN_STREAM("Anchor " << anchor_id << ": issue with measurement baselines (rows:" << coeffs_vec.size() / 5
+                                 << ")" << std::endl);
       new_uwb_anchor.initialized = false;
       successfully_initialized = false;
     }
@@ -435,7 +430,8 @@ bool UwbInitializer::initialize_biasfree(UwbAnchorBuffer& anchor_buffer, const u
     for (uint i = 0; i < single_anchor_uwb_data.size(); ++i)
     {
       // get closest UWB module position
-      Eigen::Vector3d closest_p_UinG = buffer_p_UinG_.get_closest(single_anchor_uwb_data.at(i).first);
+      Eigen::Vector3d closest_p_UinG =
+          buffer_p_UinG_.get_closest(single_anchor_uwb_data.at(i).first - params_.t_pose_diff);
 
       Eigen::VectorXd row(4);
       row << -2 * closest_p_UinG.x(), -2 * closest_p_UinG.y(), -2 * closest_p_UinG.z(), 1;

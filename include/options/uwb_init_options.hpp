@@ -86,6 +86,9 @@ struct UwbInitOptions
   /// (suggested value 100)
   double lamda_{ 100 };
 
+  /// time diference of poses to UWB measurements in s
+  double t_pose_diff{ 0.0 };
+
   void print_initializer()
   {
     INIT_PRINT_STREAM("Parameter Summary -- Initializer");
