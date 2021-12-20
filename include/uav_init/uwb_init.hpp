@@ -59,6 +59,43 @@ public:
     // initialize buffers
     buffer_p_UinG_.init(params_.buffer_size_s);
     uwb_data_buffer_.init(params_.buffer_size_s);
+
+    switch (params_.init_variables)
+    {
+      case UwbInitOptions::InitVariables::ALL: {
+        if (params_.init_method == UwbInitOptions::InitMethod::SINGLE)
+          fx_init_ = std::bind(&UwbInitializer::initialize_single, this, std::placeholders::_1, std::placeholders::_2,
+                               std::placeholders::_3);
+        else if (params_.init_method == UwbInitOptions::InitMethod::DOUBLE)
+          fx_init_ = std::bind(&UwbInitializer::initialize_double, this, std::placeholders::_1, std::placeholders::_2,
+                               std::placeholders::_3);
+        else
+        {
+          INIT_ERROR_STREAM("No initialization routine for method-variable pair " << params_.init_method << "-"
+                                                                                  << params_.init_variables);
+          exit(EXIT_FAILURE);
+        }
+        break;
+      }
+      case UwbInitOptions::InitVariables::NO_BIAS: {
+        if (params_.init_method == UwbInitOptions::InitMethod::SINGLE)
+          fx_init_ = std::bind(&UwbInitializer::initialize_biasfree, this, std::placeholders::_1, std::placeholders::_2,
+                               std::placeholders::_3);
+        else
+        {
+          INIT_ERROR_STREAM("No initialization routine for method-variable pair " << params_.init_method << "-"
+                                                                                  << params_.init_variables);
+          exit(EXIT_FAILURE);
+        }
+        break;
+      }
+      case UwbInitOptions::InitVariables::NO_DISTANCE_BIAS: {
+        INIT_ERROR_STREAM("No initialization routine for method-variable pair " << params_.init_method << "-"
+                                                                                << params_.init_variables);
+        exit(EXIT_FAILURE);
+        break;
+      }
+    }
   }
 
   ///
@@ -107,6 +144,7 @@ private:
   UwbDataBuffer uwb_data_buffer_;  //!< history of uwb readings in DataBuffer
 
   // init handeling
+  std::function<bool(UwbAnchorBuffer&, const uint&, const double&)> fx_init_;
   InitMethod init_method_{ InitMethod::DOUBLE };  //!< determine the initialization method to use
 
   ///

@@ -84,18 +84,19 @@ bool UwbInitializer::try_to_initialize_anchors(UwbAnchorBuffer& anchor_buffer)
     }
     else
     {
-      switch (init_method_)
-      {
-        case InitMethod::SINGLE:
-          is_successfull_initialized &= initialize_single(anchor_buffer, anchor_id, calc_time);
-          break;
-        case InitMethod::DOUBLE:
-          is_successfull_initialized &= initialize_double(anchor_buffer, anchor_id, calc_time);
-          break;
-        case InitMethod::NO_BIAS:
-          is_successfull_initialized &= initialize_biasfree(anchor_buffer, anchor_id, calc_time);
-          break;
-      }
+      //      switch (init_method_)
+      //      {
+      //        case InitMethod::SINGLE:
+      //          is_successfull_initialized &= initialize_single(anchor_buffer, anchor_id, calc_time);
+      //          break;
+      //        case InitMethod::DOUBLE:
+      //          is_successfull_initialized &= initialize_double(anchor_buffer, anchor_id, calc_time);
+      //          break;
+      //        case InitMethod::NO_BIAS:
+      //          is_successfull_initialized &= initialize_biasfree(anchor_buffer, anchor_id, calc_time);
+      //          break;
+      //      }
+      is_successfull_initialized &= fx_init_(anchor_buffer, anchor_id, calc_time);
     }  // else anchor_initialized
   }    // for (const auto& kv : uwb_data_buffer_.get_buffer())
 

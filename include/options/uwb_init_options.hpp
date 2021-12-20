@@ -29,6 +29,53 @@ namespace uav_init
 {
 struct UwbInitOptions
 {
+  ///
+  /// \brief The InitMethod enum describes the method used for initialization
+  ///
+  enum class InitMethod
+  {
+    SINGLE,  //!< use only one measurement to construct LLS matrix
+    DOUBLE,  //!< use a pair of measurements to construct LLS matrix
+  };
+
+  ///
+  /// \brief The InitVariables enum describes the type of variables to initialize
+  ///
+  enum class InitVariables
+  {
+    ALL,               //!< use all variables, position, distance bias, and constant bias
+    NO_BIAS,           //!< use no bias for initialization, i.e. position only
+    NO_DISTANCE_BIAS,  //!< only use constant bias and position in initialization
+  };
+
+  friend inline std::ostream& operator<<(std::ostream& os, InitMethod method)
+  {
+    switch (method)
+    {
+      case InitMethod::SINGLE:
+        return os << "SINGLE";
+      case InitMethod::DOUBLE:
+        return os << "DOUBLE";
+    }
+
+    return os;
+  }
+
+  friend inline std::ostream& operator<<(std::ostream& os, InitVariables variable)
+  {
+    switch (variable)
+    {
+      case InitVariables::ALL:
+        return os << "ALL";
+      case InitVariables::NO_BIAS:
+        return os << "NO_BIAS";
+      case InitVariables::NO_DISTANCE_BIAS:
+        return os << "NO_DISTANCE_BIAS";
+    }
+
+    return os;
+  }
+
   // WRAPPER AND CALIBRATION ==================================================
 
   /// duration between consecutive checks when initialization is performed in seconds
@@ -89,17 +136,29 @@ struct UwbInitOptions
   /// time diference of poses to UWB measurements in s
   double t_pose_diff{ 0.0 };
 
+  /// determines the method to use for initialization \see uav_init::UwbInitOptions::InitMethod
+  InitMethod init_method{ InitMethod::DOUBLE };
+
+  /// determines the variables to initialize in initialization routine \see uav_init::UwbInitOptions::InitVariables
+  InitVariables init_variables{ InitVariables::ALL };
+
   void print_initializer()
   {
     INIT_PRINT_STREAM("Parameter Summary -- Initializer");
     INIT_PRINT_STREAM("\t- n_anchors:                   " << n_anchors);
     INIT_PRINT_STREAM("\t- buffer_size_s:               " << buffer_size_s);
     INIT_PRINT_STREAM("\t- max_cond_num:                " << max_cond_num);
+    INIT_PRINT_STREAM("\t- t_pose_diff:                 " << t_pose_diff);
     INIT_PRINT_STREAM("\t- f_do_continous_init_:        " << f_do_continous_init_);
     INIT_PRINT_STREAM("\t- lamda_:                      " << lamda_);
-    // TODO(alf): Add if condition to print these only if we use double
-    INIT_PRINT_STREAM("\t- meas_baseline_m_:            " << meas_baseline_m_);
-    INIT_PRINT_STREAM("\t- meas_baseline_idx_:          " << meas_baseline_idx_);
+    INIT_PRINT_STREAM("\t- init_method:                 " << init_method);
+    INIT_PRINT_STREAM("\t- init_variables:              " << init_variables);
+
+    if (init_method == InitMethod::DOUBLE)
+    {
+      INIT_PRINT_STREAM("\t- meas_baseline_m_:            " << meas_baseline_m_);
+      INIT_PRINT_STREAM("\t- meas_baseline_idx_:          " << meas_baseline_idx_);
+    }
   }
 
   // WAYPOINT GENERATION ======================================================
