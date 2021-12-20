@@ -150,6 +150,11 @@ private:
   InitMethod init_method_{ InitMethod::DOUBLE };  //!< determine the initialization method to use \deprecated was moved
                                                   //!< into params_
 
+  // debugging
+  std::vector<Eigen::Vector3d> p_AinG_gt_{ { Eigen::Vector3d(1.225, -1.459, 0.073),
+                                             Eigen::Vector3d(-0.989, 0.350, 0.082),
+                                             Eigen::Vector3d(-0.048, 2.058, 0.055) } };
+
   ///
   /// \brief initialize_single try to initialize all anchors using the single measurement formulation
   /// \param anchor_buffer

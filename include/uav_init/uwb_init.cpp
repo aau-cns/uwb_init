@@ -323,8 +323,8 @@ bool UwbInitializer::initialize_double_all(UwbAnchorBuffer& anchor_buffer, const
       measurements = Eigen::VectorXd(
           Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>>(meas_vec.data(), meas_vec.size(), 1));
 
-      INIT_DEBUG_STREAM("Anchor " << anchor_id << ": matrix=\n" << coeffs);
-      INIT_DEBUG_STREAM("Anchor " << anchor_id << ": vec=\n" << measurements);
+      // INIT_DEBUG_STREAM("Anchor " << anchor_id << ": matrix=\n" << coeffs);
+      // INIT_DEBUG_STREAM("Anchor " << anchor_id << ": vec=\n" << measurements);
       INIT_DEBUG_STREAM("Anchor " << anchor_id << ": calculating svd with matrix of size=" << coeffs.rows() << "x"
                                   << coeffs.cols());
 
@@ -351,7 +351,8 @@ bool UwbInitializer::initialize_double_all(UwbAnchorBuffer& anchor_buffer, const
                                 << "\tp_AinG:            " << p_AinG.transpose() << "\n"
                                 << "\tbeta_sq:           " << distance_bias_squared << "\n"
                                 << "\td_bias(alpha):     " << std::sqrt(distance_bias_squared) - 1.0 << "\n"
-                                << "\tconst_bias(gamma): " << const_bias);
+                                << "\tconst_bias(gamma): " << const_bias << "\n"
+                                << "\tpos_error:         " << (p_AinG - p_AinG_gt_[anchor_id]).transpose());
 
           // Assign valid estimated values
           new_uwb_anchor.bias_d = std::sqrt(distance_bias_squared);  // NOTE(scm): this is beta with beta=1+alpha
@@ -364,7 +365,9 @@ bool UwbInitializer::initialize_double_all(UwbAnchorBuffer& anchor_buffer, const
               ((svd.matrixV().transpose()).inverse() * svd.singularValues().asDiagonal().inverse() *
                svd.singularValues().asDiagonal().inverse() * svd.matrixV().inverse());
 
-          INIT_DEBUG_STREAM("\n\tCov:        " << Cov);
+          /// \todo TODO(scm): make this debug again
+//          INIT_DEBUG_STREAM("\n\tCov:        " << Cov);
+          INIT_INFO_STREAM("\n\tCov:        " << Cov);
 
           // set initialization to true
           new_uwb_anchor.initialized = true;
