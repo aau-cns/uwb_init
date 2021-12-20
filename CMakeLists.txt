@@ -51,12 +51,10 @@ find_package(catkin REQUIRED COMPONENTS roscpp dynamic_reconfigure message_gener
 ## System dependencies are found with CMake's conventions
 find_package(Boost REQUIRED)
 find_package(Eigen3 REQUIRED)
-find_package(OpenCV 4 REQUIRED)
 
 ## Display packages version
 message(STATUS "EIGEN VERSION: " ${EIGEN3_VERSION})
 message(STATUS "BOOST VERSION: " ${Boost_VERSION})
-message(STATUS "OPENCV VERSION: " ${OpenCV_VERSION})
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
