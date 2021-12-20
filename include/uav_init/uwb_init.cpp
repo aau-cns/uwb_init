@@ -358,26 +358,13 @@ bool UwbInitializer::initialize_double_all(UwbAnchorBuffer& anchor_buffer, const
           new_uwb_anchor.bias_c = const_bias;
           new_uwb_anchor.p_AinG = p_AinG;
 
-          //        // Compute estimation Covariance
-          //        Eigen::MatrixXd Cov =
-          //            (std::pow((coeffs * LSSolution - measurements).norm(), 2) / (coeffs.rows() * coeffs.cols())) *
-          //            (svd.matrixV().inverse().transpose() * svd.singularValues().asDiagonal().inverse() *
-          //             svd.singularValues().asDiagonal().inverse() * svd.matrixV().inverse());
-          //        //        Eigen::Matrix4d distance_bias_squared_P_AinG_Cov = Cov.block(0, 0, 3, 3);
-          //        //        double distance_bias_squared_Cov = Cov(4, 4);
-          //        //        double const_bias_Cov = Cov(5, 5);
-          //        INIT_DEBUG_STREAM("\n\tCov:        " << Cov);
+          // Compute estimation Covariance
+          Eigen::MatrixXd Cov =
+              (std::pow((coeffs * LSSolution - measurements).norm(), 2) / (coeffs.rows() - coeffs.cols())) *
+              ((svd.matrixV().transpose()).inverse() * svd.singularValues().asDiagonal().inverse() *
+               svd.singularValues().asDiagonal().inverse() * svd.matrixV().inverse());
 
-          //        // Retrive P_AinG Covariance applying error propagation law and assign to Anchors_Covs
-          //        Eigen::MatrixXd J = Eigen::MatrixXd::Zero(1, 4);
-          //        J(0, 0) = 1.0 / distance_bias_squared;
-          //        J.block(0, 1, 1, 3) = -p_AinG.transpose() / distance_bias_squared;
-          //        INIT_DEBUG_STREAM("\n\tJ:        " << J);
-          //        //        Anchors_Covs.insert({ anchor_id, J * Cov.block(0, 0, 4, 4) * J.transpose() });
-
-          //        // Retrive Covariance of b and k applying error propagation law
-          //        new_uwb_anchor.cov_bias_d = 1.0 / (4.0 * distance_bias_squared) * Cov(3, 3);
-          //        new_uwb_anchor.cov_bias_c = Cov(4, 4);
+          INIT_DEBUG_STREAM("\n\tCov:        " << Cov);
 
           // set initialization to true
           new_uwb_anchor.initialized = true;
