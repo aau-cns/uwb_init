@@ -108,7 +108,8 @@ bool UwbInitializer::try_to_initialize_anchors(UwbAnchorBuffer& anchor_buffer)
   return is_successfull_initialized;
 }  // bool UwbInitializer::try_to_initialize_anchors(...)
 
-bool UwbInitializer::initialize_single(UwbAnchorBuffer& anchor_buffer, const uint& anchor_id, const double& calc_time)
+bool UwbInitializer::initialize_single_all(UwbAnchorBuffer& anchor_buffer, const uint& anchor_id,
+                                           const double& calc_time)
 {
   // setup return value
   bool successfully_initialized = true;
@@ -232,7 +233,8 @@ bool UwbInitializer::initialize_single(UwbAnchorBuffer& anchor_buffer, const uin
   return successfully_initialized;
 }  // bool UwbInitializer::initialize_single(...)
 
-bool UwbInitializer::initialize_double(UwbAnchorBuffer& anchor_buffer, const uint& anchor_id, const double& calc_time)
+bool UwbInitializer::initialize_double_all(UwbAnchorBuffer& anchor_buffer, const uint& anchor_id,
+                                           const double& calc_time)
 {
   INIT_DEBUG_STREAM("Anchor " << anchor_id << ": using 'DOUBLE' method for initialization");
   // setup return value
@@ -296,17 +298,22 @@ bool UwbInitializer::initialize_double(UwbAnchorBuffer& anchor_buffer, const uin
     // Check to have more than 5 rows in the coefficient matrix
     if (coeffs_vec.size() > 5 * 5)
     {
-      // Data augmentation for regularization
-      coeffs_vec.push_back(std::sqrt(params_.lamda_));  // b^2
-      coeffs_vec.push_back(0.0);                        // b^2*p_AinG_x
-      coeffs_vec.push_back(0.0);                        // b^2*p_AinG_y
-      coeffs_vec.push_back(0.0);                        // b^2*p_AinG_z
-      coeffs_vec.push_back(std::sqrt(params_.lamda_));  // k
-      meas_vec.push_back(0.0);
-      meas_vec.push_back(0.0);
-      meas_vec.push_back(0.0);
-      meas_vec.push_back(0.0);
-      meas_vec.push_back(0.0);
+      if (params_.lamda_ > 0.0)
+      {
+        // Data augmentation for regularization
+        coeffs_vec.push_back(std::sqrt(params_.lamda_));  // b^2
+        // add 23 zero lines to fill 'diag matrix
+        for (uint cnt_line = 0; cnt_line < 23; ++cnt_line)
+          coeffs_vec.push_back(0.0);                      // b^2*p_AinG
+        coeffs_vec.push_back(std::sqrt(params_.lamda_));  // k
+
+        // add values to meas_vec
+        meas_vec.push_back(0.0);
+        meas_vec.push_back(0.0);
+        meas_vec.push_back(0.0);
+        meas_vec.push_back(0.0);
+        meas_vec.push_back(0.0);
+      }
 
       // Map vectors to Eigen matrices
       Eigen::MatrixXd coeffs = Eigen::MatrixXd::Zero(coeffs_vec.size() / 5, 5);
@@ -411,7 +418,8 @@ bool UwbInitializer::initialize_double(UwbAnchorBuffer& anchor_buffer, const uin
   return successfully_initialized;
 }  // bool UwbInitializer::initialize_single(...)
 
-bool UwbInitializer::initialize_biasfree(UwbAnchorBuffer& anchor_buffer, const uint& anchor_id, const double& calc_time)
+bool UwbInitializer::initialize_single_nobias(UwbAnchorBuffer& anchor_buffer, const uint& anchor_id,
+                                              const double& calc_time)
 {
   INIT_DEBUG_STREAM("Anchor " << anchor_id << ": using 'NO_BIAS' method for initialization");
 

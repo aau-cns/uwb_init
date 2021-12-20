@@ -41,6 +41,8 @@ class UwbInitializer
 public:
   ///
   /// \brief The InitMethod enum describes the method used for initialization
+  /// \deprecated will be removed soon, was moved to uav_init::UwbInitOptions::InitMethod
+  /// \see uav_init::UwbInitOptions::InitMethod
   ///
   enum class InitMethod
   {
@@ -64,11 +66,11 @@ public:
     {
       case UwbInitOptions::InitVariables::ALL: {
         if (params_.init_method == UwbInitOptions::InitMethod::SINGLE)
-          fx_init_ = std::bind(&UwbInitializer::initialize_single, this, std::placeholders::_1, std::placeholders::_2,
-                               std::placeholders::_3);
+          fx_init_ = std::bind(&UwbInitializer::initialize_single_all, this, std::placeholders::_1,
+                               std::placeholders::_2, std::placeholders::_3);
         else if (params_.init_method == UwbInitOptions::InitMethod::DOUBLE)
-          fx_init_ = std::bind(&UwbInitializer::initialize_double, this, std::placeholders::_1, std::placeholders::_2,
-                               std::placeholders::_3);
+          fx_init_ = std::bind(&UwbInitializer::initialize_double_all, this, std::placeholders::_1,
+                               std::placeholders::_2, std::placeholders::_3);
         else
         {
           INIT_ERROR_STREAM("No initialization routine for method-variable pair " << params_.init_method << "-"
@@ -79,8 +81,8 @@ public:
       }
       case UwbInitOptions::InitVariables::NO_BIAS: {
         if (params_.init_method == UwbInitOptions::InitMethod::SINGLE)
-          fx_init_ = std::bind(&UwbInitializer::initialize_biasfree, this, std::placeholders::_1, std::placeholders::_2,
-                               std::placeholders::_3);
+          fx_init_ = std::bind(&UwbInitializer::initialize_single_nobias, this, std::placeholders::_1,
+                               std::placeholders::_2, std::placeholders::_3);
         else
         {
           INIT_ERROR_STREAM("No initialization routine for method-variable pair " << params_.init_method << "-"
@@ -145,17 +147,18 @@ private:
 
   // init handeling
   std::function<bool(UwbAnchorBuffer&, const uint&, const double&)> fx_init_;
-  InitMethod init_method_{ InitMethod::DOUBLE };  //!< determine the initialization method to use
+  InitMethod init_method_{ InitMethod::DOUBLE };  //!< determine the initialization method to use \deprecated was moved
+                                                  //!< into params_
 
   ///
   /// \brief initialize_single try to initialize all anchors using the single measurement formulation
   /// \param anchor_buffer
   /// \return true if all anchors were successfully initialized
   ///
-  bool initialize_single(UwbAnchorBuffer& anchor_buffer, const uint& anchor_id, const double& calc_time);
+  bool initialize_single_all(UwbAnchorBuffer& anchor_buffer, const uint& anchor_id, const double& calc_time);
 
-  bool initialize_double(UwbAnchorBuffer& anchor_buffer, const uint& anchor_id, const double& calc_time);
-  bool initialize_biasfree(UwbAnchorBuffer& anchor_buffer, const uint& anchor_id, const double& calc_time);
+  bool initialize_double_all(UwbAnchorBuffer& anchor_buffer, const uint& anchor_id, const double& calc_time);
+  bool initialize_single_nobias(UwbAnchorBuffer& anchor_buffer, const uint& anchor_id, const double& calc_time);
 };
 
 }  // namespace uav_init

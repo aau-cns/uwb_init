@@ -61,6 +61,9 @@ UwbInitOptions parse_ros_nodehandle(ros::NodeHandle& nh)
   nh.param<int>("meas_baseline_idx", meas_baseline_idx, params.meas_baseline_idx_);
   params.meas_baseline_idx_ = static_cast<uint>(meas_baseline_idx);
 
+  std::string init_method, init_variables;
+
+
   params.print_initializer();
 
   // WAYPOINT GENERATION ======================================================
