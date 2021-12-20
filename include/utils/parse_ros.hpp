@@ -49,10 +49,16 @@ UwbInitOptions parse_ros_nodehandle(ros::NodeHandle& nh)
   nh.param<double>("buffer_size_s", params.buffer_size_s, params.buffer_size_s);
   nh.param<double>("max_cond_num", params.max_cond_num, params.max_cond_num);
   nh.param<bool>("do_continous_init", params.f_do_continous_init_, params.f_do_continous_init_);
+  nh.param<double>("meas_baseline_m", params.meas_baseline_m_, params.meas_baseline_m_);
+  nh.param<double>("reg_lambda", params.lamda_, params.lamda_);
 
   int n_anchors;
   nh.param<int>("n_anchors", n_anchors, params.n_anchors);
   params.n_anchors = static_cast<uint>(n_anchors);
+
+  int meas_baseline_idx;
+  nh.param<int>("meas_baseline_idx", meas_baseline_idx, params.meas_baseline_idx_);
+  params.meas_baseline_idx_ = static_cast<uint>(meas_baseline_idx);
 
   params.print_initializer();
 
