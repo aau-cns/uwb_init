@@ -64,7 +64,7 @@ public:
 
     switch (params_.init_variables)
     {
-      case UwbInitOptions::InitVariables::ALL: {
+      case UwbInitOptions::InitVariables::FULL_BIAS: {
         if (params_.init_method == UwbInitOptions::InitMethod::SINGLE)
           fx_init_ = std::bind(&UwbInitializer::initialize_single_all, this, std::placeholders::_1,
                                std::placeholders::_2, std::placeholders::_3);
@@ -91,7 +91,13 @@ public:
         }
         break;
       }
-      case UwbInitOptions::InitVariables::NO_DISTANCE_BIAS: {
+      case UwbInitOptions::InitVariables::DIST_BIAS: {
+        INIT_ERROR_STREAM("No initialization routine for method-variable pair " << params_.init_method << "-"
+                                                                                << params_.init_variables);
+        exit(EXIT_FAILURE);
+        break;
+      }
+      case UwbInitOptions::InitVariables::CONST_BIAS: {
         INIT_ERROR_STREAM("No initialization routine for method-variable pair " << params_.init_method << "-"
                                                                                 << params_.init_variables);
         exit(EXIT_FAILURE);
@@ -150,6 +156,7 @@ private:
   InitMethod init_method_{ InitMethod::DOUBLE };  //!< determine the initialization method to use \deprecated was moved
                                                   //!< into params_
 
+  // todo:(alf) remove debugging
   // debugging
   std::vector<Eigen::Vector3d> p_AinG_gt_{ { Eigen::Vector3d(1.225, -1.459, 0.073),
                                              Eigen::Vector3d(-0.989, 0.350, 0.082),
@@ -161,7 +168,6 @@ private:
   /// \return true if all anchors were successfully initialized
   ///
   bool initialize_single_all(UwbAnchorBuffer& anchor_buffer, const uint& anchor_id, const double& calc_time);
-
   bool initialize_double_all(UwbAnchorBuffer& anchor_buffer, const uint& anchor_id, const double& calc_time);
   bool initialize_single_nobias(UwbAnchorBuffer& anchor_buffer, const uint& anchor_id, const double& calc_time);
 };

@@ -43,10 +43,12 @@ struct UwbInitOptions
   ///
   enum class InitVariables
   {
-    ALL,               //!< use all variables, position, distance bias, and constant bias
-    NO_BIAS,           //!< use no bias for initialization, i.e. position only
-    NO_DISTANCE_BIAS,  //!< only use constant bias and position in initialization
+    FULL_BIAS,               //!< use all variables, position, distance bias, and constant bias
+    NO_BIAS,                 //!< use no bias for initialization, i.e. position only
+    CONST_BIAS,              //!< only use constant bias and position in initialization
+    DIST_BIAS,               //!< only use constant bias and position in initialization
   };
+  // todo: (alf) change no_distance bias to dist_bias and const_bias, change all to full bias
 
   friend inline std::ostream& operator<<(std::ostream& os, InitMethod method)
   {
@@ -65,12 +67,14 @@ struct UwbInitOptions
   {
     switch (variable)
     {
-      case InitVariables::ALL:
-        return os << "ALL";
+      case InitVariables::FULL_BIAS:
+        return os << "FULL_BIAS";
       case InitVariables::NO_BIAS:
         return os << "NO_BIAS";
-      case InitVariables::NO_DISTANCE_BIAS:
-        return os << "NO_DISTANCE_BIAS";
+      case InitVariables::CONST_BIAS:
+        return os << "CONST_BIAS";
+    case InitVariables::DIST_BIAS:
+      return os << "DIST_BIAS";
     }
 
     return os;
@@ -130,8 +134,11 @@ struct UwbInitOptions
   uint meas_baseline_idx_{ 50 };
 
   /// Value of lamda used for regularization, if lambda = 0 no regularization is applied
-  /// (suggested value 100)
-  double lamda_{ 100 };
+  /// (suggested value 1000)
+  double lamda_{ 1000 };
+
+  /// Threshold on norm of LS solution covariance's singular values (used to accept the LS solution)
+  double cov_sv_threshold_{ 1e-3 };
 
   /// time diference of poses to UWB measurements in s
   double t_pose_diff{ 0.0 };
@@ -140,7 +147,7 @@ struct UwbInitOptions
   InitMethod init_method{ InitMethod::DOUBLE };
 
   /// determines the variables to initialize in initialization routine \see uav_init::UwbInitOptions::InitVariables
-  InitVariables init_variables{ InitVariables::ALL };
+  InitVariables init_variables{ InitVariables::FULL_BIAS };
 
   void print_initializer()
   {
@@ -151,6 +158,7 @@ struct UwbInitOptions
     INIT_PRINT_STREAM("\t- t_pose_diff:                 " << t_pose_diff);
     INIT_PRINT_STREAM("\t- f_do_continous_init_:        " << f_do_continous_init_);
     INIT_PRINT_STREAM("\t- lamda_:                      " << lamda_);
+    INIT_PRINT_STREAM("\t- cov_sv_threshold:            " << cov_sv_threshold_);
     INIT_PRINT_STREAM("\t- init_method:                 " << init_method);
     INIT_PRINT_STREAM("\t- init_variables:              " << init_variables);
 
