@@ -375,10 +375,14 @@ bool UwbInitializer::initialize_double_all(UwbAnchorBuffer& anchor_buffer, const
           if (svd_cov.singularValues().norm() <= params_.cov_sv_threshold_)
           {
             new_uwb_anchor.initialized = true;
+            successfully_initialized = true;
           }
           else
           {
+            INIT_WARN_STREAM("Anchor " << anchor_id << ": issue with cov svd threshold (" << svd_cov.singularValues().norm()
+                                       << ")");
             new_uwb_anchor.initialized = false;
+            successfully_initialized = false;
           }
 
         }
