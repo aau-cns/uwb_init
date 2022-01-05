@@ -372,12 +372,26 @@ bool UwbInitializer::initialize_double_all(UwbAnchorBuffer& anchor_buffer, const
           INIT_DEBUG_STREAM("\n\tCov:        " << Cov);
           //          INIT_INFO_STREAM("\n\tCov:        " << Cov);
 
+
+          // compare norm of singular values vector of covarnace matrix with threshold
+          Eigen::JacobiSVD<Eigen::MatrixXd> svd_cov(Cov, Eigen::ComputeThinU | Eigen::ComputeThinV);
+
           // debug
           INIT_INFO_STREAM("\tsingular values:   " << svd_cov.singularValues().transpose());
           INIT_INFO_STREAM("\tsingular v norm:   " << svd_cov.singularValues().norm());
-
-          // set initialization to true
-          new_uwb_anchor.initialized = true;
+          if (svd_cov.singularValues().norm() <= params_.cov_sv_threshold_)
+          {
+            // set initialization to true
+            new_uwb_anchor.initialized = true;
+            successfully_initialized = true;
+          }
+          else
+          {
+            INIT_WARN_STREAM("Anchor " << anchor_id << ": issue with cov svd threshold (" << svd_cov.singularValues().norm()
+                                       << ")");
+            new_uwb_anchor.initialized = false;
+            successfully_initialized = false;
+          } // if (svd_cov.singularValues().norm() <= params_.cov_sv_threshold_)
         }
         else  // if (LSSolution[0] > 0)
         {
