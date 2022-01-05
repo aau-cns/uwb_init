@@ -145,6 +145,9 @@ void UwbInitWrapper::calculate_waypoints()
         wp.x = pos_uninitialized.at(i).x() + wpxy.x();
         wp.y = pos_uninitialized.at(i).y() + wpxy.y();
 
+        /// \todo TODO(scm): make the WP holdtime a parameter
+        wp.holdtime = 0.5;
+
         cur_waypoints_.waypoints.push_back(wp);
       }
     }
