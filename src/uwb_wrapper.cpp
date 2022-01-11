@@ -109,6 +109,16 @@ void UwbInitWrapper::calculate_waypoints()
   else if (f_all_known_anchors_initialized_)
   {
     INIT_DEBUG_STREAM("All anchors are already initialized, no need to calculate WPs!");
+    INIT_WARN_STREAM("All anchors are initialized, going to origin!");
+
+    mission_sequencer::MissionWaypoint wp;
+    wp.x = 0.0;
+    wp.y = 0.0;
+    wp.z = params_.wp_height;
+    wp.yaw = 0.0;
+    wp.holdtime = 0.5;
+
+    cur_waypoints_.waypoints.push_back(wp);
     return;
   }
 
@@ -247,10 +257,26 @@ void UwbInitWrapper::cb_timerinit(const ros::TimerEvent&)
     if (!cur_waypoints_.waypoints.empty())
     {
       cur_waypoints_.header.stamp = pub_time;
-      cur_waypoints_.header.frame_id = "global";
-      cur_waypoints_.header.seq = pub_waypoint_seq_;
+      cur_waypoints_.header.seq = pub_waypoint_seq_++;
 
-      pub_wplist.publish(cur_waypoints_);
+      if (f_all_known_anchors_initialized_)
+      {
+        cur_waypoints_.header.frame_id = "local";
+        cur_waypoints_.is_global = true;
+        pub_wplist.publish(cur_waypoints_);
+
+        // tell the autonomy that the next time it receives a mission complete it should land
+        /// \todo TODO(scm): maybe make this string for the parameter a parameter?
+        ros::param::set("/autonomy/hover_after_mission_completion", false);
+        bool test_val = true; ros::param::get("/autonomy/hover_after_mission_completion", test_val);
+        INIT_DEBUG_STREAM("Set '/autonomy/hover_after_mission_completion' parameter to " << test_val);
+      }
+      else
+      {
+        cur_waypoints_.header.frame_id = "global";
+        cur_waypoints_.is_global = false;
+        pub_wplist.publish(cur_waypoints_);
+      }
     }
   }  // if (!f_all_known_anchors_initialized_)
 }  // void UwbInitWrapper::cb_timerinit(...)

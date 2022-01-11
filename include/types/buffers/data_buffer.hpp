@@ -89,6 +89,7 @@ public:
 
   ///
   /// \brief push_back adds the value to the buffer and performs checks on its size
+  /// \param data_id ID of the data to be added to buffer
   /// \param timestamp timestamp of value to add
   /// \param value value to add to the buffer
   /// \return true if the addition of the value was successful, otherwise false

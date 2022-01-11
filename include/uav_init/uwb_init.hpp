@@ -116,7 +116,8 @@ public:
 
   ///
   /// \brief feed_pose stores incoming positions of the UAV in the global frame
-  /// \param uwb_measurements Eigen::Vector3d of positions of the UAV in global frame
+  /// \param timestamp timestamp of pose
+  /// \param p_UinG position to add to buffer
   ///
   /// \todo allow feeding of old(er) measurements
   ///
