@@ -161,6 +161,15 @@ void UwbInitWrapper::calculate_waypoints()
         cur_waypoints_.waypoints.push_back(wp);
       }
     }
+
+    // push final value of unintialized wp
+    mission_sequencer::MissionWaypoint wp;
+    wp.z = params_.wp_height;
+    wp.yaw = 0.0;
+    wp.x = pos_uninitialized.at(pos_uninitialized.size()-1).x();
+    wp.y = pos_uninitialized.at(pos_uninitialized.size()-1).y() ;
+    wp.holdtime = 0.5;
+    cur_waypoints_.waypoints.push_back(wp);
   }
   else
   {
@@ -262,7 +271,7 @@ void UwbInitWrapper::cb_timerinit(const ros::TimerEvent&)
       if (f_all_known_anchors_initialized_)
       {
         cur_waypoints_.header.frame_id = "local";
-        cur_waypoints_.is_global = true;
+        cur_waypoints_.is_global = false;
         pub_wplist.publish(cur_waypoints_);
 
         // tell the autonomy that the next time it receives a mission complete it should land
@@ -274,7 +283,7 @@ void UwbInitWrapper::cb_timerinit(const ros::TimerEvent&)
       else
       {
         cur_waypoints_.header.frame_id = "global";
-        cur_waypoints_.is_global = false;
+        cur_waypoints_.is_global = true;
         pub_wplist.publish(cur_waypoints_);
       }
     }
