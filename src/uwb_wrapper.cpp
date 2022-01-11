@@ -141,7 +141,7 @@ void UwbInitWrapper::calculate_waypoints()
         wp.z = params_.wp_height;
         wp.yaw = 0.0;
 
-        Eigen::Vector2d wpxy = (j * dist.norm() / num_wps) * dist;
+        Eigen::Vector2d wpxy = (j * dist.norm() / num_wps) * dist.normalized();
         wp.x = pos_uninitialized.at(i).x() + wpxy.x();
         wp.y = pos_uninitialized.at(i).y() + wpxy.y();
 
