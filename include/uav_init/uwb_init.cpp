@@ -300,15 +300,23 @@ bool UwbInitializer::initialize_double_all(UwbAnchorBuffer& anchor_buffer, const
     {
       if (params_.lamda_ > 0.0)
       {
-        // INFO(scm): This uses z regularization TODO(scm): make this a parameter
         // Data augmentation for regularization
         coeffs_vec.push_back(std::sqrt(params_.lamda_));  // b^2
         // add 23 zero lines to fill 'diag matrix
-        for (uint cnt_line = 0; cnt_line < 17; ++cnt_line)
-          coeffs_vec.push_back(0.0);                      // b^2*p_AinG except z
-        coeffs_vec.push_back(std::sqrt(params_.lamda_));  // b^2*p_AinG_z
-        for (uint cnt_line = 18; cnt_line < 23; ++cnt_line)
-          coeffs_vec.push_back(0.0);                      // b^2*p_AinG except z
+        if (params_.b_regularize_z)
+        {
+          // with z regularization
+          for (uint cnt_line = 0; cnt_line < 17; ++cnt_line)
+            coeffs_vec.push_back(0.0);                      // b^2*p_AinG except z
+          coeffs_vec.push_back(std::sqrt(params_.lamda_));  // b^2*p_AinG_z
+          for (uint cnt_line = 18; cnt_line < 23; ++cnt_line)
+            coeffs_vec.push_back(0.0);  // b^2*p_AinG except z
+        }
+        else
+        {
+          for (uint cnt_line = 0; cnt_line < 23; ++cnt_line)
+            coeffs_vec.push_back(0.0);  // b^2*p_AinG
+        }
         coeffs_vec.push_back(std::sqrt(params_.lamda_));  // k
 
         // add values to meas_vec
@@ -350,16 +358,14 @@ bool UwbInitializer::initialize_double_all(UwbAnchorBuffer& anchor_buffer, const
           double distance_bias_squared = LSSolution[0];
           double const_bias = LSSolution[4];
 
-          /// \todo TODO(scm): make this debug again
-          //          INIT_DEBUG_STREAM("A" << anchor_id << " solution:\n"
-          INIT_INFO_STREAM("A" << anchor_id << " solution:\n"
-                               << "\tLS:                " << LSSolution.transpose() << "\n"
-                               << "\tp_AinG:            " << p_AinG.transpose() << "\n"
-                               << "\tbeta_sq:           " << distance_bias_squared << "\n"
-                               << "\td_bias(alpha):     " << std::sqrt(distance_bias_squared) - 1.0 << "\n"
-                               << "\tconst_bias(gamma): " << const_bias << "\n"
-                               << "\tpos_error:         " << (p_AinG - p_AinG_gt_[anchor_id]).transpose() << "("
-                               << (p_AinG - p_AinG_gt_[anchor_id]).norm() << ") m");
+          INIT_DEBUG_STREAM("A" << anchor_id << " solution:\n"
+                                << "\tLS:                " << LSSolution.transpose() << "\n"
+                                << "\tp_AinG:            " << p_AinG.transpose() << "\n"
+                                << "\tbeta_sq:           " << distance_bias_squared << "\n"
+                                << "\td_bias(alpha):     " << std::sqrt(distance_bias_squared) - 1.0 << "\n"
+                                << "\tconst_bias(gamma): " << const_bias << "\n"
+                                << "\tpos_error:         " << (p_AinG - p_AinG_gt_[anchor_id]).transpose() << "("
+                                << (p_AinG - p_AinG_gt_[anchor_id]).norm() << ") m");
 
           // Assign valid estimated values
           new_uwb_anchor.bias_d = std::sqrt(distance_bias_squared);  // NOTE(scm): this is beta with beta=1+alpha
@@ -372,9 +378,7 @@ bool UwbInitializer::initialize_double_all(UwbAnchorBuffer& anchor_buffer, const
               ((svd.matrixV().transpose()).inverse() * svd.singularValues().asDiagonal().inverse() *
                svd.singularValues().asDiagonal().inverse() * svd.matrixV().inverse());
 
-          /// \todo TODO(scm): make this debug again
           INIT_DEBUG_STREAM("\n\tCov:        " << Cov);
-          //          INIT_INFO_STREAM("\n\tCov:        " << Cov);
 
           // compare norm of singular values vector of covarnace matrix with threshold
           Eigen::JacobiSVD<Eigen::MatrixXd> svd_cov(Cov, Eigen::ComputeThinU | Eigen::ComputeThinV);

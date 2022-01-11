@@ -116,7 +116,7 @@ void UwbInitWrapper::calculate_waypoints()
     wp.y = 0.0;
     wp.z = params_.wp_height;
     wp.yaw = 0.0;
-    wp.holdtime = 0.5;
+    wp.holdtime = params_.wp_holdtime;
 
     cur_waypoints_.waypoints.push_back(wp);
     return;
@@ -156,9 +156,7 @@ void UwbInitWrapper::calculate_waypoints()
         Eigen::Vector2d wpxy = (j * dist.norm() / num_wps) * dist.normalized();
         wp.x = pos_uninitialized.at(i).x() + wpxy.x();
         wp.y = pos_uninitialized.at(i).y() + wpxy.y();
-
-        /// \todo TODO(scm): make the WP holdtime a parameter
-        wp.holdtime = 0.5;
+        wp.holdtime = params_.wp_holdtime;
 
         cur_waypoints_.waypoints.push_back(wp);
       }
@@ -170,7 +168,7 @@ void UwbInitWrapper::calculate_waypoints()
     wp.yaw = 0.0;
     wp.x = pos_uninitialized.at(pos_uninitialized.size() - 1).x();
     wp.y = pos_uninitialized.at(pos_uninitialized.size() - 1).y();
-    wp.holdtime = 0.5;
+    wp.holdtime = params_.wp_holdtime;
     cur_waypoints_.waypoints.push_back(wp);
   }
   else
