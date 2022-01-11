@@ -98,6 +98,7 @@ private:
   // waypoint publisher
   Eigen::Vector3d cur_p_IinG_;                             //!< current position of the vehicle in the global frame
   mission_sequencer::MissionWaypointArray cur_waypoints_;  //!< current/next waypoints for the mission_sequencer
+  Randomizer randomizer_{ 0, 10 };                          //!< struct used to get random numbers
 
   // timer variables
   ros::Timer init_check_timer_;  //!< timer used to check and perform initialization

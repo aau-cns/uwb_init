@@ -43,10 +43,10 @@ struct UwbInitOptions
   ///
   enum class InitVariables
   {
-    FULL_BIAS,               //!< use all variables, position, distance bias, and constant bias
-    NO_BIAS,                 //!< use no bias for initialization, i.e. position only
-    CONST_BIAS,              //!< only use constant bias and position in initialization
-    DIST_BIAS,               //!< only use constant bias and position in initialization
+    FULL_BIAS,   //!< use all variables, position, distance bias, and constant bias
+    NO_BIAS,     //!< use no bias for initialization, i.e. position only
+    CONST_BIAS,  //!< only use constant bias and position in initialization
+    DIST_BIAS,   //!< only use constant bias and position in initialization
   };
   // todo: (alf) change no_distance bias to dist_bias and const_bias, change all to full bias
 
@@ -73,8 +73,8 @@ struct UwbInitOptions
         return os << "NO_BIAS";
       case InitVariables::CONST_BIAS:
         return os << "CONST_BIAS";
-    case InitVariables::DIST_BIAS:
-      return os << "DIST_BIAS";
+      case InitVariables::DIST_BIAS:
+        return os << "DIST_BIAS";
     }
 
     return os;
@@ -177,11 +177,15 @@ struct UwbInitOptions
   /// height of waypoints for initialization purpose
   double wp_height{ 2.0 };
 
+  /// random offset added to waypoint generation (for both entries --> not a circle but rectangle addition)
+  double wp_rand_offset{ 0.0 };
+
   void print_waypoint()
   {
     INIT_PRINT_STREAM("Parameter Summary -- Initializer");
     INIT_PRINT_STREAM("\t- wp_generation_max_distance:  " << wp_generation_max_distance);
     INIT_PRINT_STREAM("\t- wp_height:                   " << wp_height);
+    INIT_PRINT_STREAM("\t- wp_rand_offset:              " << wp_rand_offset);
   }
 
 };  // class UwbInitOptions

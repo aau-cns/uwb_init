@@ -129,7 +129,9 @@ void UwbInitWrapper::calculate_waypoints()
   {
     UwbAnchor anchor_value = anchor.second.get_buffer().back().second;
     if (!anchor_value.initialized)
-      pos_uninitialized.push_back(anchor_value.p_AinG);
+      pos_uninitialized.push_back(anchor_value.p_AinG +
+                                  params_.wp_rand_offset / 5.0 *
+                                      Eigen::Vector3d(randomizer_.get_randi() - 5.0, randomizer_.get_randi() - 5.0, 0));
   }
 
   // generate trajectory through all poses
@@ -166,8 +168,8 @@ void UwbInitWrapper::calculate_waypoints()
     mission_sequencer::MissionWaypoint wp;
     wp.z = params_.wp_height;
     wp.yaw = 0.0;
-    wp.x = pos_uninitialized.at(pos_uninitialized.size()-1).x();
-    wp.y = pos_uninitialized.at(pos_uninitialized.size()-1).y() ;
+    wp.x = pos_uninitialized.at(pos_uninitialized.size() - 1).x();
+    wp.y = pos_uninitialized.at(pos_uninitialized.size() - 1).y();
     wp.holdtime = 0.5;
     cur_waypoints_.waypoints.push_back(wp);
   }
@@ -240,7 +242,7 @@ void UwbInitWrapper::cb_timerinit(const ros::TimerEvent&)
     // publish result
     uwb_init_cpp::UwbAnchorArrayStamped msg_anchors;
     /// \todo TODO(scm): make rostime now pub param
-//    ros::Time pub_time = ros::Time::now();
+    //    ros::Time pub_time = ros::Time::now();
     ros::Time pub_time = pub_stamp_;
     msg_anchors.header.stamp = pub_time;
     msg_anchors.header.frame_id = "global";
@@ -282,7 +284,8 @@ void UwbInitWrapper::cb_timerinit(const ros::TimerEvent&)
         // tell the autonomy that the next time it receives a mission complete it should land
         /// \todo TODO(scm): maybe make this string for the parameter a parameter?
         ros::param::set("/autonomy/hover_after_mission_completion", false);
-        bool test_val = true; ros::param::get("/autonomy/hover_after_mission_completion", test_val);
+        bool test_val = true;
+        ros::param::get("/autonomy/hover_after_mission_completion", test_val);
         INIT_DEBUG_STREAM("Set '/autonomy/hover_after_mission_completion' parameter to " << test_val);
       }
       else

@@ -24,6 +24,7 @@
 #include "types/buffers.hpp"
 #include "types/uwb_anchor.hpp"
 #include "types/uwb_data.hpp"
+#include "types/randomizer.hpp"
 
 namespace uav_init
 {

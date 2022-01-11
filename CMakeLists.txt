@@ -150,6 +150,7 @@ set(headers_types
     include/types/buffers.hpp
     include/types/buffers/timed_buffer.hpp
     include/types/buffers/data_buffer.hpp
+    include/types/randomizer.hpp
     include/types/uwb_anchor.hpp
     include/types/uwb_data.hpp
     include/types/types.hpp
