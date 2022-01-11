@@ -21,35 +21,47 @@
   <arg name="reg_lambda"                default="100" />
   <arg name="continous_init"            default="False" />
   <arg name="cov_sv_threshold"          default="1e-3" />
+  <arg name="regularize_z"              default="False" />
+
+  <arg name="init_method"               default="DOUBLE" />
+  <arg name="init_variables"            default="FULL_BIAS" />
 
   <!-- waypoint generation -->
   <arg name="wp_max_dist_in_m"          default="1.0" />
   <arg name="wp_height_in_m"            default="2.0" />
+  <arg name="wp_random_offset_in_m"     default="0.0" />
+  <arg name="wp_holdtime_in_s"          default="0.5" />
 
 
   <node name="uwb_init_cpp" pkg="uwb_init_cpp" type="uwb_init_cpp" args="" output="screen" respawn="false">
     <!-- topics remaps -->
-    <param name="topic_sub_pose"      type="str"  value="$(arg topic_pose_in)" />
-    <param name="topic_sub_uwb"       type="str"  value="$(arg topic_uwb_in)" />
-    <param name="topic_pub_anchors"   type="str"  value="$(arg topic_anchor_out)" />
-    <param name="topic_pub_waypoints" type="str"  value="$(arg topic_wp_out)" />
+    <param name="topic_sub_pose"          type="str"  value="$(arg topic_pose_in)" />
+    <param name="topic_sub_uwb"           type="str"  value="$(arg topic_uwb_in)" />
+    <param name="topic_pub_anchors"       type="str"  value="$(arg topic_anchor_out)" />
+    <param name="topic_pub_waypoints"     type="str"  value="$(arg topic_wp_out)" />
 
     <!-- node parameters -->
-    <param name="init_check_duration"   type="double" value="$(arg init_check_duration_in_s)" />
-    <param name="n_anchors"             type="int"    value="$(arg num_anchors)" />
-    <param name="buffer_size_s"         type="double" value="$(arg buffer_size_in_s)" />
-    <param name="max_cond_num"          type="double" value="$(arg max_cond_number)" />
-    <rosparam param="p_ItoU"            subst_value="True">$(arg calib_p_ItoU)</rosparam>
-    <param name="t_pose_diff_s"         type="double" value="$(arg t_pose_diff_s)" />
+    <param name="init_check_duration"     type="double" value="$(arg init_check_duration_in_s)" />
+    <param name="n_anchors"               type="int"    value="$(arg num_anchors)" />
+    <param name="buffer_size_s"           type="double" value="$(arg buffer_size_in_s)" />
+    <param name="max_cond_num"            type="double" value="$(arg max_cond_number)" />
+    <rosparam param="p_ItoU"              subst_value="True">$(arg calib_p_ItoU)</rosparam>
+    <param name="t_pose_diff_s"           type="double" value="$(arg t_pose_diff_s)" />
 
-    <param name="meas_baseline_m"       type="double" value="$(arg meas_baseline_m)" />
-    <param name="meas_baseline_idx"     type="int" value="$(arg meas_baseline_idx)" />
-    <param name="reg_lambda"            type="double" value="$(arg reg_lambda)" />
-    <param name="do_continous_init"     type="bool" value="$(arg continous_init)" />
-    <param name="cov_sv_threshold"      type="double" value="$(arg cov_sv_threshold)" />
+    <param name="meas_baseline_m"         type="double" value="$(arg meas_baseline_m)" />
+    <param name="meas_baseline_idx"       type="int"    value="$(arg meas_baseline_idx)" />
+    <param name="reg_lambda"              type="double" value="$(arg reg_lambda)" />
+    <param name="do_continous_init"       type="bool"   value="$(arg continous_init)" />
+    <param name="cov_sv_threshold"        type="double" value="$(arg cov_sv_threshold)" />
+    <param name="do_regularize_s"         type="bool"   value="$(arg regularize_z)" />
+
+    <param name="init_method"             type="str"    value="$(arg init_method)" />
+    <param name="init_variables"          type="str"    value="$(arg init_variables)" />
 
     <!-- waypoint generation -->
-    <param name="waypoint_max_dist_m"   type="double"   value="$(arg wp_max_dist_in_m)" />
-    <param name="waypoint_height_m"     type="double"   value="$(arg wp_height_in_m)" />
+    <param name="waypoint_max_dist_m"     type="double"   value="$(arg wp_max_dist_in_m)" />
+    <param name="waypoint_height_m"       type="double"   value="$(arg wp_height_in_m)" />
+    <param name="waypoint_rand_offset_m"  type="double"   value="$(arg wp_random_offset_in_m)" />
+    <param name="waypoint_holdtime_s"     type="double"   value="$(arg wp_holdtime_in_s)" />
   </node>
 </launch>
