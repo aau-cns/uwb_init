@@ -189,6 +189,9 @@ void UwbInitWrapper::cb_posestamped(const geometry_msgs::PoseStamped::ConstPtr& 
 
   // feed current pose to initializer
   uwb_initializer_.feed_pose(msg->header.stamp.toSec(), p_UinG);
+
+  // update publishing timestamp to use latest pose time
+  pub_stamp_ = msg->header.stamp;
 }  // void UwbInitWrapper::cb_posestamped(...)
 
 void UwbInitWrapper::cb_uwbstamped(const evb1000_driver::TagDistanceConstPtr& msg)
@@ -236,7 +239,9 @@ void UwbInitWrapper::cb_timerinit(const ros::TimerEvent&)
 
     // publish result
     uwb_init_cpp::UwbAnchorArrayStamped msg_anchors;
-    ros::Time pub_time = ros::Time::now();
+    /// \todo TODO(scm): make rostime now pub param
+//    ros::Time pub_time = ros::Time::now();
+    ros::Time pub_time = pub_stamp_;
     msg_anchors.header.stamp = pub_time;
     msg_anchors.header.frame_id = "global";
     msg_anchors.header.seq = pub_anchor_seq_++;
