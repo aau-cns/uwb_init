@@ -53,6 +53,7 @@ UwbInitOptions parse_ros_nodehandle(ros::NodeHandle& nh)
   nh.param<double>("reg_lambda", params.lamda_, params.lamda_);
   nh.param<double>("cov_sv_threshold", params.cov_sv_threshold_, params.cov_sv_threshold_);
   nh.param<double>("t_pose_diff_s", params.t_pose_diff, params.t_pose_diff);
+  nh.param<bool>("do_regularize_z", params.b_regularize_z, params.b_regularize_z);
 
   int n_anchors;
   nh.param<int>("n_anchors", n_anchors, params.n_anchors);
@@ -63,7 +64,33 @@ UwbInitOptions parse_ros_nodehandle(ros::NodeHandle& nh)
   params.meas_baseline_idx_ = static_cast<uint>(meas_baseline_idx);
 
   std::string init_method, init_variables;
+  nh.param<std::string>("init_method", init_method, "DOUBLE");
+  nh.param<std::string>("init_variables", init_variables, "FULL_BIAS");
+  INIT_DEBUG_STREAM("\t- input>>init_method:          " << init_method);
+  INIT_DEBUG_STREAM("\t- input>>init_variables:       " << init_variables);
 
+  if (init_method == "SINGLE")
+    params.init_method = UwbInitOptions::InitMethod::SINGLE;
+  else if (init_method == "DOUBLE")
+    params.init_method = UwbInitOptions::InitMethod::DOUBLE;
+  else
+  {
+    INIT_WARN_STREAM("\t===> input>>init_method '" << init_method << "' unknown. setting DOUBLE");
+    params.init_method = UwbInitOptions::InitMethod::DOUBLE;
+  }
+  if (init_variables == "FULL_BIAS")
+    params.init_variables = UwbInitOptions::InitVariables::FULL_BIAS;
+  else if (init_variables == "NO_BIAS")
+    params.init_variables = UwbInitOptions::InitVariables::NO_BIAS;
+  else if (init_variables == "CONST_BIAS")
+    params.init_variables = UwbInitOptions::InitVariables::CONST_BIAS;
+  else if (init_variables == "DIST_BIAS")
+    params.init_variables = UwbInitOptions::InitVariables::DIST_BIAS;
+  else
+  {
+    INIT_WARN_STREAM("\t===> input>>init_variables '" << init_variables << "' unknown. setting FULL_BIAS");
+    params.init_variables = UwbInitOptions::InitVariables::FULL_BIAS;
+  }
 
   params.print_initializer();
 
@@ -71,6 +98,8 @@ UwbInitOptions parse_ros_nodehandle(ros::NodeHandle& nh)
 
   nh.param<double>("waypoint_max_dist_m", params.wp_generation_max_distance, params.wp_generation_max_distance);
   nh.param<double>("waypoint_height_m", params.wp_height, params.wp_height);
+  nh.param<double>("waypoint_rand_offset_m", params.wp_rand_offset, params.wp_rand_offset);
+  nh.param<double>("waypoint_holdtime_s", params.wp_holdtime, params.wp_holdtime);
 
   params.print_waypoint();
 

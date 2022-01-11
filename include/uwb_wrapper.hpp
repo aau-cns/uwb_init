@@ -83,8 +83,9 @@ private:
   ros::Publisher pub_wplist;  //!< ROS publisher for wp list
 
   // publishing variables
-  uint pub_anchor_seq_{ 0 };    //!< sequence number of published anchor msgs
-  uint pub_waypoint_seq_{ 0 };  //!< sequence number of published waypoint list msgs
+  uint pub_anchor_seq_{ 0 };                 //!< sequence number of published anchor msgs
+  uint pub_waypoint_seq_{ 0 };               //!< sequence number of published waypoint list msgs
+  ros::Time pub_stamp_{ ros::Time::now() };  //!< timestamp used when publishing
 
   // dynamic reconfigure
   ReconfServer_t reconf_server_;  //!< dynamic reconfigure server for ROS dynamic reconfigure
@@ -97,6 +98,7 @@ private:
   // waypoint publisher
   Eigen::Vector3d cur_p_IinG_;                             //!< current position of the vehicle in the global frame
   mission_sequencer::MissionWaypointArray cur_waypoints_;  //!< current/next waypoints for the mission_sequencer
+  Randomizer randomizer_{ 0, 10 };                          //!< struct used to get random numbers
 
   // timer variables
   ros::Timer init_check_timer_;  //!< timer used to check and perform initialization

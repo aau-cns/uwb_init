@@ -43,10 +43,10 @@ struct UwbInitOptions
   ///
   enum class InitVariables
   {
-    FULL_BIAS,               //!< use all variables, position, distance bias, and constant bias
-    NO_BIAS,                 //!< use no bias for initialization, i.e. position only
-    CONST_BIAS,              //!< only use constant bias and position in initialization
-    DIST_BIAS,               //!< only use constant bias and position in initialization
+    FULL_BIAS,   //!< use all variables, position, distance bias, and constant bias
+    NO_BIAS,     //!< use no bias for initialization, i.e. position only
+    CONST_BIAS,  //!< only use constant bias and position in initialization
+    DIST_BIAS,   //!< only use constant bias and position in initialization
   };
   // todo: (alf) change no_distance bias to dist_bias and const_bias, change all to full bias
 
@@ -73,8 +73,8 @@ struct UwbInitOptions
         return os << "NO_BIAS";
       case InitVariables::CONST_BIAS:
         return os << "CONST_BIAS";
-    case InitVariables::DIST_BIAS:
-      return os << "DIST_BIAS";
+      case InitVariables::DIST_BIAS:
+        return os << "DIST_BIAS";
     }
 
     return os;
@@ -149,6 +149,9 @@ struct UwbInitOptions
   /// determines the variables to initialize in initialization routine \see uav_init::UwbInitOptions::InitVariables
   InitVariables init_variables{ InitVariables::FULL_BIAS };
 
+  /// determines
+  bool b_regularize_z{ true };
+
   void print_initializer()
   {
     INIT_PRINT_STREAM("Parameter Summary -- Initializer");
@@ -158,6 +161,7 @@ struct UwbInitOptions
     INIT_PRINT_STREAM("\t- t_pose_diff:                 " << t_pose_diff);
     INIT_PRINT_STREAM("\t- f_do_continous_init_:        " << f_do_continous_init_);
     INIT_PRINT_STREAM("\t- lamda_:                      " << lamda_);
+    INIT_PRINT_STREAM("\t- b_regularize_z:              " << b_regularize_z);
     INIT_PRINT_STREAM("\t- cov_sv_threshold:            " << cov_sv_threshold_);
     INIT_PRINT_STREAM("\t- init_method:                 " << init_method);
     INIT_PRINT_STREAM("\t- init_variables:              " << init_variables);
@@ -177,11 +181,19 @@ struct UwbInitOptions
   /// height of waypoints for initialization purpose
   double wp_height{ 2.0 };
 
+  /// random offset added to waypoint generation (for both entries --> not a circle but rectangle addition)
+  double wp_rand_offset{ 0.0 };
+
+  /// holdtime at waypoints
+  double wp_holdtime{ 0.5 };
+
   void print_waypoint()
   {
     INIT_PRINT_STREAM("Parameter Summary -- Initializer");
     INIT_PRINT_STREAM("\t- wp_generation_max_distance:  " << wp_generation_max_distance);
     INIT_PRINT_STREAM("\t- wp_height:                   " << wp_height);
+    INIT_PRINT_STREAM("\t- wp_rand_offset:              " << wp_rand_offset);
+    INIT_PRINT_STREAM("\t- wp_holdtime:                 " << wp_holdtime);
   }
 
 };  // class UwbInitOptions

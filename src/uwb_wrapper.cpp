@@ -116,7 +116,7 @@ void UwbInitWrapper::calculate_waypoints()
     wp.y = 0.0;
     wp.z = params_.wp_height;
     wp.yaw = 0.0;
-    wp.holdtime = 0.5;
+    wp.holdtime = params_.wp_holdtime;
 
     cur_waypoints_.waypoints.push_back(wp);
     return;
@@ -129,7 +129,9 @@ void UwbInitWrapper::calculate_waypoints()
   {
     UwbAnchor anchor_value = anchor.second.get_buffer().back().second;
     if (!anchor_value.initialized)
-      pos_uninitialized.push_back(anchor_value.p_AinG);
+      pos_uninitialized.push_back(anchor_value.p_AinG +
+                                  params_.wp_rand_offset / 5.0 *
+                                      Eigen::Vector3d(randomizer_.get_randi() - 5.0, randomizer_.get_randi() - 5.0, 0));
   }
 
   // generate trajectory through all poses
@@ -154,9 +156,7 @@ void UwbInitWrapper::calculate_waypoints()
         Eigen::Vector2d wpxy = (j * dist.norm() / num_wps) * dist.normalized();
         wp.x = pos_uninitialized.at(i).x() + wpxy.x();
         wp.y = pos_uninitialized.at(i).y() + wpxy.y();
-
-        /// \todo TODO(scm): make the WP holdtime a parameter
-        wp.holdtime = 0.5;
+        wp.holdtime = params_.wp_holdtime;
 
         cur_waypoints_.waypoints.push_back(wp);
       }
@@ -166,9 +166,9 @@ void UwbInitWrapper::calculate_waypoints()
     mission_sequencer::MissionWaypoint wp;
     wp.z = params_.wp_height;
     wp.yaw = 0.0;
-    wp.x = pos_uninitialized.at(pos_uninitialized.size()-1).x();
-    wp.y = pos_uninitialized.at(pos_uninitialized.size()-1).y() ;
-    wp.holdtime = 0.5;
+    wp.x = pos_uninitialized.at(pos_uninitialized.size() - 1).x();
+    wp.y = pos_uninitialized.at(pos_uninitialized.size() - 1).y();
+    wp.holdtime = params_.wp_holdtime;
     cur_waypoints_.waypoints.push_back(wp);
   }
   else
@@ -189,6 +189,9 @@ void UwbInitWrapper::cb_posestamped(const geometry_msgs::PoseStamped::ConstPtr& 
 
   // feed current pose to initializer
   uwb_initializer_.feed_pose(msg->header.stamp.toSec(), p_UinG);
+
+  // update publishing timestamp to use latest pose time
+  pub_stamp_ = msg->header.stamp;
 }  // void UwbInitWrapper::cb_posestamped(...)
 
 void UwbInitWrapper::cb_uwbstamped(const evb1000_driver::TagDistanceConstPtr& msg)
@@ -236,7 +239,9 @@ void UwbInitWrapper::cb_timerinit(const ros::TimerEvent&)
 
     // publish result
     uwb_init_cpp::UwbAnchorArrayStamped msg_anchors;
-    ros::Time pub_time = ros::Time::now();
+    /// \todo TODO(scm): make rostime now pub param
+    //    ros::Time pub_time = ros::Time::now();
+    ros::Time pub_time = pub_stamp_;
     msg_anchors.header.stamp = pub_time;
     msg_anchors.header.frame_id = "global";
     msg_anchors.header.seq = pub_anchor_seq_++;
@@ -277,7 +282,8 @@ void UwbInitWrapper::cb_timerinit(const ros::TimerEvent&)
         // tell the autonomy that the next time it receives a mission complete it should land
         /// \todo TODO(scm): maybe make this string for the parameter a parameter?
         ros::param::set("/autonomy/hover_after_mission_completion", false);
-        bool test_val = true; ros::param::get("/autonomy/hover_after_mission_completion", test_val);
+        bool test_val = true;
+        ros::param::get("/autonomy/hover_after_mission_completion", test_val);
         INIT_DEBUG_STREAM("Set '/autonomy/hover_after_mission_completion' parameter to " << test_val);
       }
       else
