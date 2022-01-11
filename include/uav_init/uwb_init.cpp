@@ -300,11 +300,15 @@ bool UwbInitializer::initialize_double_all(UwbAnchorBuffer& anchor_buffer, const
     {
       if (params_.lamda_ > 0.0)
       {
+        // INFO(scm): This uses z regularization TODO(scm): make this a parameter
         // Data augmentation for regularization
         coeffs_vec.push_back(std::sqrt(params_.lamda_));  // b^2
         // add 23 zero lines to fill 'diag matrix
-        for (uint cnt_line = 0; cnt_line < 23; ++cnt_line)
-          coeffs_vec.push_back(0.0);                             // b^2*p_AinG
+        for (uint cnt_line = 0; cnt_line < 17; ++cnt_line)
+          coeffs_vec.push_back(0.0);                      // b^2*p_AinG except z
+        coeffs_vec.push_back(std::sqrt(params_.lamda_));  // b^2*p_AinG_z
+        for (uint cnt_line = 18; cnt_line < 23; ++cnt_line)
+          coeffs_vec.push_back(0.0);                      // b^2*p_AinG except z
         coeffs_vec.push_back(std::sqrt(params_.lamda_));  // k
 
         // add values to meas_vec
@@ -372,7 +376,6 @@ bool UwbInitializer::initialize_double_all(UwbAnchorBuffer& anchor_buffer, const
           INIT_DEBUG_STREAM("\n\tCov:        " << Cov);
           //          INIT_INFO_STREAM("\n\tCov:        " << Cov);
 
-
           // compare norm of singular values vector of covarnace matrix with threshold
           Eigen::JacobiSVD<Eigen::MatrixXd> svd_cov(Cov, Eigen::ComputeThinU | Eigen::ComputeThinV);
 
@@ -387,11 +390,11 @@ bool UwbInitializer::initialize_double_all(UwbAnchorBuffer& anchor_buffer, const
           }
           else
           {
-            INIT_WARN_STREAM("Anchor " << anchor_id << ": issue with cov svd threshold (" << svd_cov.singularValues().norm()
-                                       << ")");
+            INIT_WARN_STREAM("Anchor " << anchor_id << ": issue with cov svd threshold ("
+                                       << svd_cov.singularValues().norm() << ")");
             new_uwb_anchor.initialized = false;
             successfully_initialized = false;
-          } // if (svd_cov.singularValues().norm() <= params_.cov_sv_threshold_)
+          }  // if (svd_cov.singularValues().norm() <= params_.cov_sv_threshold_)
         }
         else  // if (LSSolution[0] > 0)
         {
