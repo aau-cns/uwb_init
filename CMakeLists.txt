@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 3.0.2)
 project(uwb_init_cpp)
 
 ## Determine CMAKE options
-set(CMAKE_BUILD_TYPE "Debug")
+set(CMAKE_BUILD_TYPE "Release")
+set(UWB_FULL_VERBOSE "ON")
 
 ## Try to compile with newer versions of C++
 include(CheckCXXCompilerFlag)

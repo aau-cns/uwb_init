@@ -20,6 +20,7 @@
   <arg name="meas_baseline_idx"         default="50" />
   <arg name="reg_lambda"                default="100" />
   <arg name="continous_init"            default="False" />
+  <arg name="cov_sv_threshold"          default="1e-3" />
 
   <!-- waypoint generation -->
   <arg name="wp_max_dist_in_m"          default="1.0" />
@@ -45,6 +46,7 @@
     <param name="meas_baseline_idx"     type="int" value="$(arg meas_baseline_idx)" />
     <param name="reg_lambda"            type="double" value="$(arg reg_lambda)" />
     <param name="do_continous_init"     type="bool" value="$(arg continous_init)" />
+    <param name="cov_sv_threshold"      type="double" value="$(arg cov_sv_threshold)" />
 
     <!-- waypoint generation -->
     <param name="waypoint_max_dist_m"   type="double"   value="$(arg wp_max_dist_in_m)" />
