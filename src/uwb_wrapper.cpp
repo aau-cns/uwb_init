@@ -50,7 +50,9 @@ UwbInitWrapper::UwbInitWrapper(ros::NodeHandle& nh, UwbInitOptions& params)
       nh.createTimer(ros::Duration(params_.init_check_duration_s), &uav_init::UwbInitWrapper::cb_timerinit, this);
 
   // setup waypoint list
-  cur_waypoints_.action = mission_sequencer::MissionWaypointArray::CLEAR;
+//  cur_waypoints_.action = mission_sequencer::MissionWaypointArray::CLEAR;
+  cur_waypoints_.action = mission_sequencer::MissionWaypointArray::INSERT;
+  cur_waypoints_.idx = 0;
   cur_waypoints_.waypoints.clear();
 
 }  // UwbInitWrapper::UwbInitWrapper(...)
