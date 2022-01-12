@@ -100,6 +100,9 @@ struct UwbInitOptions
   /// name of the waypoint list topic used to publish the next waypoints
   std::string topic_pub_wplist{ "waypoints" };
 
+  /// name of the get start pose service used to derive start pose for navigation
+  std::string service_ms_get_start_pose{ "/mission_sequencer/getStartPose" };
+
   void print_wrapper()
   {
     INIT_PRINT_STREAM("Parameter Summary -- Wrapper");

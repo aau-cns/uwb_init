@@ -35,6 +35,9 @@ UwbInitWrapper::UwbInitWrapper(ros::NodeHandle& nh, UwbInitOptions& params)
   pub_anchor = nh.advertise<uwb_init_cpp::UwbAnchorArrayStamped>(params_.topic_pub_anchors, 1);
   pub_wplist = nh.advertise<mission_sequencer::MissionWaypointArray>(params_.topic_pub_wplist, 1);
 
+  // service clients
+  srv_sequencer_get_start_pose_ = nh_.serviceClient<mission_sequencer::GetStartPose>(params_.service_ms_get_start_pose);
+
   // set up dynamic parameters
   ReconfServer_t::CallbackType f = boost::bind(&UwbInitWrapper::cb_dynamicconfig, this, _1, _2);
   reconf_server_.setCallback(f);
@@ -50,7 +53,7 @@ UwbInitWrapper::UwbInitWrapper(ros::NodeHandle& nh, UwbInitOptions& params)
       nh.createTimer(ros::Duration(params_.init_check_duration_s), &uav_init::UwbInitWrapper::cb_timerinit, this);
 
   // setup waypoint list
-//  cur_waypoints_.action = mission_sequencer::MissionWaypointArray::CLEAR;
+  //  cur_waypoints_.action = mission_sequencer::MissionWaypointArray::CLEAR;
   cur_waypoints_.action = mission_sequencer::MissionWaypointArray::INSERT;
   cur_waypoints_.idx = 0;
   cur_waypoints_.waypoints.clear();
@@ -108,7 +111,33 @@ void UwbInitWrapper::calculate_waypoints()
     INIT_DEBUG_STREAM("No anchors to calculate waypoints yet.");
     return;
   }
-  else if (f_all_known_anchors_initialized_)
+
+  // try to get navigation height
+  double zero_height = 0.0, zero_yaw = 0.0;
+  if (srv_sequencer_get_start_pose_.exists())
+  {
+    // checked if service exists, if not we will not add anything here
+    mission_sequencer::GetStartPose srv;
+
+    // call service
+    if (srv_sequencer_get_start_pose_.call(srv))
+    {
+      zero_height = srv.response.start_wp.z;
+      zero_yaw = srv.response.start_wp.yaw;
+      INIT_DEBUG_STREAM("Got getStartPose service response from mission sequencer with height "
+                        << zero_height << " and yaw " << zero_yaw << ".");
+    }
+    else
+    {
+      INIT_WARN_STREAM("Did not retreive valid Pose from '" << params_.service_ms_get_start_pose
+                                                            << ". Setting local takoff height to " << zero_height
+                                                            << ".");
+    }
+  }
+  else
+    INIT_WARN_STREAM("Could not connect to getStartPose service");
+
+  if (f_all_known_anchors_initialized_)
   {
     INIT_DEBUG_STREAM("All anchors are already initialized, no need to calculate WPs!");
     INIT_WARN_STREAM("All anchors are initialized, going to origin!");
@@ -116,8 +145,8 @@ void UwbInitWrapper::calculate_waypoints()
     mission_sequencer::MissionWaypoint wp;
     wp.x = 0.0;
     wp.y = 0.0;
-    wp.z = params_.wp_height;
-    wp.yaw = 0.0;
+    wp.z = params_.wp_height + zero_height;
+    wp.yaw = zero_yaw;
     wp.holdtime = params_.wp_holdtime;
 
     cur_waypoints_.waypoints.push_back(wp);
@@ -152,8 +181,8 @@ void UwbInitWrapper::calculate_waypoints()
       for (uint j = 0; j < (uint)num_wps; ++j)
       {
         mission_sequencer::MissionWaypoint wp;
-        wp.z = params_.wp_height;
-        wp.yaw = 0.0;
+        wp.z = params_.wp_height + zero_height;
+        wp.yaw = zero_yaw;
 
         Eigen::Vector2d wpxy = (j * dist.norm() / num_wps) * dist.normalized();
         wp.x = pos_uninitialized.at(i).x() + wpxy.x();
@@ -166,8 +195,8 @@ void UwbInitWrapper::calculate_waypoints()
 
     // push final value of unintialized wp
     mission_sequencer::MissionWaypoint wp;
-    wp.z = params_.wp_height;
-    wp.yaw = 0.0;
+    wp.z = params_.wp_height + zero_height;
+    wp.yaw = zero_yaw;
     wp.x = pos_uninitialized.at(pos_uninitialized.size() - 1).x();
     wp.y = pos_uninitialized.at(pos_uninitialized.size() - 1).y();
     wp.holdtime = params_.wp_holdtime;

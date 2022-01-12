@@ -2,7 +2,10 @@ cmake_minimum_required(VERSION 3.0.2)
 project(uwb_init_cpp)
 
 ## Determine CMAKE options
-set(CMAKE_BUILD_TYPE "Release")
+#set(CMAKE_BUILD_TYPE "Release")
+if (NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "Release")
+endif()
 set(UWB_FULL_VERBOSE "ON")
 
 ## Try to compile with newer versions of C++
@@ -42,6 +45,7 @@ endif ()
 
 
 ## Display compiler flags
+message("Build Type: " ${CMAKE_BUILD_TYPE})
 message(STATUS "CMAKE_CXX_FLAGES: ${CMAKE_CXX_FLAGS}")
 
 ## Find catkin macros and libraries

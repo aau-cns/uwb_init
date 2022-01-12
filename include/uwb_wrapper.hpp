@@ -22,6 +22,7 @@
 #include <dynamic_reconfigure/server.h>
 #include <evb1000_driver/TagDistance.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <mission_sequencer/GetStartPose.h>
 #include <mission_sequencer/MissionWaypointArray.h>
 #include <ros/ros.h>
 
@@ -82,6 +83,9 @@ private:
   ros::Publisher pub_anchor;  //!< ROS publisher for anchor position and biases
   ros::Publisher pub_wplist;  //!< ROS publisher for wp list
 
+  // Service Clients
+  ros::ServiceClient srv_sequencer_get_start_pose_;  //!< ROS service client to get the start pose for navigation
+
   // publishing variables
   uint pub_anchor_seq_{ 0 };                 //!< sequence number of published anchor msgs
   uint pub_waypoint_seq_{ 0 };               //!< sequence number of published waypoint list msgs
@@ -98,7 +102,7 @@ private:
   // waypoint publisher
   Eigen::Vector3d cur_p_IinG_;                             //!< current position of the vehicle in the global frame
   mission_sequencer::MissionWaypointArray cur_waypoints_;  //!< current/next waypoints for the mission_sequencer
-  Randomizer randomizer_{ 0, 10 };                          //!< struct used to get random numbers
+  Randomizer randomizer_{ 0, 10 };                         //!< struct used to get random numbers
 
   // timer variables
   ros::Timer init_check_timer_;  //!< timer used to check and perform initialization
