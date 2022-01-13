@@ -158,14 +158,17 @@ void UwbInitWrapper::calculate_waypoints()
     INIT_DEBUG_STREAM("All anchors are already initialized, no need to calculate WPs!");
     INIT_WARN_STREAM("All anchors are initialized, going to origin!");
 
+    // add origin waypoint
     mission_sequencer::MissionWaypoint wp;
     wp.x = 0.0;
     wp.y = 0.0;
     wp.z = params_.wp_height + zero_height;
     wp.yaw = zero_yaw;
     wp.holdtime = params_.wp_holdtime;
-
     cur_waypoints_.waypoints.push_back(wp);
+
+    // set CLEAR command
+    cur_waypoints_.action = mission_sequencer::MissionWaypointArray::CLEAR;
     return;
   }
 
