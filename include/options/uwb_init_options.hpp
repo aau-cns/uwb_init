@@ -121,7 +121,7 @@ struct UwbInitOptions
   uint n_anchors{ 0 };
 
   /// allow continous initialization although solution for anchor was already found
-  bool f_do_continous_init_{ false };
+  bool b_do_continous_init{ false };
 
   /// buffer size of all buffers in s
   double buffer_size_s{ 10.0 };
@@ -138,10 +138,10 @@ struct UwbInitOptions
 
   /// Value of lamda used for regularization, if lambda = 0 no regularization is applied
   /// (suggested value 1000)
-  double lamda_{ 1000 };
+  double lamda{ 1000 };
 
   /// Threshold on norm of LS solution covariance's singular values (used to accept the LS solution)
-  double cov_sv_threshold_{ 1e-3 };
+  double cov_sv_threshold{ 1e-3 };
 
   /// time diference of poses to UWB measurements in s
   double t_pose_diff{ 0.0 };
@@ -152,8 +152,13 @@ struct UwbInitOptions
   /// determines the variables to initialize in initialization routine \see uav_init::UwbInitOptions::InitVariables
   InitVariables init_variables{ InitVariables::FULL_BIAS };
 
-  /// determines
+  /// determines if the z component of the anchors should be added to the regularization
+  /// turn this off if the anchors are not placed on the ground (of the estimation frame)
   bool b_regularize_z{ true };
+
+  /// flag to determine if the initializer should exit once it has initialized all known anchors
+  /// turn this off if new anchors are added on the fly without prior knowledge on number of anchors
+  bool b_exit_when_initialized{ false };
 
   void print_initializer()
   {
@@ -162,10 +167,11 @@ struct UwbInitOptions
     INIT_PRINT_STREAM("\t- buffer_size_s:               " << buffer_size_s);
     INIT_PRINT_STREAM("\t- max_cond_num:                " << max_cond_num);
     INIT_PRINT_STREAM("\t- t_pose_diff:                 " << t_pose_diff);
-    INIT_PRINT_STREAM("\t- f_do_continous_init_:        " << f_do_continous_init_);
-    INIT_PRINT_STREAM("\t- lamda_:                      " << lamda_);
+    INIT_PRINT_STREAM("\t- b_do_continous_init:         " << b_do_continous_init);
+    INIT_PRINT_STREAM("\t- b_exit_when_initialized:     " << b_exit_when_initialized);
+    INIT_PRINT_STREAM("\t- lamda:                       " << lamda);
     INIT_PRINT_STREAM("\t- b_regularize_z:              " << b_regularize_z);
-    INIT_PRINT_STREAM("\t- cov_sv_threshold:            " << cov_sv_threshold_);
+    INIT_PRINT_STREAM("\t- cov_sv_threshold:            " << cov_sv_threshold);
     INIT_PRINT_STREAM("\t- init_method:                 " << init_method);
     INIT_PRINT_STREAM("\t- init_variables:              " << init_variables);
 

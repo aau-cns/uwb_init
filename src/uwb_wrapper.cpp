@@ -325,6 +325,16 @@ void UwbInitWrapper::cb_timerinit(const ros::TimerEvent&)
       }
     }
   }  // if (!f_all_known_anchors_initialized_)
+  else
+  {
+    // exit if flag is set
+    if (params_.b_exit_when_initialized)
+    {
+      INIT_INFO_STREAM("concluded initialization!");
+      INIT_ERROR_STREAM("exiting successfully . . .");
+      std::exit(EXIT_SUCCESS);
+    }
+  }
 }  // void UwbInitWrapper::cb_timerinit(...)
 
 }  // namespace uav_init

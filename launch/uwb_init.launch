@@ -5,6 +5,7 @@
   <arg name="topic_uwb_in"              default="/mus/uwb" />
   <arg name="topic_anchor_out"          default="~anchors" />
   <arg name="topic_wp_out"              default="~waypoints" />
+  <arg name="srv_get_start_pose"        default="getStartPose" />
 
   <!-- calibration -->
   <arg name="calib_p_ItoU"              default="[0.0, 0.0, 0.0]" />
@@ -22,6 +23,7 @@
   <arg name="continous_init"            default="False" />
   <arg name="cov_sv_threshold"          default="1e-3" />
   <arg name="regularize_z"              default="False" />
+  <arg name="exit_when_done"            default="False" />
 
   <arg name="init_method"               default="DOUBLE" />
   <arg name="init_variables"            default="FULL_BIAS" />
@@ -35,10 +37,11 @@
 
   <node name="uwb_init_cpp" pkg="uwb_init_cpp" type="uwb_init_cpp" args="" output="screen" respawn="false">
     <!-- topics remaps -->
-    <param name="topic_sub_pose"          type="str"  value="$(arg topic_pose_in)" />
-    <param name="topic_sub_uwb"           type="str"  value="$(arg topic_uwb_in)" />
-    <param name="topic_pub_anchors"       type="str"  value="$(arg topic_anchor_out)" />
-    <param name="topic_pub_waypoints"     type="str"  value="$(arg topic_wp_out)" />
+    <param name="topic_sub_pose"            type="str"  value="$(arg topic_pose_in)" />
+    <param name="topic_sub_uwb"             type="str"  value="$(arg topic_uwb_in)" />
+    <param name="topic_pub_anchors"         type="str"  value="$(arg topic_anchor_out)" />
+    <param name="topic_pub_waypoints"       type="str"  value="$(arg topic_wp_out)" />
+    <param name="service_ms_get_start_pose" type="str"  value="$(arg srv_get_start_pose)" />
 
     <!-- node parameters -->
     <param name="init_check_duration"     type="double" value="$(arg init_check_duration_in_s)" />
@@ -53,7 +56,8 @@
     <param name="reg_lambda"              type="double" value="$(arg reg_lambda)" />
     <param name="do_continous_init"       type="bool"   value="$(arg continous_init)" />
     <param name="cov_sv_threshold"        type="double" value="$(arg cov_sv_threshold)" />
-    <param name="do_regularize_s"         type="bool"   value="$(arg regularize_z)" />
+    <param name="do_regularize_z"         type="bool"   value="$(arg regularize_z)" />
+    <param name="exit_when_initialized"   type="bool"   value="$(arg exit_when_done)" />
 
     <param name="init_method"             type="str"    value="$(arg init_method)" />
     <param name="init_variables"          type="str"    value="$(arg init_variables)" />
