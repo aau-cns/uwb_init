@@ -24,6 +24,16 @@
 
 namespace uav_init
 {
+void UwbInitializer::reset()
+{
+  // reset buffers
+  uwb_data_buffer_.reset();
+  buffer_p_UinG_.reset();
+
+  // reset positions
+  cur_p_UinG_ = Eigen::Vector3d::Zero();
+}
+
 void UwbInitializer::feed_uwb(const std::vector<UwbData> uwb_measurements)
 {
   // add measurements to data buffer

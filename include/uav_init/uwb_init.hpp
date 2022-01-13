@@ -107,6 +107,11 @@ public:
   }
 
   ///
+  /// \brief reset resets the initializer and all its buffers
+  ///
+  void reset();
+
+  ///
   /// \brief feed_uwb stores incoming UWB (valid) readings
   /// \param uwb_measurements UwbData vector of measurements
   ///

@@ -103,6 +103,9 @@ struct UwbInitOptions
   /// name of the get start pose service used to derive start pose for navigation
   std::string service_ms_get_start_pose{ "/mission_sequencer/getStartPose" };
 
+  /// name of the get start pose service used to derive start pose for navigation
+  std::string service_start_init{ "/uwb_init/start" };
+
   void print_wrapper()
   {
     INIT_PRINT_STREAM("Parameter Summary -- Wrapper");
@@ -111,6 +114,8 @@ struct UwbInitOptions
     INIT_PRINT_STREAM("\t- topic_sub_uwb:               " << topic_sub_uwb);
     INIT_PRINT_STREAM("\t- topic_pub_anchors:           " << topic_pub_anchors);
     INIT_PRINT_STREAM("\t- topic_pub_wplist:            " << topic_pub_wplist);
+    INIT_PRINT_STREAM("\t- service_ms_get_start_pose:   " << service_ms_get_start_pose);
+    INIT_PRINT_STREAM("\t- service_start_init:          " << service_start_init);
     INIT_PRINT_STREAM("\t- p_ItoU:                      " << p_ItoU.transpose());
   }
 
@@ -160,6 +165,9 @@ struct UwbInitOptions
   /// turn this off if new anchors are added on the fly without prior knowledge on number of anchors
   bool b_exit_when_initialized{ false };
 
+  /// flag to determine if initialization should automatically be started
+  bool b_auto_init{ true };
+
   void print_initializer()
   {
     INIT_PRINT_STREAM("Parameter Summary -- Initializer");
@@ -168,6 +176,7 @@ struct UwbInitOptions
     INIT_PRINT_STREAM("\t- max_cond_num:                " << max_cond_num);
     INIT_PRINT_STREAM("\t- t_pose_diff:                 " << t_pose_diff);
     INIT_PRINT_STREAM("\t- b_do_continous_init:         " << b_do_continous_init);
+    INIT_PRINT_STREAM("\t- b_auto_init:                 " << b_auto_init);
     INIT_PRINT_STREAM("\t- b_exit_when_initialized:     " << b_exit_when_initialized);
     INIT_PRINT_STREAM("\t- lamda:                       " << lamda);
     INIT_PRINT_STREAM("\t- b_regularize_z:              " << b_regularize_z);

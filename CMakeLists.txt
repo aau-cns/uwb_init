@@ -51,7 +51,7 @@ message(STATUS "CMAKE_CXX_FLAGES: ${CMAKE_CXX_FLAGS}")
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp dynamic_reconfigure message_generation std_msgs nav_msgs sensor_msgs geometry_msgs cv_bridge evb1000_driver mission_sequencer)
+find_package(catkin REQUIRED COMPONENTS roscpp dynamic_reconfigure message_generation std_msgs std_srvs nav_msgs sensor_msgs geometry_msgs cv_bridge evb1000_driver mission_sequencer)
 
 ## System dependencies are found with CMake's conventions
 find_package(Boost REQUIRED)
