@@ -38,6 +38,9 @@
 
 namespace uav_init
 {
+///
+/// \brief The UwbInitWrapper class is a ROS wrapper for the UwbInitializer
+///
 class UwbInitWrapper
 {
 public:

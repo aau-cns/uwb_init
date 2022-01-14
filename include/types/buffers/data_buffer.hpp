@@ -29,7 +29,7 @@ namespace uav_init
 {
 template <typename bufferType>
 ///
-/// \brief The DataBuffer class
+/// \brief The DataBuffer class is an object used for storing data in and ID/TimedBuffer data method.
 ///
 class DataBuffer
 {

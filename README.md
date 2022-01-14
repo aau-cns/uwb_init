@@ -173,13 +173,19 @@ The provided launchfile and node allows the setting of the following parameters.
 .
 |-- cfg
 |   `-- UwbInit.cfg
+|-- CHANGELOG.md
 |-- CMakeLists.txt
 |-- CMakeLists.txt.user
+|-- CONTRIBUTORS.md
 |-- docs
-|   |-- api-docs
+|   |-- CMakeLists.txt
+|   |-- pkg-docs
 |   |   |-- CMakeLists.txt
 |   |   `-- doxyfile.in
-|   `-- CMakeLists.txt
+|   `-- resources
+|       |-- citations.bib
+|       |-- cns_UNI_and_CNS_LOGO_uniblue.png
+|       `-- cns_UNI_and_CNS_LOGO_uniblue.svg
 |-- include
 |   |-- options
 |   |   `-- uwb_init_options.hpp
@@ -207,9 +213,6 @@ The provided launchfile and node allows the setting of the following parameters.
 |   `-- UwbAnchor.msg
 |-- package.xml
 |-- README.md
-|-- resources
-|   |-- cns_UNI_and_CNS_LOGO_uniblue.png
-|   `-- cns_UNI_and_CNS_LOGO_uniblue.svg
 `-- src
     |-- main.cpp
     `-- uwb_wrapper.cpp
@@ -221,3 +224,8 @@ The provided launchfile and node allows the setting of the following parameters.
 ## Reporting Issues
 
 In case of issues, feature requests, or other questions please open a [New Issue](https://gitlab.aau.at/aau-cns/ros_pkgs/uwb_init_cpp/issues/new?issue) or contact the authors via [email](mailto:martin.scheiber@ieee.org?cc=alessandro.fornasier@ieee.org&subject=[GitLab]%20uwb_init_cpp:%20).
+
+## Authors
+
+* Martin Scheiber ([email](mailto:martin.scheiber@ieee.org?subject=[UWB%20Init]))
+* Alessandro Fornasier ([email](mailto:alessandro.fornasier@ieee.org?subject=[UWB%20Init]))
