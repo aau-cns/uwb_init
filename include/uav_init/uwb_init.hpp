@@ -134,17 +134,10 @@ public:
   /// \return true if all anchors were successfully initialized
   ///
   /// This function performs a least-squares initialization using the per anchor measurments given the measurement model
-  /// from Blueml et al. It will try to initialize each anchor (validated per ID) individually. If an anchor was already
+  /// from \cite Blueml2021. It will try to initialize each anchor (validated per ID) individually. If an anchor was already
   /// successfully initialized in the past it is skipped.
   /// It will also return 'true' if all anchors, for which measurements are present were successfully initialized at
   /// some point.
-  ///
-  /// \cite Bluemel J., Fornasier A., and Weiss S., "Bias Compensated UWB Anchor Initialization using
-  /// Information-Theoretic Supported Triangulation Points", 2021 IEEE International Conference on Robotics and
-  /// Automation (ICRA21), IEEE, 2021.
-  ///
-  /// \todo allow initialization of anchors, if condition number is better, also after they have been already
-  /// initialized
   ///
   bool try_to_initialize_anchors(UwbAnchorBuffer& anchor_buffer);
 

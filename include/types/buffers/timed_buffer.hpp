@@ -29,7 +29,7 @@ namespace uav_init
 {
 template <typename bufferType>
 ///
-/// \brief The TimedBuffer class
+/// \brief The TimedBuffer class is an object to store data with a timestamp in a buffer.
 ///
 class TimedBuffer
 {

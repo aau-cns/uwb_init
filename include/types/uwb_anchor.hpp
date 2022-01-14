@@ -23,6 +23,9 @@
 
 namespace uav_init
 {
+///
+/// \brief The UwbAnchor struct is an object describing an UWB anchor.
+///
 struct UwbAnchor
 {
   uint id{ 0 };                                        //!< id of anchor

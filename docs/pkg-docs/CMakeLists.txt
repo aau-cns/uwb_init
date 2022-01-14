@@ -14,7 +14,7 @@ endif()
 # Target name
 #
 
-set(target api-docs)
+set(target pkg-docs)
 message(STATUS "Doc ${target}")
 
 
@@ -41,7 +41,7 @@ if(NOT path)
     set(path ${CMAKE_CURRENT_SOURCE_DIR})
 endif()
 
-message(${path})
+# message(${path})
 # message(${CMAKE_PROJECT_SOURCE_DIR})
 
 # Configure doxyfile (if it is a real doxyfile already, it should simply copy the file)

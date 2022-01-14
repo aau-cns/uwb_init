@@ -17,7 +17,7 @@
 namespace uav_init
 {
 ///
-/// \brief The Randomizer class
+/// \brief The Randomizer class is an object that provides a uniformly distributed random number within an interval.
 ///
 /// \see https://stackoverflow.com/a/13445752
 /// \see https://stackoverflow.com/a/13446015

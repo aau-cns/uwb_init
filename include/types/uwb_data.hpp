@@ -23,6 +23,9 @@
 
 namespace uav_init
 {
+///
+/// \brief The UwbData struct is an object used for received UWB measurements.
+///
 struct UwbData
 {
   double timestamp{ 0.0 };  //!< timestamp of measurement
@@ -50,7 +53,7 @@ struct UwbData
   UwbData(double _timestamp, bool _valid, double _distance, u_int16_t _id)
     : timestamp(_timestamp), valid(_valid), distance(_distance), id(_id){};
 
-  UwbData() {};
+  UwbData(){};
 };  // struct UwbData
 
 }  // namespace uav_init

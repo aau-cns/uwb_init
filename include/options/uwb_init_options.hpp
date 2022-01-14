@@ -27,6 +27,9 @@
 
 namespace uav_init
 {
+///
+/// \brief The UwbInitOptions struct is an object containing all 'static' parameters used.
+///
 struct UwbInitOptions
 {
   ///

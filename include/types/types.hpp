@@ -22,12 +22,15 @@
 #include <Eigen/Eigen>
 
 #include "types/buffers.hpp"
+#include "types/randomizer.hpp"
 #include "types/uwb_anchor.hpp"
 #include "types/uwb_data.hpp"
-#include "types/randomizer.hpp"
 
 namespace uav_init
 {
+///
+/// \brief The PositionBufferTimed class TimedBuffer buffer handler for Eigen::Vector3d.
+///
 class PositionBufferTimed : public TimedBuffer<Eigen::Vector3d>
 {
 public:
@@ -39,6 +42,9 @@ public:
   }
 };  // class PositionBufferTimed
 
+///
+/// \brief The UwbDataBuffer class DataBuffer buffer handler for UwbData.
+///
 class UwbDataBuffer : public DataBuffer<UwbData>
 {
 public:
@@ -51,7 +57,7 @@ public:
 };  // class UwbDataBuffer
 
 ///
-/// \brief The UwbAnchorBuffer class is a DataBuffer buffer handler for UwbAnchors.
+/// \brief The UwbAnchorBuffer class is a DataBuffer buffer handler for UwbAnchor.
 ///
 class UwbAnchorBuffer : public DataBuffer<UwbAnchor>
 {
