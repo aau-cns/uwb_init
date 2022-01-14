@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
+  <!-- debugging -->
+  <arg name="debug"                     default="False" />
+  <arg name="launchprefix"              default="gdbserver localhost:10000" if="$(arg debug)"/>
+  <arg name="launchprefix"              default="" unless="$(arg debug)"/>
+
   <!-- topic parameters -->
   <arg name="topic_pose_in"             default="/mus/ground_truth_pose_imu" />
   <arg name="topic_uwb_in"              default="/mus/uwb" />
@@ -22,7 +27,7 @@
   <arg name="meas_baseline_idx"         default="50" />
   <arg name="reg_lambda"                default="100" />
   <arg name="continous_init"            default="False" />
-  <arg name="cov_sv_threshold"          default="1e-3" />
+  <arg name="cov_sv_threshold"          default="3e-3" />
   <arg name="regularize_z"              default="False" />
   <arg name="exit_when_done"            default="False" />
   <arg name="auto_init"                 default="True" />
