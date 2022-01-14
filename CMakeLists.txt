@@ -1,13 +1,26 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(uwb_init_cpp)
 
+## Determine CMAKE options
+#set(CMAKE_BUILD_TYPE "Release")
+if (NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "Release")
+endif()
+set(UWB_FULL_VERBOSE "ON")
+
 ## Try to compile with newer versions of C++
 include(CheckCXXCompilerFlag)
+CHECK_CXX_COMPILER_FLAG("-std=c++20" COMPILER_SUPPORTS_CXX20)
 CHECK_CXX_COMPILER_FLAG("-std=c++17" COMPILER_SUPPORTS_CXX17)
+CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
 CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
 CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
-if(COMPILER_SUPPORTS_CXX17)
+if(COMPILER_SUPPORTS_CXX20)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
+elseif(COMPILER_SUPPORTS_CXX17)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+elseif(COMPILER_SUPPORTS_CXX14)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 elseif(COMPILER_SUPPORTS_CXX11)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 elseif(COMPILER_SUPPORTS_CXX0X)
@@ -20,25 +33,33 @@ endif()
 add_definitions(-Wall -Werror)
 
 # Enable compile optimizations
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -fsee -fomit-frame-pointer -fno-signed-zeros -fno-math-errno -funroll-loops")
+
+## Set CMAKE compile flags
+if (CMAKE_BUILD_TYPE STREQUAL "Release")
+#  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -fomit-frame-pointer -fno-signed-zeros")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -fsee -fomit-frame-pointer -fno-signed-zeros -fno-math-errno -funroll-loops")
+elseif (CMAKE_BUILD_TYPE STREQUAL "Debug")
+#  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3 -Wall -Wuninitialized -Wmaybe-uninitialized -fno-omit-frame-pointer")
+endif ()
+
 
 ## Display compiler flags
+message("Build Type: " ${CMAKE_BUILD_TYPE})
 message(STATUS "CMAKE_CXX_FLAGES: ${CMAKE_CXX_FLAGS}")
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp dynamic_reconfigure message_generation std_msgs nav_msgs sensor_msgs geometry_msgs cv_bridge)
+find_package(catkin REQUIRED COMPONENTS roscpp dynamic_reconfigure message_generation std_msgs std_srvs nav_msgs sensor_msgs geometry_msgs cv_bridge evb1000_driver mission_sequencer)
 
 ## System dependencies are found with CMake's conventions
 find_package(Boost REQUIRED)
 find_package(Eigen3 REQUIRED)
-find_package(OpenCV 4 REQUIRED)
 
 ## Display packages version
 message(STATUS "EIGEN VERSION: " ${EIGEN3_VERSION})
 message(STATUS "BOOST VERSION: " ${Boost_VERSION})
-message(STATUS "OPENCV VERSION: " ${OpenCV_VERSION})
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -50,10 +71,11 @@ message(STATUS "OPENCV VERSION: " ${OpenCV_VERSION})
 ################################################
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#  DIRECTORY msg
-#  FILES Message1.msg Message2.msg
-# )
+add_message_files(DIRECTORY msg
+    FILES
+    UwbAnchor.msg
+    UwbAnchorArrayStamped.msg
+)
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -68,18 +90,18 @@ message(STATUS "OPENCV VERSION: " ${OpenCV_VERSION})
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES std_msgs nav_msgs sensor_msgs geometry_msgs
-# )
+generate_messages(
+  DEPENDENCIES std_msgs geometry_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
 ################################################
 
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
-# generate_dynamic_reconfigure_options(
-#  cfg/DynReconf1.cfg cfg/DynReconf2.cfg
-# )
+generate_dynamic_reconfigure_options(
+ cfg/UwbInit.cfg
+)
 
 ###################################
 ## catkin specific configuration ##
@@ -92,7 +114,7 @@ message(STATUS "OPENCV VERSION: " ${OpenCV_VERSION})
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-  CATKIN_DEPENDS std_msgs nav_msgs sensor_msgs geometry_msgs #message_runtime
+  CATKIN_DEPENDS message_runtime std_msgs nav_msgs sensor_msgs geometry_msgs evb1000_driver mission_sequencer
 #  LIBRARIES custom_libraries
 #  DEPENDS system_lib
 )
@@ -128,24 +150,59 @@ list(
 ## either from message generation or dynamic reconfigure
 # add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
+set(headers_types
+    include/types/buffers.hpp
+    include/types/buffers/timed_buffer.hpp
+    include/types/buffers/data_buffer.hpp
+    include/types/randomizer.hpp
+    include/types/uwb_anchor.hpp
+    include/types/uwb_data.hpp
+    include/types/types.hpp
+)
+
+set(headers_utils
+    include/utils/parse_ros.hpp
+    include/utils/logging.hpp
+)
+
+set(headers
+    ${headers_types}
+    ${headers_utils}
+    include/options/uwb_init_options.hpp
+    include/uwb_wrapper.hpp
+    include/uav_init/uwb_init.hpp
+    include/uav_init/uwb_init.cpp
+)
+
+set(sources
+    src/main.cpp
+    src/uwb_wrapper.cpp
+)
+
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(${PROJECT_NAME}_uwb_init_cpp src/uwb_init_cpp.cpp src/uwb_init_cpp_node.cpp)
+add_executable(${PROJECT_NAME} ${headers} ${sources})
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
 ## e.g. "rosrun someones_pkg node" instead of "rosrun someones_pkg someones_pkg_node"
-set_target_properties(${PROJECT_NAME}_uwb_init_cpp PROPERTIES OUTPUT_NAME uwb_init_cpp PREFIX "")
+set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME uwb_init_cpp PREFIX "")
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-add_dependencies(${PROJECT_NAME}_uwb_init_cpp ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(${PROJECT_NAME}_uwb_init_cpp ${thirdparty_libraries})
-# target_link_libraries(${PROJECT_NAME}_camera_downsample custom_libraries)
+target_link_libraries(${PROJECT_NAME} ${thirdparty_libraries})
+
+if(DEFINED UWB_FULL_VERBOSE)
+    message("full verbose output is activated")
+    set_property(TARGET ${PROJECT_NAME} PROPERTY COMPILE_DEFINITIONS FULL_VERBOSE)
+else()
+    message("full verbose output is deactivated")
+endif()
 
 #############
 ## Install ##
@@ -201,3 +258,26 @@ target_link_libraries(${PROJECT_NAME}_uwb_init_cpp ${thirdparty_libraries})
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+
+###################
+## Documentation ##
+###################
+
+
+# Meta information about the project
+set(META_PROJECT_NAME        "uwb_init_cpp")
+set(META_PROJECT_DESCRIPTION "UWB Intitialization ROS Wrapper")
+set(META_AUTHOR_ORGANIZATION "University Klagenfurt: CNS")
+set(META_AUTHOR_DOMAIN       "https://gitlab.aau.at/aau-cns/ros_pkgs/uwb_init_cpp")
+set(META_AUTHOR_MAINTAINER   "martin.scheiber@ieee.org")
+set(META_VERSION_MAJOR       "1")
+set(META_VERSION_MINOR       "0")
+set(META_VERSION_PATCH       "0")
+set(META_VERSION_REVISION    "${GIT_REV}")
+set(META_VERSION             "${META_VERSION_MAJOR}.${META_VERSION_MINOR}.${META_VERSION_PATCH}")
+set(META_NAME_VERSION        "${META_PROJECT_NAME} v${META_VERSION} (${META_VERSION_REVISION})")
+set(META_CMAKE_INIT_SHA      "${GIT_REV}")
+
+
+option(OPTION_BUILD_DOCS      "Build documentation."                                   ON)
+add_subdirectory(docs)
