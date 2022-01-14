@@ -25,18 +25,25 @@
 namespace uav_init
 {
 UwbInitWrapper::UwbInitWrapper(ros::NodeHandle& nh, UwbInitOptions& params)
-  : nh_(nh), params_(params), uwb_initializer_(params_)
+  : nh_(nh), params_(params), uwb_initializer_(params_), f_in_initialization_phase_(params_.b_auto_init)
 {
   // subscribers
-  sub_posestamped = nh.subscribe(params_.topic_sub_pose, 1, &UwbInitWrapper::cb_posestamped, this);
-  sub_uwbstamped = nh.subscribe(params_.topic_sub_uwb, 1, &UwbInitWrapper::cb_uwbstamped, this);
+  sub_posestamped = nh.subscribe(params_.topic_sub_pose, 1, &UwbInitWrapper::cbPoseStamped, this);
+  sub_uwbstamped = nh.subscribe(params_.topic_sub_uwb, 1, &UwbInitWrapper::cbUwbStamped, this);
 
   // publishers
   pub_anchor = nh.advertise<uwb_init_cpp::UwbAnchorArrayStamped>(params_.topic_pub_anchors, 1);
   pub_wplist = nh.advertise<mission_sequencer::MissionWaypointArray>(params_.topic_pub_wplist, 1);
 
+  // service clients
+  srvc_sequencer_get_start_pose_ =
+      nh_.serviceClient<mission_sequencer::GetStartPose>(params_.service_ms_get_start_pose);
+
+  // service servers
+  srvs_start_init_ = nh_.advertiseService(params_.service_start_init, &UwbInitWrapper::cbSrvInit, this);
+
   // set up dynamic parameters
-  ReconfServer_t::CallbackType f = boost::bind(&UwbInitWrapper::cb_dynamicconfig, this, _1, _2);
+  ReconfServer_t::CallbackType f = boost::bind(&UwbInitWrapper::cbDynamicConfig, this, _1, _2);
   reconf_server_.setCallback(f);
 
   // print topic information
@@ -47,13 +54,27 @@ UwbInitWrapper::UwbInitWrapper(ros::NodeHandle& nh, UwbInitOptions& params)
 
   // setup timer
   init_check_timer_ =
-      nh.createTimer(ros::Duration(params_.init_check_duration_s), &uav_init::UwbInitWrapper::cb_timerinit, this);
+      nh.createTimer(ros::Duration(params_.init_check_duration_s), &uav_init::UwbInitWrapper::cbTimerInit, this);
 
   // setup waypoint list
-  cur_waypoints_.action = mission_sequencer::MissionWaypointArray::CLEAR;
+  //  cur_waypoints_.action = mission_sequencer::MissionWaypointArray::CLEAR;
+  cur_waypoints_.action = mission_sequencer::MissionWaypointArray::INSERT;
+  cur_waypoints_.idx = 0;
   cur_waypoints_.waypoints.clear();
 
 }  // UwbInitWrapper::UwbInitWrapper(...)
+
+void UwbInitWrapper::resetWrapper()
+{
+  // set init flag to false
+  f_in_initialization_phase_ = false;
+
+  // reset buffers
+  anchor_buffer_.reset();
+
+  // reset initializer
+  uwb_initializer_.reset();
+}
 
 void UwbInitWrapper::perform_initialization()
 {
@@ -106,19 +127,48 @@ void UwbInitWrapper::calculate_waypoints()
     INIT_DEBUG_STREAM("No anchors to calculate waypoints yet.");
     return;
   }
-  else if (f_all_known_anchors_initialized_)
+
+  // try to get navigation height
+  double zero_height = 0.0, zero_yaw = 0.0;
+  if (srvc_sequencer_get_start_pose_.exists())
+  {
+    // checked if service exists, if not we will not add anything here
+    mission_sequencer::GetStartPose srv;
+
+    // call service
+    if (srvc_sequencer_get_start_pose_.call(srv))
+    {
+      zero_height = srv.response.start_wp.z;
+      zero_yaw = srv.response.start_wp.yaw;
+      INIT_DEBUG_STREAM("Got getStartPose service response from mission sequencer with height "
+                        << zero_height << " and yaw " << zero_yaw << ".");
+    }
+    else
+    {
+      INIT_WARN_STREAM("Did not retreive valid Pose from '" << params_.service_ms_get_start_pose
+                                                            << ". Setting local takoff height to " << zero_height
+                                                            << ".");
+    }
+  }
+  else
+    INIT_WARN_STREAM("Could not connect to getStartPose service");
+
+  if (f_all_known_anchors_initialized_)
   {
     INIT_DEBUG_STREAM("All anchors are already initialized, no need to calculate WPs!");
     INIT_WARN_STREAM("All anchors are initialized, going to origin!");
 
+    // add origin waypoint
     mission_sequencer::MissionWaypoint wp;
     wp.x = 0.0;
     wp.y = 0.0;
-    wp.z = params_.wp_height;
-    wp.yaw = 0.0;
+    wp.z = params_.wp_height + zero_height;
+    wp.yaw = zero_yaw;
     wp.holdtime = params_.wp_holdtime;
-
     cur_waypoints_.waypoints.push_back(wp);
+
+    // set CLEAR command
+    cur_waypoints_.action = mission_sequencer::MissionWaypointArray::CLEAR;
     return;
   }
 
@@ -150,8 +200,8 @@ void UwbInitWrapper::calculate_waypoints()
       for (uint j = 0; j < (uint)num_wps; ++j)
       {
         mission_sequencer::MissionWaypoint wp;
-        wp.z = params_.wp_height;
-        wp.yaw = 0.0;
+        wp.z = params_.wp_height + zero_height;
+        wp.yaw = zero_yaw;
 
         Eigen::Vector2d wpxy = (j * dist.norm() / num_wps) * dist.normalized();
         wp.x = pos_uninitialized.at(i).x() + wpxy.x();
@@ -164,8 +214,8 @@ void UwbInitWrapper::calculate_waypoints()
 
     // push final value of unintialized wp
     mission_sequencer::MissionWaypoint wp;
-    wp.z = params_.wp_height;
-    wp.yaw = 0.0;
+    wp.z = params_.wp_height + zero_height;
+    wp.yaw = zero_yaw;
     wp.x = pos_uninitialized.at(pos_uninitialized.size() - 1).x();
     wp.y = pos_uninitialized.at(pos_uninitialized.size() - 1).y();
     wp.holdtime = params_.wp_holdtime;
@@ -177,10 +227,14 @@ void UwbInitWrapper::calculate_waypoints()
     return;
   }
 
-}  // namespace uav_init
+}  // void UwbInitWrapper::calculate_waypoints()
 
-void UwbInitWrapper::cb_posestamped(const geometry_msgs::PoseStamped::ConstPtr& msg)
+void UwbInitWrapper::cbPoseStamped(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
+  // check if initialization is currently allowed
+  if (!f_in_initialization_phase_)
+    return;
+
   // calculate position of UWB module in G frame
   cur_p_IinG_ = Eigen::Vector3d(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z);
   Eigen::Quaterniond q_IinG(msg->pose.orientation.w, msg->pose.orientation.x, msg->pose.orientation.y,
@@ -194,8 +248,12 @@ void UwbInitWrapper::cb_posestamped(const geometry_msgs::PoseStamped::ConstPtr& 
   pub_stamp_ = msg->header.stamp;
 }  // void UwbInitWrapper::cb_posestamped(...)
 
-void UwbInitWrapper::cb_uwbstamped(const evb1000_driver::TagDistanceConstPtr& msg)
+void UwbInitWrapper::cbUwbStamped(const evb1000_driver::TagDistanceConstPtr& msg)
 {
+  // check if initialization is currently allowed
+  if (!f_in_initialization_phase_)
+    return;
+
   // Convert measurement to correct format
   double time = msg->header.stamp.toSec();
   std::vector<UwbData> uwb_ranges;  // anchor_id (0,1,2,3,...), validity_flag, distance measurement
@@ -214,7 +272,7 @@ void UwbInitWrapper::cb_uwbstamped(const evb1000_driver::TagDistanceConstPtr& ms
   uwb_initializer_.feed_uwb(uwb_ranges);
 }  // void UwbInitWrapper::cb_uwbstamped(...)
 
-void UwbInitWrapper::cb_dynamicconfig(UwbInitConfig_t& config, uint32_t /*level*/)
+void UwbInitWrapper::cbDynamicConfig(UwbInitConfig_t& config, uint32_t /*level*/)
 {
   if (config.calculate)
   {
@@ -225,9 +283,16 @@ void UwbInitWrapper::cb_dynamicconfig(UwbInitConfig_t& config, uint32_t /*level*
   }
 }  // void UwbInitWrapper::cb_dynamicconfig(...)
 
-void UwbInitWrapper::cb_timerinit(const ros::TimerEvent&)
+void UwbInitWrapper::cbTimerInit(const ros::TimerEvent&)
 {
   INIT_DEBUG_STREAM("UwbInitWrapper: timer event for initalization triggered");
+  // check if initialization is currently allowed
+  if (!f_in_initialization_phase_)
+  {
+    INIT_DEBUG_STREAM("initialization currently disallowed");
+    return;
+  }
+
   // only perform initialization if not all known anchors have been initialized
   if (!f_all_known_anchors_initialized_)
   {
@@ -294,6 +359,28 @@ void UwbInitWrapper::cb_timerinit(const ros::TimerEvent&)
       }
     }
   }  // if (!f_all_known_anchors_initialized_)
+  else
+  {
+    // exit if flag is set
+    if (params_.b_exit_when_initialized)
+    {
+      INIT_INFO_STREAM("concluded initialization!");
+      INIT_ERROR_STREAM("exiting successfully . . .");
+      std::exit(EXIT_SUCCESS);
+    }
+  }
 }  // void UwbInitWrapper::cb_timerinit(...)
+
+bool UwbInitWrapper::cbSrvInit(std_srvs::Empty::Request& /*req*/, std_srvs::Empty::Response& /*res*/)
+{
+  INIT_DEBUG_STREAM("startService called: starting/reseting initialization");
+
+  // reset buffers (in case of new initialization call
+  resetWrapper();
+
+  // allow initialization
+  f_in_initialization_phase_ = true;
+  return f_in_initialization_phase_;
+}
 
 }  // namespace uav_init

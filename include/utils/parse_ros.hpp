@@ -36,6 +36,8 @@ UwbInitOptions parse_ros_nodehandle(ros::NodeHandle& nh)
   nh.param<std::string>("topic_sub_uwb", params.topic_sub_uwb, params.topic_sub_uwb);
   nh.param<std::string>("topic_pub_anchors", params.topic_pub_anchors, params.topic_pub_anchors);
   nh.param<std::string>("topic_pub_waypoints", params.topic_pub_wplist, params.topic_pub_wplist);
+  nh.param<std::string>("service_ms_get_start_pose", params.service_ms_get_start_pose, params.service_ms_get_start_pose);
+  nh.param<std::string>("service_start_init", params.service_start_init, params.service_start_init);
 
   std::vector<double> p_ItoU;
   std::vector<double> p_ItoU_default = { 0.0, 0.0, 0.0 };
@@ -48,12 +50,14 @@ UwbInitOptions parse_ros_nodehandle(ros::NodeHandle& nh)
 
   nh.param<double>("buffer_size_s", params.buffer_size_s, params.buffer_size_s);
   nh.param<double>("max_cond_num", params.max_cond_num, params.max_cond_num);
-  nh.param<bool>("do_continous_init", params.f_do_continous_init_, params.f_do_continous_init_);
+  nh.param<bool>("do_continous_init", params.b_do_continous_init, params.b_do_continous_init);
   nh.param<double>("meas_baseline_m", params.meas_baseline_m_, params.meas_baseline_m_);
-  nh.param<double>("reg_lambda", params.lamda_, params.lamda_);
-  nh.param<double>("cov_sv_threshold", params.cov_sv_threshold_, params.cov_sv_threshold_);
+  nh.param<double>("reg_lambda", params.lamda, params.lamda);
+  nh.param<double>("cov_sv_threshold", params.cov_sv_threshold, params.cov_sv_threshold);
   nh.param<double>("t_pose_diff_s", params.t_pose_diff, params.t_pose_diff);
   nh.param<bool>("do_regularize_z", params.b_regularize_z, params.b_regularize_z);
+  nh.param<bool>("exit_when_initialized", params.b_exit_when_initialized, params.b_exit_when_initialized);
+  nh.param<bool>("auto_initialization", params.b_auto_init, params.b_auto_init);
 
   int n_anchors;
   nh.param<int>("n_anchors", n_anchors, params.n_anchors);

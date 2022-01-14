@@ -2,7 +2,10 @@ cmake_minimum_required(VERSION 3.0.2)
 project(uwb_init_cpp)
 
 ## Determine CMAKE options
-set(CMAKE_BUILD_TYPE "Release")
+#set(CMAKE_BUILD_TYPE "Release")
+if (NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "Release")
+endif()
 set(UWB_FULL_VERBOSE "ON")
 
 ## Try to compile with newer versions of C++
@@ -42,12 +45,13 @@ endif ()
 
 
 ## Display compiler flags
+message("Build Type: " ${CMAKE_BUILD_TYPE})
 message(STATUS "CMAKE_CXX_FLAGES: ${CMAKE_CXX_FLAGS}")
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp dynamic_reconfigure message_generation std_msgs nav_msgs sensor_msgs geometry_msgs cv_bridge evb1000_driver mission_sequencer)
+find_package(catkin REQUIRED COMPONENTS roscpp dynamic_reconfigure message_generation std_msgs std_srvs nav_msgs sensor_msgs geometry_msgs cv_bridge evb1000_driver mission_sequencer)
 
 ## System dependencies are found with CMake's conventions
 find_package(Boost REQUIRED)

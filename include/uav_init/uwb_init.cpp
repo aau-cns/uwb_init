@@ -24,6 +24,16 @@
 
 namespace uav_init
 {
+void UwbInitializer::reset()
+{
+  // reset buffers
+  uwb_data_buffer_.reset();
+  buffer_p_UinG_.reset();
+
+  // reset positions
+  cur_p_UinG_ = Eigen::Vector3d::Zero();
+}
+
 void UwbInitializer::feed_uwb(const std::vector<UwbData> uwb_measurements)
 {
   // add measurements to data buffer
@@ -75,7 +85,7 @@ bool UwbInitializer::try_to_initialize_anchors(UwbAnchorBuffer& anchor_buffer)
     INIT_DEBUG_STREAM("A" << anchor_id << ": calculating solution ...");
 
     // check if anchor is already initialized
-    if (!params_.f_do_continous_init_ && anchor_buffer.contains_id(anchor_id) &&
+    if (!params_.b_do_continous_init && anchor_buffer.contains_id(anchor_id) &&
         anchor_buffer.is_initialized(anchor_id))
     {
       // anchor already initialized
@@ -298,17 +308,17 @@ bool UwbInitializer::initialize_double_all(UwbAnchorBuffer& anchor_buffer, const
     // Check to have more than 5 rows in the coefficient matrix
     if (coeffs_vec.size() > 5 * 5)
     {
-      if (params_.lamda_ > 0.0)
+      if (params_.lamda > 0.0)
       {
         // Data augmentation for regularization
-        coeffs_vec.push_back(std::sqrt(params_.lamda_));  // b^2
+        coeffs_vec.push_back(std::sqrt(params_.lamda));  // b^2
         // add 23 zero lines to fill 'diag matrix
         if (params_.b_regularize_z)
         {
           // with z regularization
           for (uint cnt_line = 0; cnt_line < 17; ++cnt_line)
             coeffs_vec.push_back(0.0);                      // b^2*p_AinG except z
-          coeffs_vec.push_back(std::sqrt(params_.lamda_));  // b^2*p_AinG_z
+          coeffs_vec.push_back(std::sqrt(params_.lamda));  // b^2*p_AinG_z
           for (uint cnt_line = 18; cnt_line < 23; ++cnt_line)
             coeffs_vec.push_back(0.0);  // b^2*p_AinG except z
         }
@@ -317,10 +327,10 @@ bool UwbInitializer::initialize_double_all(UwbAnchorBuffer& anchor_buffer, const
           for (uint cnt_line = 0; cnt_line < 23; ++cnt_line)
             coeffs_vec.push_back(0.0);  // b^2*p_AinG
         }
-        coeffs_vec.push_back(std::sqrt(params_.lamda_));  // k
+        coeffs_vec.push_back(std::sqrt(params_.lamda));  // k
 
         // add values to meas_vec
-        meas_vec.push_back(std::sqrt(params_.lamda_));
+        meas_vec.push_back(std::sqrt(params_.lamda));
         meas_vec.push_back(0.0);
         meas_vec.push_back(0.0);
         meas_vec.push_back(0.0);
@@ -386,7 +396,7 @@ bool UwbInitializer::initialize_double_all(UwbAnchorBuffer& anchor_buffer, const
           // debug
           INIT_INFO_STREAM("\tsingular values:   " << svd_cov.singularValues().transpose());
           INIT_INFO_STREAM("\tsingular v norm:   " << svd_cov.singularValues().norm());
-          if (svd_cov.singularValues().norm() <= params_.cov_sv_threshold_)
+          if (svd_cov.singularValues().norm() <= params_.cov_sv_threshold)
           {
             // set initialization to true
             new_uwb_anchor.initialized = true;

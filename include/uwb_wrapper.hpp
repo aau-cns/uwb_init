@@ -22,8 +22,10 @@
 #include <dynamic_reconfigure/server.h>
 #include <evb1000_driver/TagDistance.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <mission_sequencer/GetStartPose.h>
 #include <mission_sequencer/MissionWaypointArray.h>
 #include <ros/ros.h>
+#include <std_srvs/Empty.h>
 
 #include <Eigen/Eigen>
 
@@ -51,12 +53,14 @@ public:
   ///
   UwbInitWrapper(ros::NodeHandle& nh, UwbInitOptions& params);
 
-  void cb_timerinit(const ros::TimerEvent&);
+  void cbTimerInit(const ros::TimerEvent&);
 
 private:
-  void cb_posestamped(const geometry_msgs::PoseStamped::ConstPtr& msg);
-  void cb_uwbstamped(const evb1000_driver::TagDistanceConstPtr& msg);
-  void cb_dynamicconfig(UwbInitConfig_t& config, uint32_t level);
+  void cbPoseStamped(const geometry_msgs::PoseStamped::ConstPtr& msg);
+  void cbUwbStamped(const evb1000_driver::TagDistanceConstPtr& msg);
+  void cbDynamicConfig(UwbInitConfig_t& config, uint32_t level);
+
+  bool cbSrvInit(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
 
   ///
   /// \brief perform_initialization tries to initialize all anchors, for which messages were received
@@ -67,6 +71,11 @@ private:
   /// \brief calculate_waypoints calculates a list of waypoints to fly to such that the anchors are initialized better
   ///
   void calculate_waypoints();
+
+  ///
+  /// \brief resetWrapper method to reset all buffers of the wrapper and init
+  ///
+  void resetWrapper();
 
   // Ros node handler
   ros::NodeHandle nh_;  //!< ROS nodehandle given through constructor
@@ -82,6 +91,12 @@ private:
   ros::Publisher pub_anchor;  //!< ROS publisher for anchor position and biases
   ros::Publisher pub_wplist;  //!< ROS publisher for wp list
 
+  // Service Clients
+  ros::ServiceClient srvc_sequencer_get_start_pose_;  //!< ROS service client to get the start pose for navigation
+
+  // Service Servers
+  ros::ServiceServer srvs_start_init_;  //!< ROS service server to start the initialization phase
+
   // publishing variables
   uint pub_anchor_seq_{ 0 };                 //!< sequence number of published anchor msgs
   uint pub_waypoint_seq_{ 0 };               //!< sequence number of published waypoint list msgs
@@ -91,14 +106,15 @@ private:
   ReconfServer_t reconf_server_;  //!< dynamic reconfigure server for ROS dynamic reconfigure
 
   // Initializer
-  UwbInitializer uwb_initializer_;        //!< initializer class for UWB modules
-  UwbAnchorBuffer anchor_buffer_;         //!< buffer containing the anchor calculated positions
-  bool f_all_known_anchors_initialized_;  //!< flag determining if all currently known anchors are initialized
+  UwbInitializer uwb_initializer_;                 //!< initializer class for UWB modules
+  UwbAnchorBuffer anchor_buffer_;                  //!< buffer containing the anchor calculated positions
+  bool f_all_known_anchors_initialized_{ false };  //!< flag determining if all currently known anchors are initialized
+  bool f_in_initialization_phase_{ false };  //!< flag determinig if initialization is currently allowed to be performed
 
   // waypoint publisher
   Eigen::Vector3d cur_p_IinG_;                             //!< current position of the vehicle in the global frame
   mission_sequencer::MissionWaypointArray cur_waypoints_;  //!< current/next waypoints for the mission_sequencer
-  Randomizer randomizer_{ 0, 10 };                          //!< struct used to get random numbers
+  Randomizer randomizer_{ 0, 10 };                         //!< struct used to get random numbers
 
   // timer variables
   ros::Timer init_check_timer_;  //!< timer used to check and perform initialization
