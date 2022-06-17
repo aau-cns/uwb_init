@@ -1,4 +1,5 @@
-// Copyright (C) 2021 Martin Scheiber, Control of Networked Systems, University of Klagenfurt, Austria.
+// Copyright (C) 2022 Martin Scheiber, Alessandro Fornasier,
+// Control of Networked Systems, University of Klagenfurt, Austria.
 //
 // All rights reserved.
 //
@@ -15,13 +16,13 @@
 // DEALINGS IN THE SOFTWARE.
 //
 // You can contact the author at <martin.scheiber@aau.at>
+// <alessandro.fornasier@aau.at>
 
 #ifndef UAV_INIT_TYPES_DATA_BUFFER_HPP_
 #define UAV_INIT_TYPES_DATA_BUFFER_HPP_
 
 #include <ros/ros.h>
-
-#include <map>
+#include <unordered_map>
 
 #include "types/buffers/timed_buffer.hpp"
 
@@ -34,8 +35,8 @@ template <typename bufferType>
 class DataBuffer
 {
 protected:
-  std::map<uint, TimedBuffer<bufferType>> buffer_;  //!< main buffer variable storing the values with timestamps
-                                                    //!< encoded
+  std::unordered_map<uint, TimedBuffer<bufferType>> buffer_;  //!< main buffer variable storing the values with timestamps
+                                                              //!< encoded
 
   double buffer_size_s_{ 0.0 };  //!< buffer size in s. If this is <= 0.0 the buffer is assumed to be infinite in size
   bufferType zero_value_;        //!< zero value to return if no entry can be found
@@ -114,7 +115,7 @@ public:
     if (!buffer_.contains(data_id))
     {
 #else
-    typename std::map<uint, TimedBuffer<bufferType>>::iterator it = buffer_.find(data_id);
+    typename std::unordered_map<uint, TimedBuffer<bufferType>>::iterator it = buffer_.find(data_id);
     if (it == buffer_.end())
     {
 #endif
@@ -157,7 +158,7 @@ public:
     return buffer_.front().second;
   }
 
-  const std::map<uint, TimedBuffer<bufferType>>& get_buffer() const
+  const std::unordered_map<uint, TimedBuffer<bufferType>>& get_buffer() const
   {
     return buffer_;
   }
@@ -188,7 +189,7 @@ public:
     if (buffer_.contains(data_id))
     {
 #else
-    typename std::map<uint, TimedBuffer<bufferType>>::const_iterator it = buffer_.find(data_id);
+    typename std::unordered_map<uint, TimedBuffer<bufferType>>::const_iterator it = buffer_.find(data_id);
     if (it != buffer_.end())
     {
 #endif

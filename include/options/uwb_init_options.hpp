@@ -109,24 +109,24 @@ struct UwbInitOptions
   /// name of the get start pose service used to derive start pose for navigation
   std::string service_start_init{ "/uwb_init/start" };
 
+  /// Flag to allow publsihing of initialized anchors only if all anchors have been initialized
+  bool publish_only_when_all_initialized{false};
+
   void print_wrapper()
   {
     INIT_PRINT_STREAM("Parameter Summary -- Wrapper");
-    INIT_PRINT_STREAM("\t- init_check_duration_s:       " << init_check_duration_s);
-    INIT_PRINT_STREAM("\t- topic_sub_pose:              " << topic_sub_pose);
-    INIT_PRINT_STREAM("\t- topic_sub_uwb:               " << topic_sub_uwb);
-    INIT_PRINT_STREAM("\t- topic_pub_anchors:           " << topic_pub_anchors);
-    INIT_PRINT_STREAM("\t- topic_pub_wplist:            " << topic_pub_wplist);
-    INIT_PRINT_STREAM("\t- service_ms_get_start_pose:   " << service_ms_get_start_pose);
-    INIT_PRINT_STREAM("\t- service_start_init:          " << service_start_init);
-    INIT_PRINT_STREAM("\t- p_ItoU:                      " << p_ItoU.transpose());
+    INIT_PRINT_STREAM("\t- init_check_duration_s:               " << init_check_duration_s);
+    INIT_PRINT_STREAM("\t- topic_sub_pose:                      " << topic_sub_pose);
+    INIT_PRINT_STREAM("\t- topic_sub_uwb:                       " << topic_sub_uwb);
+    INIT_PRINT_STREAM("\t- topic_pub_anchors:                   " << topic_pub_anchors);
+    INIT_PRINT_STREAM("\t- topic_pub_wplist:                    " << topic_pub_wplist);
+    INIT_PRINT_STREAM("\t- service_ms_get_start_pose:           " << service_ms_get_start_pose);
+    INIT_PRINT_STREAM("\t- service_start_init:                  " << service_start_init);
+    INIT_PRINT_STREAM("\t- publish_only_when_all_initialized:   " << publish_only_when_all_initialized);
+    INIT_PRINT_STREAM("\t- p_ItoU:                              " << p_ItoU.transpose());
   }
 
   // UWB INITIALIZER ==========================================================
-
-  /// maximum number of anchors used
-  /// \deprecated this will be removed soon
-  uint n_anchors{ 0 };
 
   /// allow continous initialization although solution for anchor was already found
   bool b_do_continous_init{ false };
@@ -174,7 +174,6 @@ struct UwbInitOptions
   void print_initializer()
   {
     INIT_PRINT_STREAM("Parameter Summary -- Initializer");
-    INIT_PRINT_STREAM("\t- n_anchors:                   " << n_anchors);
     INIT_PRINT_STREAM("\t- buffer_size_s:               " << buffer_size_s);
     INIT_PRINT_STREAM("\t- max_cond_num:                " << max_cond_num);
     INIT_PRINT_STREAM("\t- t_pose_diff:                 " << t_pose_diff);

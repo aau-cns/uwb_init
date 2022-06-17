@@ -1,4 +1,5 @@
-// Copyright (C) 2021 Martin Scheiber, Control of Networked Systems, University of Klagenfurt, Austria.
+// Copyright (C) 2022 Martin Scheiber, Alessandro Fornasier,
+// Control of Networked Systems, University of Klagenfurt, Austria.
 //
 // All rights reserved.
 //
@@ -14,16 +15,18 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 //
-// You can contact the author at <martin.scheiber@aau.at>
-
-#include "uwb_wrapper.hpp"
+// You can contact the author at <martin.scheiber@aau.at>,
+// <alessandro.fornasier@aau.at>
 
 #include <mission_sequencer/MissionWaypoint.h>
 
+#include "uwb_wrapper.hpp"
 #include "utils/logging.hpp"
+#include "utils/utils.h"
 
 namespace uav_init
 {
+
 UwbInitWrapper::UwbInitWrapper(ros::NodeHandle& nh, UwbInitOptions& params)
   : nh_(nh), params_(params), uwb_initializer_(params_), f_in_initialization_phase_(params_.b_auto_init)
 {
@@ -34,6 +37,7 @@ UwbInitWrapper::UwbInitWrapper(ros::NodeHandle& nh, UwbInitOptions& params)
   // publishers
   pub_anchor = nh.advertise<uwb_init_cpp::UwbAnchorArrayStamped>(params_.topic_pub_anchors, 1);
   pub_wplist = nh.advertise<mission_sequencer::MissionWaypointArray>(params_.topic_pub_wplist, 1);
+  anchor_publisher_switch_ = !params_.publish_only_when_all_initialized;
 
   // service clients
   srvc_sequencer_get_start_pose_ =
@@ -64,6 +68,7 @@ UwbInitWrapper::UwbInitWrapper(ros::NodeHandle& nh, UwbInitOptions& params)
 
 }  // UwbInitWrapper::UwbInitWrapper(...)
 
+
 void UwbInitWrapper::resetWrapper()
 {
   // set init flag to false
@@ -76,6 +81,7 @@ void UwbInitWrapper::resetWrapper()
   uwb_initializer_.reset();
 }
 
+
 void UwbInitWrapper::perform_initialization()
 {
   // perform initialization here
@@ -83,6 +89,7 @@ void UwbInitWrapper::perform_initialization()
   {
     INIT_INFO_STREAM("All UWB anchors successfully initialized");
     f_all_known_anchors_initialized_ = true;
+    anchor_publisher_switch_ = true;
   }
   else
   {
@@ -115,6 +122,7 @@ void UwbInitWrapper::perform_initialization()
     }
   }
 }  // void UwbInitWrapper::perform_initialization()
+
 
 void UwbInitWrapper::calculate_waypoints()
 {
@@ -229,6 +237,7 @@ void UwbInitWrapper::calculate_waypoints()
 
 }  // void UwbInitWrapper::calculate_waypoints()
 
+
 void UwbInitWrapper::cbPoseStamped(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
   // check if initialization is currently allowed
@@ -248,29 +257,72 @@ void UwbInitWrapper::cbPoseStamped(const geometry_msgs::PoseStamped::ConstPtr& m
   pub_stamp_ = msg->header.stamp;
 }  // void UwbInitWrapper::cb_posestamped(...)
 
-void UwbInitWrapper::cbUwbStamped(const evb1000_driver::TagDistanceConstPtr& msg)
-{
-  // check if initialization is currently allowed
-  if (!f_in_initialization_phase_)
-    return;
 
-  // Convert measurement to correct format
-  double time = msg->header.stamp.toSec();
-  std::vector<UwbData> uwb_ranges;  // anchor_id (0,1,2,3,...), validity_flag, distance measurement
-
-  // Fill the map with the
-  uint n = msg->valid.size();
-  for (uint i = 0; i < n; ++i)
+#if UWB_DRIVER == EVB_DRIVER
+  void UwbInitWrapper::cbUwbStamped(const evb1000_driver::TagDistanceConstPtr& msg)
   {
-    uwb_ranges.push_back(UwbData(time, msg->valid[i], msg->distance[i], i));
+    // check if initialization is currently allowed
+    if (!f_in_initialization_phase_)
+      return;
 
-    // check if new anchor was added and reset flag if the id is not known yet
-    f_all_known_anchors_initialized_ &= !anchor_buffer_.contains_id(i);
-  }
+    // Convert measurement to correct format
+    double time = msg->header.stamp.toSec();
+    std::vector<UwbData> uwb_ranges;  // anchor_id, validity_flag, distance measurement
 
-  // feed measurements to initializer
-  uwb_initializer_.feed_uwb(uwb_ranges);
-}  // void UwbInitWrapper::cb_uwbstamped(...)
+    // Fill the uwb data structure
+    // NOTE(alf): No ID information is provided with the measurements therefore assign ordered IDs
+    uint n = msg->valid.size();
+    for (uint i = 0; i < n; ++i)
+    {
+      uwb_ranges.push_back(UwbData(time, msg->valid[i], msg->distance[i], i));
+
+      // check if new anchor was added and reset flag if the id is not known yet
+      f_all_known_anchors_initialized_ &= !anchor_buffer_.contains_id(i);
+    }
+
+    // feed measurements to initializer
+    uwb_initializer_.feed_uwb(uwb_ranges);
+  }  // void UwbInitWrapper::cb_uwbstamped(...)
+#else
+  void UwbInitWrapper::cbUwbStamped(const mdek_uwb_driver::UwbConstPtr& msg)
+  {
+    // check if initialization is currently allowed
+    if (!f_in_initialization_phase_)
+      return;
+
+    // Convert measurement to correct format
+    double time = msg->header.stamp.toSec();
+    std::vector<UwbData> uwb_ranges;  // anchor_id, validity_flag, distance measurement
+
+    // Fill the uwb data structure
+    for (const auto &it : msg->ranges)
+    {
+      // Check if the id is valid (contains only numbers)
+      if (!containsChar(it.id)) {
+
+        // Convert string id to size_t
+        std::stringstream sstream(it.id);
+        uint id;
+        sstream >> id;
+
+        // Fill vector
+        // TODO(alf): Check if there is a way to infer validy based on information given
+        uwb_ranges.emplace_back(UwbData(time, true, it.distance, static_cast<u_int16_t>(id)));
+
+        // check if new anchor was added and reset flag if the id is not known yet
+        f_all_known_anchors_initialized_ &= !anchor_buffer_.contains_id(id);
+
+      } else {
+        INIT_WARN_STREAM("Received UWB message with characters within the id field");
+      }
+
+    }
+
+    // feed measurements to initializer
+    uwb_initializer_.feed_uwb(uwb_ranges);
+  }  // void UwbInitWrapper::cb_uwbstamped(...)
+#endif
+
 
 void UwbInitWrapper::cbDynamicConfig(UwbInitConfig_t& config, uint32_t /*level*/)
 {
@@ -282,6 +334,7 @@ void UwbInitWrapper::cbDynamicConfig(UwbInitConfig_t& config, uint32_t /*level*/
     config.calculate = false;
   }
 }  // void UwbInitWrapper::cb_dynamicconfig(...)
+
 
 void UwbInitWrapper::cbTimerInit(const ros::TimerEvent&)
 {
@@ -302,35 +355,40 @@ void UwbInitWrapper::cbTimerInit(const ros::TimerEvent&)
     // calc waypoints
     calculate_waypoints();
 
-    // publish result
-    uwb_init_cpp::UwbAnchorArrayStamped msg_anchors;
+    // Define pub time
     /// \todo TODO(scm): make rostime now pub param
     //    ros::Time pub_time = ros::Time::now();
     ros::Time pub_time = pub_stamp_;
-    msg_anchors.header.stamp = pub_time;
-    msg_anchors.header.frame_id = "global";
-    msg_anchors.header.seq = pub_anchor_seq_++;
 
-    // retreive anchor data
-    for (const auto& anchor : anchor_buffer_.get_buffer())
+    // publish result if allowed
+    if(anchor_publisher_switch_)
     {
-      uwb_init_cpp::UwbAnchor msg_anchor;
-      UwbAnchor data_anchor = anchor.second.get_buffer().back().second;
+      uwb_init_cpp::UwbAnchorArrayStamped msg_anchors;
+      msg_anchors.header.stamp = pub_time;
+      msg_anchors.header.frame_id = "global";
+      msg_anchors.header.seq = pub_anchor_seq_++;
 
-      msg_anchor.id = data_anchor.id;
-      msg_anchor.position.x = data_anchor.p_AinG.x();
-      msg_anchor.position.y = data_anchor.p_AinG.y();
-      msg_anchor.position.z = data_anchor.p_AinG.z();
-      msg_anchor.bias_distance = data_anchor.bias_d;
-      msg_anchor.bias_const = data_anchor.bias_c;
-      msg_anchor.initialized = data_anchor.initialized;
+      // retreive anchor data
+      for (const auto& anchor : anchor_buffer_.get_buffer())
+      {
+        uwb_init_cpp::UwbAnchor msg_anchor;
+        UwbAnchor data_anchor = anchor.second.get_buffer().back().second;
 
-      msg_anchors.anchors.push_back(msg_anchor);
+        msg_anchor.id = data_anchor.id;
+        msg_anchor.position.x = data_anchor.p_AinG.x();
+        msg_anchor.position.y = data_anchor.p_AinG.y();
+        msg_anchor.position.z = data_anchor.p_AinG.z();
+        msg_anchor.bias_distance = data_anchor.bias_d;
+        msg_anchor.bias_const = data_anchor.bias_c;
+        msg_anchor.initialized = data_anchor.initialized;
+
+        msg_anchors.anchors.push_back(msg_anchor);
+      }
+
+      // set size and publish
+      msg_anchors.size = msg_anchors.anchors.size();
+      pub_anchor.publish(msg_anchors);
     }
-
-    // set size and publish
-    msg_anchors.size = msg_anchors.anchors.size();
-    pub_anchor.publish(msg_anchors);
 
     // publish waypoint data
     if (!cur_waypoints_.waypoints.empty())
@@ -370,6 +428,7 @@ void UwbInitWrapper::cbTimerInit(const ros::TimerEvent&)
     }
   }
 }  // void UwbInitWrapper::cb_timerinit(...)
+
 
 bool UwbInitWrapper::cbSrvInit(std_srvs::Empty::Request& /*req*/, std_srvs::Empty::Response& /*res*/)
 {

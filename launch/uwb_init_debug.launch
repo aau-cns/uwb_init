@@ -12,7 +12,6 @@
   <arg name="calib_p_ItoU"              default="[0.0, 0.0, 0.0]" />
 
   <!-- node parameters -->
-  <arg name="num_anchors"               default="4" />
   <arg name="buffer_size_in_s"          default="50.0" />
   <arg name="max_cond_number"           default="300.0" />
   <arg name="init_check_duration_in_s"  default="5.0" />
@@ -37,7 +36,6 @@
 
     <!-- node parameters -->
     <param name="init_check_duration"   type="double" value="$(arg init_check_duration_in_s)" />
-    <param name="n_anchors"             type="int"    value="$(arg num_anchors)" />
     <param name="buffer_size_s"         type="double" value="$(arg buffer_size_in_s)" />
     <param name="max_cond_num"          type="double" value="$(arg max_cond_number)" />
     <rosparam param="p_ItoU"            subst_value="True">$(arg calib_p_ItoU)</rosparam>

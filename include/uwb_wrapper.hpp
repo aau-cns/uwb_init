@@ -1,4 +1,5 @@
-// Copyright (C) 2021 Martin Scheiber, Control of Networked Systems, University of Klagenfurt, Austria.
+// Copyright (C) 2022 Martin Scheiber, Alessandro Fornasier,
+// Control of Networked Systems, University of Klagenfurt, Austria.
 //
 // All rights reserved.
 //
@@ -15,19 +16,33 @@
 // DEALINGS IN THE SOFTWARE.
 //
 // You can contact the author at <martin.scheiber@aau.at>
+// <alessandro.fornasier@aau.at>
 
 #ifndef UAV_INIT_UWB_WRAPPER_HPP_
 #define UAV_INIT_UWB_WRAPPER_HPP_
 
+#define MDEK_DRIVER 1
+#define EVB_DRIVER 2
+
+#define UWB_DRIVER EVB_DRIVER
+
+#ifndef UWB_DRIVER
+  #define UWB_DRIVER MDEK_DRIVER
+#endif
+
 #include <dynamic_reconfigure/server.h>
-#include <evb1000_driver/TagDistance.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <mission_sequencer/GetStartPose.h>
 #include <mission_sequencer/MissionWaypointArray.h>
 #include <ros/ros.h>
 #include <std_srvs/Empty.h>
-
 #include <Eigen/Eigen>
+
+#if UWB_DRIVER == EVB_DRIVER
+  #include <evb1000_driver/TagDistance.h>
+#else
+  #include <mdek_uwb_driver/Uwb.h>
+#endif
 
 #include "options/uwb_init_options.hpp"
 #include "types/types.hpp"
@@ -43,9 +58,12 @@ namespace uav_init
 ///
 class UwbInitWrapper
 {
+
 public:
+
   /// dynamic reconfigure config typedef
   typedef uwb_init_cpp::UwbInitConfig UwbInitConfig_t;
+
   /// dynamic recofnigure server typedef
   typedef dynamic_reconfigure::Server<UwbInitConfig_t> ReconfServer_t;
 
@@ -59,8 +77,15 @@ public:
   void cbTimerInit(const ros::TimerEvent&);
 
 private:
+
   void cbPoseStamped(const geometry_msgs::PoseStamped::ConstPtr& msg);
-  void cbUwbStamped(const evb1000_driver::TagDistanceConstPtr& msg);
+
+  #if UWB_DRIVER == EVB_DRIVER
+    void cbUwbStamped(const evb1000_driver::TagDistanceConstPtr& msg);
+  #else
+    void cbUwbStamped(const mdek_uwb_driver::UwbConstPtr& msg);
+  #endif
+
   void cbDynamicConfig(UwbInitConfig_t& config, uint32_t level);
 
   bool cbSrvInit(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
@@ -104,6 +129,7 @@ private:
   uint pub_anchor_seq_{ 0 };                 //!< sequence number of published anchor msgs
   uint pub_waypoint_seq_{ 0 };               //!< sequence number of published waypoint list msgs
   ros::Time pub_stamp_{ ros::Time::now() };  //!< timestamp used when publishing
+  bool anchor_publisher_switch_{false};      //!< switch to allow publication of initialized anchors
 
   // dynamic reconfigure
   ReconfServer_t reconf_server_;  //!< dynamic reconfigure server for ROS dynamic reconfigure

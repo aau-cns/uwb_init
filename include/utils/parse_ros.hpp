@@ -38,6 +38,7 @@ UwbInitOptions parse_ros_nodehandle(ros::NodeHandle& nh)
   nh.param<std::string>("topic_pub_waypoints", params.topic_pub_wplist, params.topic_pub_wplist);
   nh.param<std::string>("service_ms_get_start_pose", params.service_ms_get_start_pose, params.service_ms_get_start_pose);
   nh.param<std::string>("service_start_init", params.service_start_init, params.service_start_init);
+  nh.param<bool>("publish_only_when_all_initialized", params.publish_only_when_all_initialized, params.publish_only_when_all_initialized);
 
   std::vector<double> p_ItoU;
   std::vector<double> p_ItoU_default = { 0.0, 0.0, 0.0 };
@@ -58,10 +59,6 @@ UwbInitOptions parse_ros_nodehandle(ros::NodeHandle& nh)
   nh.param<bool>("do_regularize_z", params.b_regularize_z, params.b_regularize_z);
   nh.param<bool>("exit_when_initialized", params.b_exit_when_initialized, params.b_exit_when_initialized);
   nh.param<bool>("auto_initialization", params.b_auto_init, params.b_auto_init);
-
-  int n_anchors;
-  nh.param<int>("n_anchors", n_anchors, params.n_anchors);
-  params.n_anchors = static_cast<uint>(n_anchors);
 
   int meas_baseline_idx;
   nh.param<int>("meas_baseline_idx", meas_baseline_idx, params.meas_baseline_idx_);

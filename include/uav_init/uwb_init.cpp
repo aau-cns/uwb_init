@@ -24,6 +24,7 @@
 
 namespace uav_init
 {
+
 void UwbInitializer::reset()
 {
   // reset buffers
@@ -33,6 +34,7 @@ void UwbInitializer::reset()
   // reset positions
   cur_p_UinG_ = Eigen::Vector3d::Zero();
 }
+
 
 void UwbInitializer::feed_uwb(const std::vector<UwbData> uwb_measurements)
 {
@@ -55,12 +57,14 @@ void UwbInitializer::feed_uwb(const std::vector<UwbData> uwb_measurements)
   }
 }
 
+
 void UwbInitializer::feed_pose(const double timestamp, const Eigen::Vector3d p_UinG)
 {
   /// \todo TODO(scm): maybe use buffer here for timesyncing with UWB modules
   /// currently this method does not take delayed UWB measurements into account
   buffer_p_UinG_.push_back(timestamp, p_UinG);
 }
+
 
 bool UwbInitializer::try_to_initialize_anchors(UwbAnchorBuffer& anchor_buffer)
 {
@@ -82,30 +86,18 @@ bool UwbInitializer::try_to_initialize_anchors(UwbAnchorBuffer& anchor_buffer)
   {
     // get ID of anchor and its data
     const auto anchor_id = kv.first;
-    INIT_DEBUG_STREAM("A" << anchor_id << ": calculating solution ...");
+    INIT_DEBUG_STREAM("A_" << anchor_id << ": calculating solution ...");
 
     // check if anchor is already initialized
     if (!params_.b_do_continous_init && anchor_buffer.contains_id(anchor_id) &&
         anchor_buffer.is_initialized(anchor_id))
     {
       // anchor already initialized
-      INIT_DEBUG_STREAM("A" << anchor_id << ": already initialized");
+      INIT_DEBUG_STREAM("A_" << anchor_id << ": already initialized");
       is_successfull_initialized &= true;
     }
     else
     {
-      //      switch (init_method_)
-      //      {
-      //        case InitMethod::SINGLE:
-      //          is_successfull_initialized &= initialize_single(anchor_buffer, anchor_id, calc_time);
-      //          break;
-      //        case InitMethod::DOUBLE:
-      //          is_successfull_initialized &= initialize_double(anchor_buffer, anchor_id, calc_time);
-      //          break;
-      //        case InitMethod::NO_BIAS:
-      //          is_successfull_initialized &= initialize_biasfree(anchor_buffer, anchor_id, calc_time);
-      //          break;
-      //      }
       is_successfull_initialized &= fx_init_(anchor_buffer, anchor_id, calc_time);
     }  // else anchor_initialized
   }    // for (const auto& kv : uwb_data_buffer_.get_buffer())
@@ -118,17 +110,22 @@ bool UwbInitializer::try_to_initialize_anchors(UwbAnchorBuffer& anchor_buffer)
   return is_successfull_initialized;
 }  // bool UwbInitializer::try_to_initialize_anchors(...)
 
+
 bool UwbInitializer::initialize_single_all(UwbAnchorBuffer& anchor_buffer, const uint& anchor_id,
                                            const double& calc_time)
 {
   // setup return value
-  bool successfully_initialized = true;
+  bool successfully_initialized = false;
 
-  // get anchor measurement data and create result
+  // define result
   UwbAnchor new_uwb_anchor(anchor_id);
+
+  // Define uwb data
   std::deque<std::pair<double, UwbData>> single_anchor_uwb_data;
+
   if (uwb_data_buffer_.get_buffer_values(anchor_id, single_anchor_uwb_data))
   {
+
     // Coefficient matrix and measurement vector initialization
     Eigen::MatrixXd coeffs = Eigen::MatrixXd::Zero(single_anchor_uwb_data.size(), 6);
     Eigen::VectorXd measurements = Eigen::VectorXd::Zero(single_anchor_uwb_data.size());
@@ -142,10 +139,6 @@ bool UwbInitializer::initialize_single_all(UwbAnchorBuffer& anchor_buffer, const
       Eigen::VectorXd row(6);
       row << -2 * closest_p_UinG.x(), -2 * closest_p_UinG.y(), -2 * closest_p_UinG.z(),
           std::pow(closest_p_UinG.norm(), 2), 2 * single_anchor_uwb_data.at(i).second.distance, 1;
-      // NOTE(scm): as written in the paper (probably wrong)
-      //          row << -2 * closest_p_UinG.x(), -2 * closest_p_UinG.y(), -2 * closest_p_UinG.z(),
-      //              std::pow(closest_p_UinG.norm(), 2), 2 * std::pow(single_anchor_uwb_data.at(i).second.distance,
-      //              2), 1;
       coeffs.row(i) = row.transpose();
       measurements(i) = std::pow(single_anchor_uwb_data.at(i).second.distance, 2);
     }
@@ -153,15 +146,11 @@ bool UwbInitializer::initialize_single_all(UwbAnchorBuffer& anchor_buffer, const
     // Check the coefficient matrix condition number and solve the LS problem
     Eigen::BDCSVD<Eigen::MatrixXd> svd(coeffs, Eigen::ComputeThinU | Eigen::ComputeThinV);
     double cond = svd.singularValues()(0) / svd.singularValues()(svd.singularValues().size() - 1);
-    //        Eigen::FullPivHouseholderQR<Eigen::MatrixXd> qr = coeffs.fullPivHouseholderQr();
-    //        Eigen::JacobiSVD<Eigen::MatrixXd> svd(qr.matrixQR(), Eigen::ComputeThinU | Eigen::ComputeThinV);
-    //        double cond = svd.singularValues()(0) / svd.singularValues()(svd.singularValues().size() - 1);
     if (cond < params_.max_cond_num)  // 3
     {
       // [      0     ,       1     ,       2     ,  3 , 4,          5              ]
       // [b^2*p_AinG_x, b^2*p_AinG_y, b^2*p_AinG_z, b^2, k, b^2*(norm(p_AinG)^2-k^2)]
       Eigen::VectorXd LSSolution = svd.solve(measurements);
-      //          Eigen::VectorXd LSSolution = qr.solve(measurements);
 
       // check that the squared value is positive
       if (LSSolution[3] > 0)
@@ -188,24 +177,38 @@ bool UwbInitializer::initialize_single_all(UwbAnchorBuffer& anchor_buffer, const
               (std::pow((coeffs * LSSolution - measurements).norm(), 2) / (coeffs.rows() * coeffs.cols())) *
               (svd.matrixV().inverse().transpose() * svd.singularValues().asDiagonal().inverse() *
                svd.singularValues().asDiagonal().inverse() * svd.matrixV().inverse());
-          //        Eigen::Matrix4d distance_bias_squared_P_AinG_Cov = Cov.block(0, 0, 3, 3);
-          //        double distance_bias_squared_Cov = Cov(4, 4);
-          //        double const_bias_Cov = Cov(5, 5);
           INIT_DEBUG_STREAM("\n\tCov:        " << Cov);
 
-          // Retrive P_AinG Covariance applying error propagation law and assign to Anchors_Covs
-          Eigen::MatrixXd J = Eigen::MatrixXd::Zero(1, 4);
-          J(0, 0) = 1.0 / distance_bias_squared;
-          J.block(0, 1, 1, 3) = -p_AinG.transpose() / distance_bias_squared;
-          INIT_DEBUG_STREAM("\n\tJ:        " << J);
-          //        Anchors_Covs.insert({ anchor_id, J * Cov.block(0, 0, 4, 4) * J.transpose() });
+          // compare norm of singular values vector of covarnace matrix with threshold
+          Eigen::JacobiSVD<Eigen::MatrixXd> svd_cov(Cov, Eigen::ComputeThinU | Eigen::ComputeThinV);
 
-          // Retrive Covariance of b and k applying error propagation law
-          new_uwb_anchor.cov_bias_d = 1.0 / (4.0 * distance_bias_squared) * Cov(3, 3);
-          new_uwb_anchor.cov_bias_c = Cov(4, 4);
+          // debug
+          INIT_INFO_STREAM("\tsingular values:   " << svd_cov.singularValues().transpose());
+          INIT_INFO_STREAM("\tsingular v norm:   " << svd_cov.singularValues().norm());
+          if (svd_cov.singularValues().norm() <= params_.cov_sv_threshold)
+          {
+            // Retrive P_AinG Covariance applying error propagation law and assign to Anchors_Covs
+            Eigen::MatrixXd J = Eigen::MatrixXd::Zero(3, 4);
+            J.block(0, 0, 3, 3) = (1.0 / distance_bias_squared) * Eigen::Matrix3d::Identity();
+            J.block(0, 3, 3, 1) = -p_AinG / distance_bias_squared;
+            INIT_DEBUG_STREAM("\n\tJ:        " << J);
+            new_uwb_anchor.cov_p_AinG = J * Cov.block(0, 0, 4, 4) * J.transpose();
 
-          // set initialization to true
-          new_uwb_anchor.initialized = true;
+            // Retrive Covariance of b and k applying error propagation law
+            new_uwb_anchor.cov_bias_d = 1.0 / (4.0 * distance_bias_squared) * Cov(3, 3);
+            new_uwb_anchor.cov_bias_c = Cov(4, 4);
+
+            // set initialization to true
+            new_uwb_anchor.initialized = true;
+            successfully_initialized = true;
+          }
+          else
+          {
+            INIT_WARN_STREAM("Anchor " << anchor_id << ": issue with cov svd threshold ("
+                                       << svd_cov.singularValues().norm() << ")");
+            new_uwb_anchor.initialized = false;
+            successfully_initialized = false;
+          }  // if (svd_cov.singularValues().norm() <= params_.cov_sv_threshold_)
         }
         else
         {
@@ -243,24 +246,20 @@ bool UwbInitializer::initialize_single_all(UwbAnchorBuffer& anchor_buffer, const
   return successfully_initialized;
 }  // bool UwbInitializer::initialize_single(...)
 
+
 bool UwbInitializer::initialize_double_all(UwbAnchorBuffer& anchor_buffer, const uint& anchor_id,
                                            const double& calc_time)
 {
   INIT_DEBUG_STREAM("Anchor " << anchor_id << ": using 'DOUBLE' method for initialization");
+
   // setup return value
-  bool successfully_initialized = true;
+  bool successfully_initialized = false;
 
   // get anchor measurement data and create result
   UwbAnchor new_uwb_anchor(anchor_id);
   std::deque<std::pair<double, UwbData>> single_anchor_uwb_data;
   if (uwb_data_buffer_.get_buffer_values(anchor_id, single_anchor_uwb_data))
   {
-    // Coefficient matrix and measurement vector initialization
-    //    Eigen::MatrixXd coeffs_pre = Eigen::MatrixXd::Zero(single_anchor_uwb_data.size(), 5);
-    //    Eigen::VectorXd measurements_pre = Eigen::VectorXd::Zero(single_anchor_uwb_data.size());
-    //    Eigen::MatrixXd coeffs = Eigen::MatrixXd::Zero(single_anchor_uwb_data.size(), 5);
-    //    Eigen::VectorXd measurements = Eigen::VectorXd::Zero(single_anchor_uwb_data.size());
-
     // Coefficient matrix and measurement vector initialization
     std::vector<double> coeffs_vec;
     std::vector<double> meas_vec;
@@ -373,9 +372,9 @@ bool UwbInitializer::initialize_double_all(UwbAnchorBuffer& anchor_buffer, const
                                 << "\tp_AinG:            " << p_AinG.transpose() << "\n"
                                 << "\tbeta_sq:           " << distance_bias_squared << "\n"
                                 << "\td_bias(alpha):     " << std::sqrt(distance_bias_squared) - 1.0 << "\n"
-                                << "\tconst_bias(gamma): " << const_bias << "\n"
-                                << "\tpos_error:         " << (p_AinG - p_AinG_gt_[anchor_id]).transpose() << "("
-                                << (p_AinG - p_AinG_gt_[anchor_id]).norm() << ") m");
+                                << "\tconst_bias(gamma): " << const_bias << "\n");
+//                                << "\tpos_error:         " << (p_AinG - p_AinG_gt_[anchor_id]).transpose() << "("
+//                                << (p_AinG - p_AinG_gt_[anchor_id]).norm() << ") m");
 
           // Assign valid estimated values
           new_uwb_anchor.bias_d = std::sqrt(distance_bias_squared);  // NOTE(scm): this is beta with beta=1+alpha
@@ -387,7 +386,6 @@ bool UwbInitializer::initialize_double_all(UwbAnchorBuffer& anchor_buffer, const
               (std::pow((coeffs * LSSolution - measurements).norm(), 2) / (coeffs.rows() - coeffs.cols())) *
               ((svd.matrixV().transpose()).inverse() * svd.singularValues().asDiagonal().inverse() *
                svd.singularValues().asDiagonal().inverse() * svd.matrixV().inverse());
-
           INIT_DEBUG_STREAM("\n\tCov:        " << Cov);
 
           // compare norm of singular values vector of covarnace matrix with threshold
@@ -398,6 +396,18 @@ bool UwbInitializer::initialize_double_all(UwbAnchorBuffer& anchor_buffer, const
           INIT_INFO_STREAM("\tsingular v norm:   " << svd_cov.singularValues().norm());
           if (svd_cov.singularValues().norm() <= params_.cov_sv_threshold)
           {
+
+            // Retrive P_AinG Covariance applying error propagation law and assign to Anchors_Covs
+            Eigen::MatrixXd J = Eigen::MatrixXd::Zero(3, 4);
+            J.block(0, 0, 3, 1) = -p_AinG / distance_bias_squared;
+            J.block(0, 1, 3, 3) = (1.0 / distance_bias_squared) * Eigen::Matrix3d::Identity();
+            INIT_DEBUG_STREAM("\n\tJ:        " << J);
+            new_uwb_anchor.cov_p_AinG = J * Cov.block(0, 0, 4, 4) * J.transpose();
+
+            // Retrive Covariance of b and k applying error propagation law
+            new_uwb_anchor.cov_bias_d = 1.0 / (4.0 * distance_bias_squared) * Cov(0, 0);
+            new_uwb_anchor.cov_bias_c = Cov(4, 4);
+
             // set initialization to true
             new_uwb_anchor.initialized = true;
             successfully_initialized = true;
@@ -446,13 +456,14 @@ bool UwbInitializer::initialize_double_all(UwbAnchorBuffer& anchor_buffer, const
   return successfully_initialized;
 }  // bool UwbInitializer::initialize_single(...)
 
+
 bool UwbInitializer::initialize_single_nobias(UwbAnchorBuffer& anchor_buffer, const uint& anchor_id,
                                               const double& calc_time)
 {
   INIT_DEBUG_STREAM("Anchor " << anchor_id << ": using 'NO_BIAS' method for initialization");
 
   // setup return value
-  bool successfully_initialized = true;
+  bool successfully_initialized = false;
 
   // get anchor measurement data and create result
   UwbAnchor new_uwb_anchor(anchor_id);
@@ -480,15 +491,11 @@ bool UwbInitializer::initialize_single_nobias(UwbAnchorBuffer& anchor_buffer, co
     // Check the coefficient matrix condition number and solve the LS problem
     Eigen::BDCSVD<Eigen::MatrixXd> svd(coeffs, Eigen::ComputeThinU | Eigen::ComputeThinV);
     double cond = svd.singularValues()(0) / svd.singularValues()(svd.singularValues().size() - 1);
-    //        Eigen::FullPivHouseholderQR<Eigen::MatrixXd> qr = coeffs.fullPivHouseholderQr();
-    //        Eigen::JacobiSVD<Eigen::MatrixXd> svd(qr.matrixQR(), Eigen::ComputeThinU | Eigen::ComputeThinV);
-    //        double cond = svd.singularValues()(0) / svd.singularValues()(svd.singularValues().size() - 1);
     if (cond < params_.max_cond_num)  // 3
     {
-      // [      0     ,       1     ,       2     ,  3 , 4,          5              ]
-      // [b^2*p_AinG_x, b^2*p_AinG_y, b^2*p_AinG_z, b^2, k, b^2*(norm(p_AinG)^2-k^2)]
+      // [    0    ,    1   ,    2   ,        3       ]
+      // [p_AinG_x, p_AinG_y, p_AinG_z, norm(p_AinG)^2]
       Eigen::VectorXd LSSolution = svd.solve(measurements);
-      //          Eigen::VectorXd LSSolution = qr.solve(measurements);
 
       Eigen::Vector3d p_AinG = LSSolution.segment(0, 3);
       double distance_bias_squared = 0.0;
@@ -507,29 +514,41 @@ bool UwbInitializer::initialize_single_nobias(UwbAnchorBuffer& anchor_buffer, co
         new_uwb_anchor.bias_c = const_bias;
         new_uwb_anchor.p_AinG = p_AinG;
 
-        //        // Compute estimation Covariance
-        //        Eigen::MatrixXd Cov =
-        //            (std::pow((coeffs * LSSolution - measurements).norm(), 2) / (coeffs.rows() * coeffs.cols())) *
-        //            (svd.matrixV().inverse().transpose() * svd.singularValues().asDiagonal().inverse() *
-        //             svd.singularValues().asDiagonal().inverse() * svd.matrixV().inverse());
-        //        //        Eigen::Matrix4d distance_bias_squared_P_AinG_Cov = Cov.block(0, 0, 3, 3);
-        //        //        double distance_bias_squared_Cov = Cov(4, 4);
-        //        //        double const_bias_Cov = Cov(5, 5);
-        //        INIT_DEBUG_STREAM("\n\tCov:        " << Cov);
+        // Compute estimation Covariance
+        Eigen::MatrixXd Cov =
+            (std::pow((coeffs * LSSolution - measurements).norm(), 2) / (coeffs.rows() * coeffs.cols())) *
+            (svd.matrixV().inverse().transpose() * svd.singularValues().asDiagonal().inverse() *
+             svd.singularValues().asDiagonal().inverse() * svd.matrixV().inverse());
+        INIT_DEBUG_STREAM("\n\tCov:        " << Cov);
 
-        //        // Retrive P_AinG Covariance applying error propagation law and assign to Anchors_Covs
-        //        Eigen::MatrixXd J = Eigen::MatrixXd::Zero(1, 4);
-        //        J(0, 0) = 1.0 / distance_bias_squared;
-        //        J.block(0, 1, 1, 3) = -p_AinG.transpose() / distance_bias_squared;
-        //        INIT_DEBUG_STREAM("\n\tJ:        " << J);
-        //        //        Anchors_Covs.insert({ anchor_id, J * Cov.block(0, 0, 4, 4) * J.transpose() });
+        // compare norm of singular values vector of covarnace matrix with threshold
+        Eigen::JacobiSVD<Eigen::MatrixXd> svd_cov(Cov, Eigen::ComputeThinU | Eigen::ComputeThinV);
 
-        //        // Retrive Covariance of b and k applying error propagation law
-        //        new_uwb_anchor.cov_bias_d = 1.0 / (4.0 * distance_bias_squared) * Cov(3, 3);
-        //        new_uwb_anchor.cov_bias_c = Cov(4, 4);
+        // debug
+        INIT_INFO_STREAM("\tsingular values:   " << svd_cov.singularValues().transpose());
+        INIT_INFO_STREAM("\tsingular v norm:   " << svd_cov.singularValues().norm());
+        if (svd_cov.singularValues().norm() <= params_.cov_sv_threshold)
+        {
 
-        // set initialization to true
-        new_uwb_anchor.initialized = true;
+          // Retrive P_AinG Covariance
+          new_uwb_anchor.cov_p_AinG = Cov.block(0, 0, 3, 3);
+
+          // Retrive Covariance of b and k applying error propagation law
+          new_uwb_anchor.cov_bias_d = 0.0;
+          new_uwb_anchor.cov_bias_c = 0.0;
+
+          // set initialization to true
+          new_uwb_anchor.initialized = true;
+          successfully_initialized = true;
+
+        }
+        else
+        {
+          INIT_WARN_STREAM("Anchor " << anchor_id << ": issue with cov svd threshold ("
+                                     << svd_cov.singularValues().norm() << ")");
+          new_uwb_anchor.initialized = false;
+          successfully_initialized = false;
+        }  // if (svd_cov.singularValues().norm() <= params_.cov_sv_threshold_)
       }
       else
       {

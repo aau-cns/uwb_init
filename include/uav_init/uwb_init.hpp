@@ -38,18 +38,6 @@ namespace uav_init
 ///
 class UwbInitializer
 {
-public:
-  ///
-  /// \brief The InitMethod enum describes the method used for initialization
-  /// \deprecated will be removed soon, was moved to uav_init::UwbInitOptions::InitMethod
-  /// \see uav_init::UwbInitOptions::InitMethod
-  ///
-  enum class InitMethod
-  {
-    SINGLE,   //!< use only one measurement to construct LLS matrix
-    DOUBLE,   //!< use a pair of measurements to construct LLS matrix
-    NO_BIAS,  //!< use only one measurement and exclude bias from LLS calculation
-  };
 
 public:
   ///
@@ -144,22 +132,19 @@ public:
 private:
   UwbInitOptions params_;  //!< initializer parameters
 
-  // anchor and measurement handeling
+  // anchor and measurement handling
   Eigen::Vector3d cur_p_UinG_;         //!< current position of the UWB module in global frame
   PositionBufferTimed buffer_p_UinG_;  //!< buffer of UWB module positions in global frame
 
   UwbDataBuffer uwb_data_buffer_;  //!< history of uwb readings in DataBuffer
 
-  // init handeling
+  // init handling
   std::function<bool(UwbAnchorBuffer&, const uint&, const double&)> fx_init_;
-  InitMethod init_method_{ InitMethod::DOUBLE };  //!< determine the initialization method to use \deprecated was moved
-                                                  //!< into params_
 
-  // todo:(alf) remove debugging
-  // debugging
-  std::vector<Eigen::Vector3d> p_AinG_gt_{ { Eigen::Vector3d(1.225, -1.459, 0.073),
-                                             Eigen::Vector3d(-0.989, 0.350, 0.082),
-                                             Eigen::Vector3d(-0.048, 2.058, 0.055) } };
+//  // Debugging
+//  std::vector<Eigen::Vector3d> p_AinG_gt_{ { Eigen::Vector3d(1.225, -1.459, 0.073),
+//                                             Eigen::Vector3d(-0.989, 0.350, 0.082),
+//                                             Eigen::Vector3d(-0.048, 2.058, 0.055) } };
 
   ///
   /// \brief initialize_single try to initialize all anchors using the single measurement formulation
