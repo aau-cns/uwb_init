@@ -117,7 +117,7 @@ generate_dynamic_reconfigure_options(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-  CATKIN_DEPENDS message_runtime std_msgs nav_msgs sensor_msgs geometry_msgs evb1000_driver mission_sequencer
+  CATKIN_DEPENDS message_runtime std_msgs nav_msgs sensor_msgs geometry_msgs evb1000_driver mission_sequencer mdek_uwb_driver
 #  LIBRARIES custom_libraries
 #  DEPENDS system_lib
 )
