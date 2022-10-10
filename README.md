@@ -103,7 +103,7 @@ Initialize the anchor position using only a constant bias with the measurement e
 
 *This performance is untested inflight.*
 
-##### `CONST BIAS`
+##### `DIST BIAS`
 Initialize the anchor position using only a distance-dependent bias with the measurement equation
 
 ![](https://latex.codecogs.com/svg.latex?z_m=(1+\alpha)z)
