@@ -205,7 +205,7 @@ void UwbInitWrapper::calculate_waypoints()
       double num_wps = std::ceil(dist.norm() / params_.wp_generation_max_distance);
 
       // in case num_wps is 0, we are ontop of the current wps, so do not add anything
-      for (uint j = 0; j < (uint)num_wps; ++j)
+      for (uint j = 0; j < uint(num_wps); ++j)
       {
         mission_sequencer::MissionWaypoint wp;
         wp.z = params_.wp_height + zero_height;

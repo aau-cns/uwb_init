@@ -41,7 +41,7 @@ struct UwbData
   UwbData(bool _valid, double _distance) : valid(_valid), distance(_distance)
   {
     timestamp = ros::Time::now().toSec();
-  };
+  }
 
   ///
   /// \brief UwbData default constructor for measurement
@@ -51,9 +51,9 @@ struct UwbData
   /// \param _id anchor ID
   ///
   UwbData(double _timestamp, bool _valid, double _distance, u_int16_t _id)
-    : timestamp(_timestamp), valid(_valid), distance(_distance), id(_id){};
+    : timestamp(_timestamp), valid(_valid), distance(_distance), id(_id){}
 
-  UwbData(){};
+  UwbData(){}
 };  // struct UwbData
 
 }  // namespace uav_init

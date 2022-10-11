@@ -49,9 +49,8 @@ struct UwbInitOptions
     FULL_BIAS,   //!< use all variables, position, distance bias, and constant bias
     NO_BIAS,     //!< use no bias for initialization, i.e. position only
     CONST_BIAS,  //!< only use constant bias and position in initialization
-    DIST_BIAS,   //!< only use constant bias and position in initialization
+    DIST_BIAS,   //!< only use distance bias and position in initialization
   };
-  // todo: (alf) change no_distance bias to dist_bias and const_bias, change all to full bias
 
   friend inline std::ostream& operator<<(std::ostream& os, InitMethod method)
   {
