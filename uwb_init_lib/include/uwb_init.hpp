@@ -24,6 +24,7 @@
 #include <Eigen/Dense>
 #include <deque>
 #include <map>
+#include <chrono>
 
 #include "options/uwb_init_options.hpp"
 #include "types/types.hpp"
@@ -44,64 +45,74 @@ public:
     ///
     UwbInitializer(UwbInitOptions& params) : params_(params)
     {
-        // initialize buffers
+        // Initialize buffers
         buffer_p_UinG_.init(params_.buffer_size_s);
         uwb_data_buffer_.init(params_.buffer_size_s);
 
-        // bind LS-problem initialization function based on selected method and model variables
+        // Bind LS-problem initialization function based on selected method and model variables
         switch (params_.init_method) {
-        case UwbInitOptions::InitMethod::SINGLE:
 
+        case UwbInitOptions::InitMethod::SINGLE:
             switch (params_.init_variables) {
+
             case UwbInitOptions::InitVariables::NO_BIAS:
-                ls_solver_ = std::bind(&UwbInitializer::ls_single_no_bias, this, std::placeholders::_1,
-                                     std::placeholders::_2);
+                ls_problem_ = std::bind(&UwbInitializer::ls_single_no_bias, this, std::placeholders::_1,
+                                        std::placeholders::_2, std::placeholders::_3);
                 break;
+
             case UwbInitOptions::InitVariables::CONST_BIAS:
-                ls_solver_ = std::bind(&UwbInitializer::ls_single_const_bias, this, std::placeholders::_1,
-                                     std::placeholders::_2);
+                ls_problem_ = std::bind(&UwbInitializer::ls_single_const_bias, this, std::placeholders::_1,
+                                        std::placeholders::_2, std::placeholders::_3);
                 break;
+
             case UwbInitOptions::InitVariables::DIST_BIAS:
-                ls_solver_ = std::bind(&UwbInitializer::ls_single_dist_bias, this, std::placeholders::_1,
-                                     std::placeholders::_2);
+                ls_problem_ = std::bind(&UwbInitializer::ls_single_dist_bias, this, std::placeholders::_1,
+                                        std::placeholders::_2, std::placeholders::_3);
+                check_beta_sq = true;
                 break;
+
             case UwbInitOptions::InitVariables::FULL_BIAS:
-                ls_solver_ = std::bind(&UwbInitializer::ls_single_full_bias, this, std::placeholders::_1,
-                                     std::placeholders::_2);
+                ls_problem_ = std::bind(&UwbInitializer::ls_single_full_bias, this, std::placeholders::_1,
+                                        std::placeholders::_2, std::placeholders::_3);
+                check_beta_sq = true;
                 break;
+
             default:
-                // TODO (gid)
-                // logger error no initialization routine for selected method and variables
                 exit(EXIT_FAILURE);
             }
             break;
+
         case UwbInitOptions::InitMethod::DOUBLE:
             switch (params_.init_variables) {
+
             case UwbInitOptions::InitVariables::NO_BIAS:
-                ls_solver_ = std::bind(&UwbInitializer::ls_double_no_bias, this, std::placeholders::_1,
-                                     std::placeholders::_2);
+                ls_problem_ = std::bind(&UwbInitializer::ls_double_no_bias, this, std::placeholders::_1,
+                                        std::placeholders::_2, std::placeholders::_3);
                 break;
+
             case UwbInitOptions::InitVariables::CONST_BIAS:
-                ls_solver_ = std::bind(&UwbInitializer::ls_double_const_bias, this, std::placeholders::_1,
-                                     std::placeholders::_2);
+                ls_problem_ = std::bind(&UwbInitializer::ls_double_const_bias, this, std::placeholders::_1,
+                                        std::placeholders::_2, std::placeholders::_3);
                 break;
+
             case UwbInitOptions::InitVariables::DIST_BIAS:
-                ls_solver_ = std::bind(&UwbInitializer::ls_double_dist_bias, this, std::placeholders::_1,
-                                     std::placeholders::_2);
+                ls_problem_ = std::bind(&UwbInitializer::ls_double_dist_bias, this, std::placeholders::_1,
+                                        std::placeholders::_2, std::placeholders::_3);
+                check_beta_sq = true;
                 break;
+
             case UwbInitOptions::InitVariables::FULL_BIAS:
-                ls_solver_ = std::bind(&UwbInitializer::ls_double_full_bias, this, std::placeholders::_1,
-                                     std::placeholders::_2);
+                ls_problem_ = std::bind(&UwbInitializer::ls_double_full_bias, this, std::placeholders::_1,
+                                        std::placeholders::_2, std::placeholders::_3);
+                check_beta_sq = true;
                 break;
+
             default:
-                // TODO (gid)
-                // logger error no initialization routine for selected method and variables
                 exit(EXIT_FAILURE);
             }
             break;
+
         default:
-            // TODO (gid)
-            // logger error no initialization routine for selected method
             exit(EXIT_FAILURE);
         }
     }
@@ -144,16 +155,19 @@ public:
 private:
     UwbInitOptions params_;  //!< initializer parameters
 
-    // anchor and measurement handling
-    Eigen::Vector3d cur_p_UinG_;         //!< current position of the UWB module in global frame
-    PositionBufferTimed buffer_p_UinG_;  //!< buffer of UWB module positions in global frame
+    // Auxiliary variables for checks depending on parameters
+    bool check_beta_sq = false;
 
-    UwbDataBuffer uwb_data_buffer_;  //!< history of uwb readings in DataBuffer
+    // Anchor and measurement handling
+    Eigen::Vector3d cur_p_UinG_;            //!< current position of the UWB module in global frame
+    PositionBufferTimed buffer_p_UinG_;     //!< buffer of UWB module positions in global frame
 
-    // least squares initialization handling
-    std::function<bool(std::deque<std::pair<double, UwbData>>&, Eigen::MatrixXd&, Eigen::VectorXd&)> ls_solver_;
+    UwbDataBuffer uwb_data_buffer_;     //!< history of uwb readings in DataBuffer
 
-    // initialization handling
+    // Least squares initialization handling
+    std::function<bool(std::deque<std::pair<double, UwbData>>&, Eigen::MatrixXd&, Eigen::VectorXd&)> ls_problem_;
+
+    // Initialization handling
     bool solve_ls(UwbAnchorBuffer& anchor_buffer, const uint& anchor_id);
 
     ///
@@ -161,21 +175,21 @@ private:
     /// \param
     /// \return coefficient matrix A, measurement vector b (A * x = b)
     ///
-    void ls_single_full_bias(std::deque<std::pair<double, UwbData>>& uwb_data,
+    bool ls_single_full_bias(std::deque<std::pair<double, UwbData>>& uwb_data,
                              Eigen::MatrixXd& A, Eigen::VectorXd& b);
-    void ls_single_dist_bias(std::deque<std::pair<double, UwbData>>& uwb_data,
+    bool ls_single_dist_bias(std::deque<std::pair<double, UwbData>>& uwb_data,
                              Eigen::MatrixXd& A, Eigen::VectorXd& b);
-    void ls_single_const_bias(std::deque<std::pair<double, UwbData>>& uwb_data,
+    bool ls_single_const_bias(std::deque<std::pair<double, UwbData>>& uwb_data,
                               Eigen::MatrixXd& A, Eigen::VectorXd& b);
-    void ls_single_no_bias(std::deque<std::pair<double, UwbData>>& uwb_data,
+    bool ls_single_no_bias(std::deque<std::pair<double, UwbData>>& uwb_data,
                            Eigen::MatrixXd& A, Eigen::VectorXd& b);
-    void ls_double_full_bias(std::deque<std::pair<double, UwbData>>& uwb_data,
+    bool ls_double_full_bias(std::deque<std::pair<double, UwbData>>& uwb_data,
                              Eigen::MatrixXd& A, Eigen::VectorXd& b);
-    void ls_double_dist_bias(std::deque<std::pair<double, UwbData>>& uwb_data,
+    bool ls_double_dist_bias(std::deque<std::pair<double, UwbData>>& uwb_data,
                              Eigen::MatrixXd& A, Eigen::VectorXd& b);
-    void ls_double_const_bias(std::deque<std::pair<double, UwbData>>& uwb_data,
+    bool ls_double_const_bias(std::deque<std::pair<double, UwbData>>& uwb_data,
                               Eigen::MatrixXd& A, Eigen::VectorXd& b);
-    void ls_double_no_bias(std::deque<std::pair<double, UwbData>>& uwb_data,
+    bool ls_double_no_bias(std::deque<std::pair<double, UwbData>>& uwb_data,
                            Eigen::MatrixXd& A, Eigen::VectorXd& b);
 };
 

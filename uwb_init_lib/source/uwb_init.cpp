@@ -27,27 +27,24 @@ namespace UwbInit
 
 void UwbInitializer::reset()
 {
-    // reset buffers
+    // Reset buffers
     uwb_data_buffer_.reset();
     buffer_p_UinG_.reset();
 
-    // reset positions
+    // Reset positions
     cur_p_UinG_ = Eigen::Vector3d::Zero();
 }
 
 
 void UwbInitializer::feed_uwb(const std::vector<UwbData> uwb_measurements)
 {
-    // add measurements to data buffer
-    for (uint i = 0; i < uwb_measurements.size(); ++i)
-    {
-        // check validity and if measurement is actual bigger than 0.0 (otherwise another error happend)
-        if (uwb_measurements[i].valid && uwb_measurements[i].distance > 0.0)
-        {
+    // Add measurements to data buffer
+    for (uint i = 0; i < uwb_measurements.size(); ++i) {
+        // Check validity and if measurement is actual bigger than 0.0 (otherwise another error happend)
+        if (uwb_measurements[i].valid && uwb_measurements[i].distance > 0.0) {
             uwb_data_buffer_.push_back(uwb_measurements[i].id, uwb_measurements[i].timestamp, uwb_measurements[i]);
         }
-        else
-        {
+        else {
             // TODO (gid)
             //      INIT_DEBUG_STREAM("DISCARDING measurment " << uwb_measurements[i].distance << " from anchor "
             //                                                 << uwb_measurements[i].id);
@@ -59,54 +56,60 @@ void UwbInitializer::feed_uwb(const std::vector<UwbData> uwb_measurements)
 void UwbInitializer::feed_pose(const double timestamp, const Eigen::Vector3d p_UinG)
 {
     /// \todo TODO(scm): maybe use buffer here for timesyncing with UWB modules
-    /// currently this method does not take delayed UWB measurements into account
+    /// Currently this method does not take delayed UWB measurements into account
     buffer_p_UinG_.push_back(timestamp, p_UinG);
 }
 
 
 bool UwbInitializer::init_anchors(UwbAnchorBuffer& anchor_buffer)
 {
-    // flag to determine if all anchors are successfully initialized
-    bool is_successfull_initialized = true;
-
-    // check if buffers are not empty
-    if (buffer_p_UinG_.is_emtpy())
-    {
-        is_successfull_initialized = false;
-        return is_successfull_initialized;
+    // Check if pose buffer is empty
+    if ( buffer_p_UinG_.is_emtpy() ) {
+        // TODO (gid) logging
+        return false;
     }
 
+    // Check if uwb buffer is empty
+    if ( uwb_data_buffer_.is_emtpy() ) {
+        // TODO (gid) logging
+        return false;
+    }
+
+    // Variable for keeping track if all anchors has been correctly initialized
+    bool init_successful = true;
+
     /// \todo TODO(scm): this can be improved by making DataBuffer a iterable class
-    for (const auto& kv : uwb_data_buffer_.get_buffer())
-    {
-        // get ID of anchor and its data
+    for (const auto& kv : uwb_data_buffer_.get_buffer()) {
+        // Get ID of anchor and its data
         const auto anchor_id = kv.first;
 
-        // check if anchor is already initialized
+        // Check if anchor is already initialized
         if (!params_.b_do_continous_init && anchor_buffer.contains_id(anchor_id) &&
                 anchor_buffer.is_initialized(anchor_id))
         {
-            is_successfull_initialized &= true;
+            continue;
+        }
+        // Solve ls problem and initialize anchor
+        else if (solve_ls(anchor_buffer, anchor_id))
+        {
+            // TODO (gid) nonlinear optimization if option enabled
+            continue;
         }
         else
         {
-            is_successfull_initialized &= solve_ls(anchor_buffer, anchor_id);
-        }  // else anchor_initialized
-    }    // for (const auto& kv : uwb_data_buffer_.get_buffer())
+            init_successful = false;
+        }
+    }
 
-    // TODO (gid)
-    //  ROS_INFO_STREAM_COND(is_successfull_initialized, "Successfully initialized all known anchors!");
-
-    // return if initialization was successful
-    return is_successfull_initialized;
+    // TODO (gid) logging initialization successful
+    return init_successful;
 }
 
 
 bool UwbInitializer::solve_ls(UwbAnchorBuffer& anchor_buffer, const uint& anchor_id)
 {
-
-    // TODO (gid) get rid of it
-    double calc_time = 0.0;
+    // starting time for elapsed time calculation
+    auto start_t = std::chrono::steady_clock::now();
 
     // define result
     UwbAnchor new_uwb_anchor(anchor_id);
@@ -115,8 +118,7 @@ bool UwbInitializer::solve_ls(UwbAnchorBuffer& anchor_buffer, const uint& anchor
     std::deque<std::pair<double, UwbData>> single_anchor_uwb_data;
 
     // First check
-    if ( !(uwb_data_buffer_.get_buffer_values(anchor_id, single_anchor_uwb_data)) )
-    {
+    if ( !(uwb_data_buffer_.get_buffer_values(anchor_id, single_anchor_uwb_data)) ) {
         return false;
     }
 
@@ -124,536 +126,890 @@ bool UwbInitializer::solve_ls(UwbAnchorBuffer& anchor_buffer, const uint& anchor
     Eigen::MatrixXd coeffs;
     Eigen::VectorXd meas;
 
-    ls_solver_(single_anchor_uwb_data, coeffs, meas);
+    // Initialize least squares problem
+    if ( !(ls_problem_(single_anchor_uwb_data, coeffs, meas)) ) {
+        new_uwb_anchor.initialized = false;
+        return false;
+    }
 
     // Check the coefficient matrix condition number and solve the LS problem
     Eigen::BDCSVD<Eigen::MatrixXd> svd(coeffs, Eigen::ComputeThinU | Eigen::ComputeThinV);
-    double cond = svd.singularValues()(0) / svd.singularValues()(svd.singularValues().size() - 1);
+    double cond = svd.singularValues()(0) / svd.singularValues()(svd.singularValues().size()-1);
 
     // Second check (condition number) TODO (gid) add logger
-    if ( !(cond < params_.max_cond_num) )
-    {
+    if ( !(cond < params_.max_cond_num) ) {
         new_uwb_anchor.initialized = false;
         return false;
     }
 
+    // Solve LS problem
+    Eigen::VectorXd lsSolution = svd.solve(meas);
+
+    // lsSolution changes w.r.t. chosen method and variables!
+    //
+    // Full bias single:
     // [      0     ,       1     ,       2     ,  3 , 4,          5              ]
     // [b^2*p_AinG_x, b^2*p_AinG_y, b^2*p_AinG_z, b^2, k, b^2*(norm(p_AinG)^2-k^2)]
-    Eigen::VectorXd LSSolution = svd.solve(meas);
+    //
+    // Full bias double:
+    // [      0     ,       1     ,       2     ,  3 , 4]
+    // [b^2*p_AinG_x, b^2*p_AinG_y, b^2*p_AinG_z, b^2, k]
+    //
+    // Dist bias single:
+    // [      0     ,       1     ,       2     ,  3 ,         4         ]
+    // [b^2*p_AinG_x, b^2*p_AinG_y, b^2*p_AinG_z, b^2, b^2*norm(p_AinG)^2]
+    //
+    // Dist bias double:
+    // [      0     ,       1     ,       2     ,  3 ]
+    // [b^2*p_AinG_x, b^2*p_AinG_y, b^2*p_AinG_z, b^2]
+    //
+    // Const bias single:
+    // [    0   ,     1   ,    2    ,  3 ,      4            ]
+    // [p_AinG_x, p_AinG_y, p_AinG_z,  k , norm(p_AinG)^2-k^2]
+    //
+    // Const bias double:
+    // [    0   ,     1   ,    2    ,  3 ]
+    // [p_AinG_x, p_AinG_y, p_AinG_z,  k ]
+    //
+    // Unbiased single:
+    // [    0    ,    1   ,    2   ,        3       ]
+    // [p_AinG_x, p_AinG_y, p_AinG_z, norm(p_AinG)^2]
+    //
+    // Unbiased double:
+    // [    0    ,    1   ,    2    ]
+    // [p_AinG_x, p_AinG_y, p_AinG_z]
+    //
 
-    // Third check (beta squared must be positive)
-    if ( !(LSSolution[3] > 0) )
-    {
+    // Solution check (if exists beta squared must be positive)
+    if ( check_beta_sq && !(lsSolution[3] > 0) ) {
+        // TODO (gid) logging
         new_uwb_anchor.initialized = false;
         return false;
     }
 
-    Eigen::Vector3d p_AinG = LSSolution.segment(0, 3) / LSSolution[3];
-    double distance_bias_squared = LSSolution[3];
-    double const_bias = LSSolution[4];
+    // Assign values to parameters
+    Eigen::Vector3d p_AinG = lsSolution.segment(0, 3);
+    double const_bias = 0.0;
+    double distance_bias = 1.0;
 
-    // Fourth check
-    if ( !((LSSolution[5] - (distance_bias_squared * (std::pow(p_AinG.norm(), 2) - std::pow(const_bias, 2)))) < 1) )
-    {
-        new_uwb_anchor.initialized = false;
-        return false;
+    if ( check_beta_sq ) {
+        p_AinG /= lsSolution[3];
+        distance_bias = std::sqrt(lsSolution[3]);
+        if ( lsSolution.size() > 4 ) {
+            const_bias = lsSolution[4];
+        }
+    }
+    else if ( lsSolution.size() > 3 ) {
+        const_bias = lsSolution[3];
     }
 
-    // Assign valid estimated values
-    new_uwb_anchor.bias_d = std::sqrt(distance_bias_squared);  // NOTE(scm): this is beta with beta=1+alpha
-    new_uwb_anchor.bias_c = const_bias;
+    // Assign parameters to anchor
     new_uwb_anchor.p_AinG = p_AinG;
+    new_uwb_anchor.bias_d = distance_bias;
+    new_uwb_anchor.bias_c = const_bias;
 
     // Compute estimation Covariance
     Eigen::MatrixXd Cov =
-            (std::pow((coeffs * LSSolution - meas).norm(), 2) / (coeffs.rows() * coeffs.cols())) *
+            (std::pow((coeffs * lsSolution - meas).norm(), 2) / (coeffs.rows() * coeffs.cols())) *
             (svd.matrixV().inverse().transpose() * svd.singularValues().asDiagonal().inverse() *
              svd.singularValues().asDiagonal().inverse() * svd.matrixV().inverse());
 
-    // compare norm of singular values vector of covarnace matrix with threshold
-    Eigen::JacobiSVD<Eigen::MatrixXd> svd_cov(Cov, Eigen::ComputeThinU | Eigen::ComputeThinV);
+    //    // Compare norm of singular values vector of covarnace matrix with threshold
+    //    Eigen::JacobiSVD<Eigen::MatrixXd> svd_cov(Cov, Eigen::ComputeThinU | Eigen::ComputeThinV);
 
-    if ( !(svd_cov.singularValues().norm() <= params_.cov_sv_threshold) )
-    {
-        new_uwb_anchor.initialized = false;
-        return false;
+    //    // Check if (cond < params_.max_cond_num)
+    //    if ( !(svd_cov.singularValues().norm() <= params_.cov_sv_threshold) ) {
+    //        new_uwb_anchor.initialized = false;
+    //        return false;
+    //    }
 
+    // Initialize anchor Covariance
+    new_uwb_anchor.cov_p_AinG = Cov.block(0, 0, 3, 3);
+    new_uwb_anchor.cov_bias_d = 0.0;
+    new_uwb_anchor.cov_bias_c = 0.0;
+
+    // Retrieve Covariance applying error propagation law if distant bias exixts
+    if ( check_beta_sq ) {
+        // Retrive P_AinG Covariance applying error propagation law and assign to Anchors_Covs
+        Eigen::MatrixXd J = Eigen::MatrixXd::Zero(3, 4);
+        J.block(0, 0, 3, 3) = (1.0 / std::pow(distance_bias, 2)) * Eigen::Matrix3d::Identity();
+        J.block(0, 3, 3, 1) = -p_AinG / std::pow(distance_bias, 2);
+        new_uwb_anchor.cov_p_AinG = J * Cov.block(0, 0, 4, 4) * J.transpose();
+
+        // Retrive Covariance of b and k applying error propagation law
+        new_uwb_anchor.cov_bias_d = 1.0 / (4.0 * std::pow(distance_bias, 2)) * Cov(3, 3);
+        if ( lsSolution.size() > 4 ) {
+            new_uwb_anchor.cov_bias_c = Cov(4, 4);
+        }
+    }
+    else if ( lsSolution.size() > 3 ) {
+        new_uwb_anchor.cov_bias_c = Cov(3, 3);
     }
 
-    // If all checks passed
-    // Retrive P_AinG Covariance applying error propagation law and assign to Anchors_Covs
-    Eigen::MatrixXd J = Eigen::MatrixXd::Zero(3, 4);
-    J.block(0, 0, 3, 3) = (1.0 / distance_bias_squared) * Eigen::Matrix3d::Identity();
-    J.block(0, 3, 3, 1) = -p_AinG / distance_bias_squared;
-    new_uwb_anchor.cov_p_AinG = J * Cov.block(0, 0, 4, 4) * J.transpose();
-
-    // Retrive Covariance of b and k applying error propagation law
-    new_uwb_anchor.cov_bias_d = 1.0 / (4.0 * distance_bias_squared) * Cov(3, 3);
-    new_uwb_anchor.cov_bias_c = Cov(4, 4);
-
-    // set initialization to true
+    // Set initialization to true
     new_uwb_anchor.initialized = true;
 
-    // regardless, add calculation to buffer
+    // Elapsed time for initialization
+    auto end_t = std::chrono::steady_clock::now();
+    double calc_time = std::chrono::duration_cast<std::chrono::seconds>(end_t - start_t).count();
+
+    // Regardless, add calculation to buffer
     anchor_buffer.push_back(anchor_id, calc_time, new_uwb_anchor);
 
     return true;
 }
 
-void UwbInitializer::ls_single_full_bias(std::deque<std::pair<double, UwbData>> &uwb_data, Eigen::MatrixXd &A, Eigen::VectorXd &b)
+
+bool UwbInitializer::ls_single_full_bias(std::deque<std::pair<double, UwbData>> &uwb_data,
+                                         Eigen::MatrixXd &A, Eigen::VectorXd &b)
 {
+    // Full bias single:
+    // [      0     ,       1     ,       2     ,  3 , 4,          5              ]
+    // [b^2*p_AinG_x, b^2*p_AinG_y, b^2*p_AinG_z, b^2, k, b^2*(norm(p_AinG)^2-k^2)]
+
     // Coefficient matrix and measurement vector initialization
     A = Eigen::MatrixXd::Zero(uwb_data.size(), 6);
     b = Eigen::VectorXd::Zero(uwb_data.size());
 
     // Fill the coefficient matrix and the measurement vector
-    for (uint i = 0; i < uwb_data.size(); ++i)
-    {
-        // get closest UWB module position
-        Eigen::Vector3d closest_p_UinG =
-                buffer_p_UinG_.get_closest(uwb_data.at(i).first - params_.t_pose_diff);
-        Eigen::VectorXd row(6);
-        row << -2 * closest_p_UinG.x(), -2 * closest_p_UinG.y(), -2 * closest_p_UinG.z(),
-                std::pow(closest_p_UinG.norm(), 2), 2 * uwb_data.at(i).second.distance, 1;
+    for (uint i = 0; i < uwb_data.size(); ++i) {
+        // Get closest UWB module position
+        Eigen::Vector3d closest_p_UinG = buffer_p_UinG_.get_closest(uwb_data.at(i).first - params_.t_pose_diff);
+        Eigen::VectorXd row(A.cols());
+        row << -2 * closest_p_UinG.x(),
+                -2 * closest_p_UinG.y(),
+                -2 * closest_p_UinG.z(),
+                std::pow(closest_p_UinG.norm(), 2),
+                2 * uwb_data.at(i).second.distance,
+                1;
         A.row(i) = row.transpose();
         b(i) = std::pow(uwb_data.at(i).second.distance, 2);
     }
 
+    // Exit if regularization is not requested
+    if ( !(params_.b_perform_regularization) ) return true;
+
+    // Check to have more than 6 rows in the coefficient matrix
+    if ( !(A.rows() > A.cols()) ) {
+        // TODO (gid) logger: cannot perform regularzation
+        return true;
+    }
+
+    // Check lambda positive
+    if ( !(params_.lamda > 0.0) ) {
+        // TODO (gid) logger: cannot perform regularzation (negative lambda)
+        return true;
+    }
+
+    // Initialize regularization matrix and vector
+    Eigen::MatrixXd A_reg = Eigen::MatrixXd::Zero(A.cols(), A.cols());
+    Eigen::VectorXd b_reg = Eigen::VectorXd::Zero(A.cols());
+
+    // Regularize z coordinate if requested
+    if (params_.b_regularize_z) {
+        A_reg(2, 2) = std::sqrt(params_.lamda);
+    }
+
+    // Regularize beta (distance bias) if requested
+    if (params_.b_regularize_b) {
+        A_reg(3, 3) = std::sqrt(params_.lamda);
+        b_reg(3) = std::sqrt(params_.lamda);
+    }
+
+    // Regularize k (constant bias) if requested
+    if (params_.b_regularize_k) {
+        A_reg(4, 4) = std::sqrt(params_.lamda);
+    }
+
+    // Concatenate coeffs matrix A
+    Eigen::MatrixXd A_new(A.rows()+A_reg.rows(), A.cols());
+    A_new << A, A_reg;
+
+    // Concatenate meas vector b
+    Eigen::VectorXd b_new(b.size()+b_reg.size());
+    b_new << b, b_reg;
+
+    // Overwrite A and b
+    A = A_new;
+    b = b_new;
+
+    return true;
 }
 
-void UwbInitializer::ls_double_full_bias(std::deque<std::pair<double, UwbData> > &uwb_data, Eigen::MatrixXd &A, Eigen::VectorXd &b)
+
+bool UwbInitializer::ls_single_dist_bias(std::deque<std::pair<double, UwbData> > &uwb_data,
+                                         Eigen::MatrixXd &A, Eigen::VectorXd &b)
 {
+    // Dist bias single:
+    // [      0     ,       1     ,       2     ,  3 ,         4         ]
+    // [b^2*p_AinG_x, b^2*p_AinG_y, b^2*p_AinG_z, b^2, b^2*norm(p_AinG)^2]
+
+    // Coefficient matrix and measurement vector initialization
+    A = Eigen::MatrixXd::Zero(uwb_data.size(), 5);
+    b = Eigen::VectorXd::Zero(uwb_data.size());
+
+    // Fill the coefficient matrix and the measurement vector
+    for (uint i = 0; i < uwb_data.size(); ++i) {
+        // Get closest UWB module position
+        Eigen::Vector3d closest_p_UinG = buffer_p_UinG_.get_closest(uwb_data.at(i).first - params_.t_pose_diff);
+        Eigen::VectorXd row(A.cols());
+        row << -2 * closest_p_UinG.x(),
+                -2 * closest_p_UinG.y(),
+                -2 * closest_p_UinG.z(),
+                std::pow(closest_p_UinG.norm(), 2),
+                1;
+        A.row(i) = row.transpose();
+        b(i) = std::pow(uwb_data.at(i).second.distance, 2);
+    }
+
+    // Exit if regularization is not requested
+    if ( !(params_.b_perform_regularization) ) return true;
+
+    // Check to have more than 5 rows in the coefficient matrix
+    if ( !(A.rows() > A.cols()) ) {
+        // TODO (gid) logger: cannot perform regularzation
+        return true;
+    }
+
+    // Check lambda positive
+    if ( !(params_.lamda > 0.0) ) {
+        // TODO (gid) logger: cannot perform regularzation (negative lambda)
+        return true;
+    }
+
+    // Initialize regularization matrix and vector
+    Eigen::MatrixXd A_reg = Eigen::MatrixXd::Zero(A.cols(), A.cols());
+    Eigen::VectorXd b_reg = Eigen::VectorXd::Zero(A.cols());
+
+    // Regularize z coordinate if requested
+    if (params_.b_regularize_z) {
+        A_reg(2, 2) = std::sqrt(params_.lamda);
+    }
+
+    // Regularize beta (distance bias) if requested
+    if (params_.b_regularize_b) {
+        A_reg(3, 3) = std::sqrt(params_.lamda);
+        b_reg(3) = std::sqrt(params_.lamda);
+    }
+
+    // Concatenate coeffs matrix A
+    Eigen::MatrixXd A_new(A.rows()+A_reg.rows(), A.cols());
+    A_new << A, A_reg;
+
+    // Concatenate meas vector b
+    Eigen::VectorXd b_new(b.size()+b_reg.size());
+    b_new << b, b_reg;
+
+    // Overwrite A and b
+    A = A_new;
+    b = b_new;
+
+    return true;
+}
+
+
+bool UwbInitializer::ls_single_const_bias(std::deque<std::pair<double, UwbData> > &uwb_data,
+                                          Eigen::MatrixXd &A, Eigen::VectorXd &b)
+{
+    // Const bias single:
+    // [    0   ,     1   ,    2    ,  3 ,      4            ]
+    // [p_AinG_x, p_AinG_y, p_AinG_z,  k , norm(p_AinG)^2-k^2]
+
+    // Coefficient matrix and measurement vector initialization
+    A = Eigen::MatrixXd::Zero(uwb_data.size(), 5);
+    b = Eigen::VectorXd::Zero(uwb_data.size());
+
+    // Fill the coefficient matrix and the measurement vector
+    for (uint i = 0; i < uwb_data.size(); ++i) {
+        // Get closest UWB module position
+        Eigen::Vector3d closest_p_UinG = buffer_p_UinG_.get_closest(uwb_data.at(i).first - params_.t_pose_diff);
+        Eigen::VectorXd row(A.cols());
+        row << -2 * closest_p_UinG.x(),
+                -2 * closest_p_UinG.y(),
+                -2 * closest_p_UinG.z(),
+                2 * uwb_data.at(i).second.distance,
+                1;
+        A.row(i) = row.transpose();
+        b(i) = std::pow(uwb_data.at(i).second.distance, 2);
+    }
+
+    // Exit if regularization is not requested
+    if ( !(params_.b_perform_regularization) ) return true;
+
+    // Check to have more than 6 rows in the coefficient matrix
+    if ( !(A.rows() > A.cols()) ) {
+        // TODO (gid) logger: cannot perform regularzation
+        return true;
+    }
+
+    // Check lambda positive
+    if ( !(params_.lamda > 0.0) ) {
+        // TODO (gid) logger: cannot perform regularzation (negative lambda)
+        return true;
+    }
+
+    // Initialize regularization matrix and vector
+    Eigen::MatrixXd A_reg = Eigen::MatrixXd::Zero(A.cols(), A.cols());
+    Eigen::VectorXd b_reg = Eigen::VectorXd::Zero(A.cols());
+
+    // Regularize z coordinate if requested
+    if (params_.b_regularize_z) {
+        A_reg(2, 2) = std::sqrt(params_.lamda);
+    }
+
+    // Regularize k (constant bias) if requested
+    if (params_.b_regularize_k) {
+        A_reg(3, 3) = std::sqrt(params_.lamda);
+    }
+
+    // Concatenate coeffs matrix A
+    Eigen::MatrixXd A_new(A.rows()+A_reg.rows(), A.cols());
+    A_new << A, A_reg;
+
+    // Concatenate meas vector b
+    Eigen::VectorXd b_new(b.size()+b_reg.size());
+    b_new << b, b_reg;
+
+    // Overwrite A and b
+    A = A_new;
+    b = b_new;
+
+    return true;
+}
+
+
+bool UwbInitializer::ls_single_no_bias(std::deque<std::pair<double, UwbData>> &uwb_data,
+                                       Eigen::MatrixXd &A, Eigen::VectorXd &b)
+{
+    // Unbiased single:
+    // [    0    ,    1   ,    2   ,        3       ]
+    // [p_AinG_x, p_AinG_y, p_AinG_z, norm(p_AinG)^2]
+
+    // Coefficient matrix and measurement vector initialization
+    A = Eigen::MatrixXd::Zero(uwb_data.size(), 4);
+    b = Eigen::VectorXd::Zero(uwb_data.size());
+
+    // Fill the coefficient matrix and the measurement vector
+    for (uint i = 0; i < uwb_data.size(); ++i) {
+        // Get closest UWB module position
+        Eigen::Vector3d closest_p_UinG = buffer_p_UinG_.get_closest(uwb_data.at(i).first - params_.t_pose_diff);
+        Eigen::VectorXd row(4);
+        row << -2 * closest_p_UinG.x(),
+                -2 * closest_p_UinG.y(),
+                -2 * closest_p_UinG.z(),
+                1;
+        A.row(i) = row.transpose();
+        b(i) = std::pow(uwb_data.at(i).second.distance, 2) - std::pow(closest_p_UinG.norm(), 2);
+    }
+
+    // Exit if regularization is not requested
+    if ( !(params_.b_perform_regularization) ) return true;
+
+    // Check to have more than 4 rows in the coefficient matrix
+    if ( !(A.rows() > 4) ) {
+        // TODO (gid) logger: cannot perform regularzation
+        return true;
+    }
+
+    // Check lambda positive
+    if ( !(params_.lamda > 0.0) ) {
+        // TODO (gid) logger: cannot perform regularzation (negative lambda)
+        return true;
+    }
+
+    // Initialize regularization matrix and vector
+    Eigen::MatrixXd A_reg = Eigen::MatrixXd::Zero(A.cols(), A.cols());
+    Eigen::VectorXd b_reg = Eigen::VectorXd::Zero(A.cols());
+
+    // Regularize z coordinate if requested
+    if (params_.b_regularize_z) {
+        A_reg(2, 2) = std::sqrt(params_.lamda);
+    }
+
+    // Concatenate coeffs matrix A
+    Eigen::MatrixXd A_new(A.rows()+A_reg.rows(), A.cols());
+    A_new << A, A_reg;
+
+    // Concatenate meas vector b
+    Eigen::VectorXd b_new(b.size()+b_reg.size());
+    b_new << b, b_reg;
+
+    // Overwrite A and b
+    A = A_new;
+    b = b_new;
+
+    return true;
+}
+
+
+bool UwbInitializer::ls_double_full_bias(std::deque<std::pair<double, UwbData>> &uwb_data,
+                                         Eigen::MatrixXd &A, Eigen::VectorXd &b)
+{
+    // Full bias double:
+    // [      0     ,       1     ,       2     ,  3 , 4]
+    // [b^2*p_AinG_x, b^2*p_AinG_y, b^2*p_AinG_z, b^2, k]
+
+    // Number of parameters for selected model and method
+    const uint8_t n_params = 5;
+
     // Coefficient matrix and measurement vector initialization
     std::vector<double> coeffs_vec;
     std::vector<double> meas_vec;
 
-    // TODO (gid)
-    //    INIT_DEBUG_STREAM("Anchor " << anchor_id << ": building coefficient matrix ...");
-
     // Fill the coefficient matrix and the measurement vector
-    for (uint i = 0; i < uwb_data.size() - params_.meas_baseline_idx_; ++i)
-    {
+    for (uint i = 0; i < uwb_data.size() - params_.meas_baseline_idx_; ++i) {
         // baseline check
         double diff = uwb_data.at(i).second.distance -
                 uwb_data.at(i + params_.meas_baseline_idx_).second.distance;
-        if (std::abs(diff) > params_.meas_baseline_m_)
+        if ( !(std::abs(diff) > params_.meas_baseline_m_) ) continue;
+
+        // get closest UWB module position and check if closes was actually reached
+        Eigen::Vector3d closest_p_UinG1, closest_p_UinG2;
+        if (buffer_p_UinG_.get_closest(uwb_data.at(i).first - params_.t_pose_diff, closest_p_UinG1) &&
+                buffer_p_UinG_.get_closest(uwb_data.at(i + params_.meas_baseline_idx_).first - params_.t_pose_diff, closest_p_UinG2))
         {
-            // get closest UWB module position and check if closes was actually reached
-            Eigen::Vector3d closest_p_UinG1, closest_p_UinG2;
-            if (buffer_p_UinG_.get_closest(uwb_data.at(i).first - params_.t_pose_diff, closest_p_UinG1) &&
-                    buffer_p_UinG_.get_closest(
-                        uwb_data.at(i + params_.meas_baseline_idx_).first - params_.t_pose_diff, closest_p_UinG2))
-            {
-                Eigen::VectorXd row(5);
-                row << std::pow(closest_p_UinG1.norm(), 2) - std::pow(closest_p_UinG2.norm(), 2),
-                        -2 * (closest_p_UinG1.x() - closest_p_UinG2.x()), -2 * (closest_p_UinG1.y() - closest_p_UinG2.y()),
-                        -2 * (closest_p_UinG1.z() - closest_p_UinG2.z()), 2 * diff;
+            Eigen::VectorXd row(n_params);
+            row << -2 * (closest_p_UinG1.x() - closest_p_UinG2.x()),
+                    -2 * (closest_p_UinG1.y() - closest_p_UinG2.y()),
+                    -2 * (closest_p_UinG1.z() - closest_p_UinG2.z()),
+                    std::pow(closest_p_UinG1.norm(), 2) - std::pow(closest_p_UinG2.norm(), 2),
+                    2 * diff;
 
-                coeffs_vec.push_back(row(0));
-                coeffs_vec.push_back(row(1));
-                coeffs_vec.push_back(row(2));
-                coeffs_vec.push_back(row(3));
-                coeffs_vec.push_back(row(4));
-                meas_vec.push_back(std::pow(uwb_data.at(i).second.distance, 2) -
-                                   std::pow(uwb_data.at(i + params_.meas_baseline_idx_).second.distance, 2));
+            coeffs_vec.push_back(row(0));
+            coeffs_vec.push_back(row(1));
+            coeffs_vec.push_back(row(2));
+            coeffs_vec.push_back(row(3));
+            coeffs_vec.push_back(row(4));
+            meas_vec.push_back(std::pow(uwb_data.at(i).second.distance, 2) -
+                               std::pow(uwb_data.at(i + params_.meas_baseline_idx_).second.distance, 2));
 
-            }  // if (closest available)
-        }    // if (baseline check)
-    }      // for (all anchor measurements)
+        }
+    }
 
     // Assertation, check vectors size
-    assert(coeffs_vec.size() == 5 * meas_vec.size());
+    assert(coeffs_vec.size() == n_params * meas_vec.size());
+
+    // Map vectors to Eigen matrices
+    A = Eigen::MatrixXd(Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+                            coeffs_vec.data(), coeffs_vec.size() / n_params, n_params));
+    b = Eigen::VectorXd(
+                Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>>(meas_vec.data(), meas_vec.size(), 1));
+
+    // Exit if regularization is not requested
+    if ( !(params_.b_perform_regularization) ) return true;
 
     // Check to have more than 5 rows in the coefficient matrix
-    if (coeffs_vec.size() > 5 * 5)
-    {
-        if (params_.lamda > 0.0)
-        {
-            // Data augmentation for regularization
-            coeffs_vec.push_back(std::sqrt(params_.lamda));  // b^2
-            // add 23 zero lines to fill 'diag matrix
-            if (params_.b_regularize_z)
-            {
-                // with z regularization
-                for (uint cnt_line = 0; cnt_line < 17; ++cnt_line)
-                    coeffs_vec.push_back(0.0);                      // b^2*p_AinG except z
-                coeffs_vec.push_back(std::sqrt(params_.lamda));  // b^2*p_AinG_z
-                for (uint cnt_line = 18; cnt_line < 23; ++cnt_line)
-                    coeffs_vec.push_back(0.0);  // b^2*p_AinG except z
-            }
-            else
-            {
-                for (uint cnt_line = 0; cnt_line < 23; ++cnt_line)
-                    coeffs_vec.push_back(0.0);  // b^2*p_AinG
-            }
-            coeffs_vec.push_back(std::sqrt(params_.lamda));  // k
+    if ( !(coeffs_vec.size() > n_params * n_params) ) {
+        // TODO (gid) logger: cannot perform regularzation
+        return true;
+    }
 
-            // add values to meas_vec
-            meas_vec.push_back(std::sqrt(params_.lamda));
+    // Check lambda positive
+    if ( !(params_.lamda > 0.0) ) {
+        // TODO (gid) logger: cannot perform regularzation (negative lambda)
+        return true;
+    }
+
+    // Data augmentation for regularization (5x5 matrix for coeffs, 5x1 vector for meas)
+    // Add 10 zero to fill first two rows of coeffs_vec (x and y coordinates)
+    for (uint cnt_line = 0; cnt_line < 2 * n_params; ++cnt_line)
+        coeffs_vec.push_back(0.0);
+
+    // Regularize z coordinate if requested
+    if (params_.b_regularize_z) {
+        coeffs_vec.push_back(0.0);                          // b^2*p_AinG_x
+        coeffs_vec.push_back(0.0);                          // b^2*p_AinG_y
+        coeffs_vec.push_back(std::sqrt(params_.lamda));     // b^2*p_AinG_z
+        coeffs_vec.push_back(0.0);                          // b^2
+        coeffs_vec.push_back(0.0);                          // k
+    }
+    else {
+        for (uint cnt_line = 0; cnt_line < n_params; ++cnt_line)
+            coeffs_vec.push_back(0.0);
+    }
+
+    // Regularize beta (distance bias) if requested
+    if (params_.b_regularize_b) {
+        coeffs_vec.push_back(0.0);                          // b^2*p_AinG_x
+        coeffs_vec.push_back(0.0);                          // b^2*p_AinG_y
+        coeffs_vec.push_back(0.0);                          // b^2*p_AinG_z
+        coeffs_vec.push_back(std::sqrt(params_.lamda));     // b^2
+        coeffs_vec.push_back(0.0);                          // k
+    }
+    else {
+        for (uint cnt_line = 0; cnt_line < n_params; ++cnt_line)
+            coeffs_vec.push_back(0.0);
+    }
+
+    // Regularize k (constant bias) if requested
+    if (params_.b_regularize_k) {
+        coeffs_vec.push_back(0.0);                          // b^2*p_AinG_x
+        coeffs_vec.push_back(0.0);                          // b^2*p_AinG_y
+        coeffs_vec.push_back(0.0);                          // b^2*p_AinG_z
+        coeffs_vec.push_back(0.0);                          // b^2
+        coeffs_vec.push_back(std::sqrt(params_.lamda));     // k
+    }
+    else {
+        for (uint cnt_line = 0; cnt_line < n_params; ++cnt_line)
+            coeffs_vec.push_back(0.0);
+    }
+
+    // Add values to meas_vec (only if beta is regularized)
+    if (params_.b_regularize_b) {
+        meas_vec.push_back(0.0);                          // b^2*p_AinG_x
+        meas_vec.push_back(0.0);                          // b^2*p_AinG_y
+        meas_vec.push_back(0.0);                          // b^2*p_AinG_z
+        meas_vec.push_back(std::sqrt(params_.lamda));     // b^2
+        meas_vec.push_back(0.0);                          // k
+    }
+    else {
+        for (uint cnt_line = 0; cnt_line < n_params; ++cnt_line)
             meas_vec.push_back(0.0);
+    }
+
+
+    // Map vectors to Eigen matrices
+    A = Eigen::MatrixXd(Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+                            coeffs_vec.data(), coeffs_vec.size() / n_params, n_params));
+    b = Eigen::VectorXd(
+                Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>>(meas_vec.data(), meas_vec.size(), 1));
+
+    return true;
+}
+
+bool UwbInitializer::ls_double_dist_bias(std::deque<std::pair<double, UwbData> > &uwb_data,
+                                         Eigen::MatrixXd &A, Eigen::VectorXd &b)
+{
+    // Dist bias double:
+    // [      0     ,       1     ,       2     ,  3 ]
+    // [b^2*p_AinG_x, b^2*p_AinG_y, b^2*p_AinG_z, b^2]
+
+    // Number of parameters for selected model and method
+    const uint8_t n_params = 4;
+
+    // Coefficient matrix and measurement vector initialization
+    std::vector<double> coeffs_vec;
+    std::vector<double> meas_vec;
+
+    // Fill the coefficient matrix and the measurement vector
+    for (uint i = 0; i < uwb_data.size() - params_.meas_baseline_idx_; ++i) {
+        // baseline check
+        double diff = uwb_data.at(i).second.distance -
+                uwb_data.at(i + params_.meas_baseline_idx_).second.distance;
+        if ( !(std::abs(diff) > params_.meas_baseline_m_) ) continue;
+
+        // get closest UWB module position and check if closes was actually reached
+        Eigen::Vector3d closest_p_UinG1, closest_p_UinG2;
+        if (buffer_p_UinG_.get_closest(uwb_data.at(i).first - params_.t_pose_diff, closest_p_UinG1) &&
+                buffer_p_UinG_.get_closest(uwb_data.at(i + params_.meas_baseline_idx_).first - params_.t_pose_diff, closest_p_UinG2))
+        {
+            Eigen::VectorXd row(n_params);
+            row << -2 * (closest_p_UinG1.x() - closest_p_UinG2.x()),
+                    -2 * (closest_p_UinG1.y() - closest_p_UinG2.y()),
+                    -2 * (closest_p_UinG1.z() - closest_p_UinG2.z()),
+                    std::pow(closest_p_UinG1.norm(), 2) - std::pow(closest_p_UinG2.norm(), 2);
+
+            coeffs_vec.push_back(row(0));
+            coeffs_vec.push_back(row(1));
+            coeffs_vec.push_back(row(2));
+            coeffs_vec.push_back(row(3));
+            meas_vec.push_back(std::pow(uwb_data.at(i).second.distance, 2) -
+                               std::pow(uwb_data.at(i + params_.meas_baseline_idx_).second.distance, 2));
+
+        }
+    }
+
+    // Assertation, check vectors size
+    assert(coeffs_vec.size() == n_params * meas_vec.size());
+
+    // Map vectors to Eigen matrices
+    A = Eigen::MatrixXd(Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+                            coeffs_vec.data(), coeffs_vec.size() / n_params, n_params));
+    b = Eigen::VectorXd(
+                Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>>(meas_vec.data(), meas_vec.size(), 1));
+
+    // Exit if regularization is not requested
+    if ( !(params_.b_perform_regularization) ) return true;
+
+    // Check to have more than 4 rows in the coefficient matrix
+    if ( !(coeffs_vec.size() > n_params * n_params) ) {
+        // TODO (gid) logger: cannot perform regularzation
+        return true;
+    }
+
+    // Check lambda positive
+    if ( !(params_.lamda > 0.0) ) {
+        // TODO (gid) logger: cannot perform regularzation (negative lambda)
+        return true;
+    }
+
+    // Data augmentation for regularization (4x4 matrix for coeffs, 4x1 vector for meas)
+    // Add 8 zero to fill first two rows of coeffs_vec (x and y coordinates)
+    for (uint cnt_line = 0; cnt_line < 2 * n_params; ++cnt_line)
+        coeffs_vec.push_back(0.0);
+
+    // Regularize z coordinate if requested
+    if (params_.b_regularize_z) {
+        coeffs_vec.push_back(0.0);                          // b^2*p_AinG_x
+        coeffs_vec.push_back(0.0);                          // b^2*p_AinG_y
+        coeffs_vec.push_back(std::sqrt(params_.lamda));     // b^2*p_AinG_z
+        coeffs_vec.push_back(0.0);                          // b^2
+    }
+    else {
+        for (uint cnt_line = 0; cnt_line < n_params; ++cnt_line)
+            coeffs_vec.push_back(0.0);
+    }
+
+    // Regularize beta (distance bias) if requested
+    if (params_.b_regularize_b) {
+        coeffs_vec.push_back(0.0);                          // b^2*p_AinG_x
+        coeffs_vec.push_back(0.0);                          // b^2*p_AinG_y
+        coeffs_vec.push_back(0.0);                          // b^2*p_AinG_z
+        coeffs_vec.push_back(std::sqrt(params_.lamda));     // b^2
+    }
+    else {
+        for (uint cnt_line = 0; cnt_line < n_params; ++cnt_line)
+            coeffs_vec.push_back(0.0);
+    }
+
+    // Add values to meas_vec (only if beta is regularized)
+    if (params_.b_regularize_b) {
+        meas_vec.push_back(0.0);                          // b^2*p_AinG_x
+        meas_vec.push_back(0.0);                          // b^2*p_AinG_y
+        meas_vec.push_back(0.0);                          // b^2*p_AinG_z
+        meas_vec.push_back(std::sqrt(params_.lamda));     // b^2
+    }
+    else {
+        for (uint cnt_line = 0; cnt_line < 5; ++cnt_line)
             meas_vec.push_back(0.0);
+    }
+
+
+    // Map vectors to Eigen matrices
+    A = Eigen::MatrixXd(Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+                            coeffs_vec.data(), coeffs_vec.size() / n_params, n_params));
+    b = Eigen::VectorXd(
+                Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>>(meas_vec.data(), meas_vec.size(), 1));
+
+    return true;
+}
+
+bool UwbInitializer::ls_double_const_bias(std::deque<std::pair<double, UwbData> > &uwb_data,
+                                          Eigen::MatrixXd &A, Eigen::VectorXd &b)
+{
+    // Const bias double:
+    // [    0   ,     1   ,    2    ,  3 ]
+    // [p_AinG_x, p_AinG_y, p_AinG_z,  k ]
+
+    // Number of parameters for selected model and method
+    const uint8_t n_params = 4;
+
+    // Coefficient matrix and measurement vector initialization
+    std::vector<double> coeffs_vec;
+    std::vector<double> meas_vec;
+
+    // Fill the coefficient matrix and the measurement vector
+    for (uint i = 0; i < uwb_data.size() - params_.meas_baseline_idx_; ++i) {
+        // baseline check
+        double diff = uwb_data.at(i).second.distance -
+                uwb_data.at(i + params_.meas_baseline_idx_).second.distance;
+        if ( !(std::abs(diff) > params_.meas_baseline_m_) ) continue;
+
+        // get closest UWB module position and check if closes was actually reached
+        Eigen::Vector3d closest_p_UinG1, closest_p_UinG2;
+        if (buffer_p_UinG_.get_closest(uwb_data.at(i).first - params_.t_pose_diff, closest_p_UinG1) &&
+                buffer_p_UinG_.get_closest(uwb_data.at(i + params_.meas_baseline_idx_).first - params_.t_pose_diff, closest_p_UinG2))
+        {
+            Eigen::VectorXd row(n_params);
+            row << -2 * (closest_p_UinG1.x() - closest_p_UinG2.x()),
+                    -2 * (closest_p_UinG1.y() - closest_p_UinG2.y()),
+                    -2 * (closest_p_UinG1.z() - closest_p_UinG2.z()),
+                    2 * diff;
+
+            coeffs_vec.push_back(row(0));
+            coeffs_vec.push_back(row(1));
+            coeffs_vec.push_back(row(2));
+            coeffs_vec.push_back(row(3));
+            meas_vec.push_back(std::pow(uwb_data.at(i).second.distance, 2) -
+                               std::pow(uwb_data.at(i + params_.meas_baseline_idx_).second.distance, 2));
+
+        }
+    }
+
+    // Assertation, check vectors size
+    assert(coeffs_vec.size() == n_params * meas_vec.size());
+
+    // Map vectors to Eigen matrices
+    A = Eigen::MatrixXd(Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+                            coeffs_vec.data(), coeffs_vec.size() / n_params, n_params));
+    b = Eigen::VectorXd(
+                Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>>(meas_vec.data(), meas_vec.size(), 1));
+
+    // Exit if regularization is not requested
+    if ( !(params_.b_perform_regularization) ) return true;
+
+    // Check to have more than 4 rows in the coefficient matrix
+    if ( !(coeffs_vec.size() > n_params * n_params) ) {
+        // TODO (gid) logger: cannot perform regularzation
+        return true;
+    }
+
+    // Check lambda positive
+    if ( !(params_.lamda > 0.0) ) {
+        // TODO (gid) logger: cannot perform regularzation (negative lambda)
+        return true;
+    }
+
+    // Data augmentation for regularization (4x4 matrix for coeffs, 4x1 vector for meas)
+    // Add 8 zero to fill first two rows of coeffs_vec (x and y coordinates)
+    for (uint cnt_line = 0; cnt_line < 2 * n_params; ++cnt_line)
+        coeffs_vec.push_back(0.0);
+
+    // Regularize z coordinate if requested
+    if (params_.b_regularize_z) {
+        coeffs_vec.push_back(0.0);                          // b^2*p_AinG_x
+        coeffs_vec.push_back(0.0);                          // b^2*p_AinG_y
+        coeffs_vec.push_back(std::sqrt(params_.lamda));     // b^2*p_AinG_z
+        coeffs_vec.push_back(0.0);                          // k
+    }
+    else {
+        for (uint cnt_line = 0; cnt_line < n_params; ++cnt_line)
+            coeffs_vec.push_back(0.0);
+    }
+
+    // Regularize k (constant bias) if requested
+    if (params_.b_regularize_k) {
+        coeffs_vec.push_back(0.0);                          // b^2*p_AinG_x
+        coeffs_vec.push_back(0.0);                          // b^2*p_AinG_y
+        coeffs_vec.push_back(0.0);                          // b^2*p_AinG_z
+        coeffs_vec.push_back(std::sqrt(params_.lamda));     // k
+    }
+    else {
+        for (uint cnt_line = 0; cnt_line < n_params; ++cnt_line)
+            coeffs_vec.push_back(0.0);
+    }
+
+    // Add values to meas_vec (only if beta is regularized)
+    if (params_.b_regularize_b) {
+        meas_vec.push_back(0.0);                          // b^2*p_AinG_x
+        meas_vec.push_back(0.0);                          // b^2*p_AinG_y
+        meas_vec.push_back(0.0);                          // b^2*p_AinG_z
+        meas_vec.push_back(0.0);                          // k
+    }
+    else {
+        for (uint cnt_line = 0; cnt_line < n_params; ++cnt_line)
             meas_vec.push_back(0.0);
+    }
+
+
+    // Map vectors to Eigen matrices
+    A = Eigen::MatrixXd(Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+                            coeffs_vec.data(), coeffs_vec.size() / n_params, n_params));
+    b = Eigen::VectorXd(
+                Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>>(meas_vec.data(), meas_vec.size(), 1));
+
+    return true;
+}
+
+bool UwbInitializer::ls_double_no_bias(std::deque<std::pair<double, UwbData> > &uwb_data,
+                                       Eigen::MatrixXd &A, Eigen::VectorXd &b)
+{
+    // Unbiased double:
+    // [    0    ,    1   ,    2    ]
+    // [p_AinG_x, p_AinG_y, p_AinG_z]
+
+    // Number of parameters for selected model and method
+    const uint8_t n_params = 3;
+
+    // Coefficient matrix and measurement vector initialization
+    std::vector<double> coeffs_vec;
+    std::vector<double> meas_vec;
+
+    // Fill the coefficient matrix and the measurement vector
+    for (uint i = 0; i < uwb_data.size() - params_.meas_baseline_idx_; ++i) {
+        // baseline check
+        double diff = uwb_data.at(i).second.distance -
+                uwb_data.at(i + params_.meas_baseline_idx_).second.distance;
+        if ( !(std::abs(diff) > params_.meas_baseline_m_) ) continue;
+
+        // get closest UWB module position and check if closes was actually reached
+        Eigen::Vector3d closest_p_UinG1, closest_p_UinG2;
+        if (buffer_p_UinG_.get_closest(uwb_data.at(i).first - params_.t_pose_diff, closest_p_UinG1) &&
+                buffer_p_UinG_.get_closest(uwb_data.at(i + params_.meas_baseline_idx_).first - params_.t_pose_diff, closest_p_UinG2))
+        {
+            Eigen::VectorXd row(n_params);
+            row << -2 * (closest_p_UinG1.x() - closest_p_UinG2.x()),
+                    -2 * (closest_p_UinG1.y() - closest_p_UinG2.y()),
+                    -2 * (closest_p_UinG1.z() - closest_p_UinG2.z());
+
+            coeffs_vec.push_back(row(0));
+            coeffs_vec.push_back(row(1));
+            coeffs_vec.push_back(row(2));
+            meas_vec.push_back(std::pow(uwb_data.at(i).second.distance, 2) -
+                               std::pow(uwb_data.at(i + params_.meas_baseline_idx_).second.distance, 2));
+
+        }
+    }
+
+    // Assertation, check vectors size
+    assert(coeffs_vec.size() == n_params * meas_vec.size());
+
+    // Map vectors to Eigen matrices
+    A = Eigen::MatrixXd(Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+                            coeffs_vec.data(), coeffs_vec.size() / n_params, n_params));
+    b = Eigen::VectorXd(
+                Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>>(meas_vec.data(), meas_vec.size(), 1));
+
+    // Exit if regularization is not requested
+    if ( !(params_.b_perform_regularization) ) return true;
+
+    // Check to have more than 3 rows in the coefficient matrix
+    if ( !(coeffs_vec.size() > n_params * n_params) ) {
+        // TODO (gid) logger: cannot perform regularzation
+        return true;
+    }
+
+    // Check lambda positive
+    if ( !(params_.lamda > 0.0) ) {
+        // TODO (gid) logger: cannot perform regularzation (negative lambda)
+        return true;
+    }
+
+    // Data augmentation for regularization (3x3 matrix for coeffs, 3x1 vector for meas)
+    // Add 6 zero to fill first two rows of coeffs_vec (x and y coordinates)
+    for (uint cnt_line = 0; cnt_line < 2 * n_params; ++cnt_line)
+        coeffs_vec.push_back(0.0);
+
+    // Regularize z coordinate if requested
+    if (params_.b_regularize_z) {
+        coeffs_vec.push_back(0.0);                          // b^2*p_AinG_x
+        coeffs_vec.push_back(0.0);                          // b^2*p_AinG_y
+        coeffs_vec.push_back(std::sqrt(params_.lamda));     // b^2*p_AinG_z
+    }
+    else {
+        for (uint cnt_line = 0; cnt_line < n_params; ++cnt_line)
+            coeffs_vec.push_back(0.0);
+    }
+
+    // Add values to meas_vec (only if beta is regularized)
+    if (params_.b_regularize_b) {
+        meas_vec.push_back(0.0);                          // b^2*p_AinG_x
+        meas_vec.push_back(0.0);                          // b^2*p_AinG_y
+        meas_vec.push_back(0.0);                          // b^2*p_AinG_z
+    }
+    else {
+        for (uint cnt_line = 0; cnt_line < n_params; ++cnt_line)
             meas_vec.push_back(0.0);
-        }
-
-        // Map vectors to Eigen matrices
-        A = Eigen::MatrixXd::Zero(coeffs_vec.size() / 5, 5);
-        b = Eigen::VectorXd::Zero(meas_vec.size());
-        A = Eigen::MatrixXd(Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-                                coeffs_vec.data(), coeffs_vec.size() / 5, 5));
-        b = Eigen::VectorXd(
-                    Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>>(meas_vec.data(), meas_vec.size(), 1));
+    }
 
 
-    }  // bool UwbInitializer::ls_single_full_bias(...)
+    // Map vectors to Eigen matrices
+    A = Eigen::MatrixXd(Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
+                            coeffs_vec.data(), coeffs_vec.size() / n_params, n_params));
+    b = Eigen::VectorXd(
+                Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>>(meas_vec.data(), meas_vec.size(), 1));
 
-
-    bool UwbInitializer::ls_double_full_bias(UwbAnchorBuffer& anchor_buffer, const uint& anchor_id,
-                                             const double& calc_time)
-    {
-        // TODO (gid)
-        //  INIT_DEBUG_STREAM("Anchor " << anchor_id << ": using 'DOUBLE' method for initialization");
-
-        // setup return value
-        bool successfully_initialized = false;
-
-        // get anchor measurement data and create result
-        UwbAnchor new_uwb_anchor(anchor_id);
-        std::deque<std::pair<double, UwbData>> single_anchor_uwb_data;
-        if (uwb_data_buffer_.get_buffer_values(anchor_id, single_anchor_uwb_data))
-        {
-            // Coefficient matrix and measurement vector initialization
-            std::vector<double> coeffs_vec;
-            std::vector<double> meas_vec;
-
-            // TODO (gid)
-            //    INIT_DEBUG_STREAM("Anchor " << anchor_id << ": building coefficient matrix ...");
-
-            // Fill the coefficient matrix and the measurement vector
-            for (uint i = 0; i < single_anchor_uwb_data.size() - params_.meas_baseline_idx_; ++i)
-            {
-                // baseline check
-                double diff = single_anchor_uwb_data.at(i).second.distance -
-                        single_anchor_uwb_data.at(i + params_.meas_baseline_idx_).second.distance;
-                if (std::abs(diff) > params_.meas_baseline_m_)
-                {
-                    // get closest UWB module position and check if closes was actually reached
-                    Eigen::Vector3d closest_p_UinG1, closest_p_UinG2;
-                    if (buffer_p_UinG_.get_closest(single_anchor_uwb_data.at(i).first - params_.t_pose_diff, closest_p_UinG1) &&
-                            buffer_p_UinG_.get_closest(
-                                single_anchor_uwb_data.at(i + params_.meas_baseline_idx_).first - params_.t_pose_diff, closest_p_UinG2))
-                    {
-                        Eigen::VectorXd row(5);
-                        row << std::pow(closest_p_UinG1.norm(), 2) - std::pow(closest_p_UinG2.norm(), 2),
-                                -2 * (closest_p_UinG1.x() - closest_p_UinG2.x()), -2 * (closest_p_UinG1.y() - closest_p_UinG2.y()),
-                                -2 * (closest_p_UinG1.z() - closest_p_UinG2.z()), 2 * diff;
-
-                        coeffs_vec.push_back(row(0));
-                        coeffs_vec.push_back(row(1));
-                        coeffs_vec.push_back(row(2));
-                        coeffs_vec.push_back(row(3));
-                        coeffs_vec.push_back(row(4));
-                        meas_vec.push_back(std::pow(single_anchor_uwb_data.at(i).second.distance, 2) -
-                                           std::pow(single_anchor_uwb_data.at(i + params_.meas_baseline_idx_).second.distance, 2));
-
-                    }  // if (closest available)
-                }    // if (baseline check)
-            }      // for (all anchor measurements)
-
-            //    INIT_DEBUG_STREAM("Anchor " << anchor_id << ": assigning coefficients and measurements\n"
-            //                                << "\t coeffs_size: " << coeffs_vec.size() << "\n"
-            //                                << "\t meas_size:   " << meas_vec.size());
-
-            // Assertation, check vectors size
-            assert(coeffs_vec.size() == 5 * meas_vec.size());
-
-            // Check to have more than 5 rows in the coefficient matrix
-            if (coeffs_vec.size() > 5 * 5)
-            {
-                if (params_.lamda > 0.0)
-                {
-                    // Data augmentation for regularization
-                    coeffs_vec.push_back(std::sqrt(params_.lamda));  // b^2
-                    // add 23 zero lines to fill 'diag matrix
-                    if (params_.b_regularize_z)
-                    {
-                        // with z regularization
-                        for (uint cnt_line = 0; cnt_line < 17; ++cnt_line)
-                            coeffs_vec.push_back(0.0);                      // b^2*p_AinG except z
-                        coeffs_vec.push_back(std::sqrt(params_.lamda));  // b^2*p_AinG_z
-                        for (uint cnt_line = 18; cnt_line < 23; ++cnt_line)
-                            coeffs_vec.push_back(0.0);  // b^2*p_AinG except z
-                    }
-                    else
-                    {
-                        for (uint cnt_line = 0; cnt_line < 23; ++cnt_line)
-                            coeffs_vec.push_back(0.0);  // b^2*p_AinG
-                    }
-                    coeffs_vec.push_back(std::sqrt(params_.lamda));  // k
-
-                    // add values to meas_vec
-                    meas_vec.push_back(std::sqrt(params_.lamda));
-                    meas_vec.push_back(0.0);
-                    meas_vec.push_back(0.0);
-                    meas_vec.push_back(0.0);
-                    meas_vec.push_back(0.0);
-                }
-
-                // Map vectors to Eigen matrices
-                Eigen::MatrixXd coeffs = Eigen::MatrixXd::Zero(coeffs_vec.size() / 5, 5);
-                Eigen::VectorXd measurements = Eigen::VectorXd::Zero(meas_vec.size());
-                coeffs = Eigen::MatrixXd(Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
-                                             coeffs_vec.data(), coeffs_vec.size() / 5, 5));
-                measurements = Eigen::VectorXd(
-                            Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>>(meas_vec.data(), meas_vec.size(), 1));
-
-                // INIT_DEBUG_STREAM("Anchor " << anchor_id << ": matrix=\n" << coeffs);
-                // INIT_DEBUG_STREAM("Anchor " << anchor_id << ": vec=\n" << measurements);
-                // TODO (gid)
-                //      INIT_DEBUG_STREAM("Anchor " << anchor_id << ": calculating svd with matrix of size=" << coeffs.rows() << "x"
-                //                                  << coeffs.cols());
-
-                // Check the coefficient matrix condition number and solve the LS problem
-                Eigen::BDCSVD<Eigen::MatrixXd> svd(coeffs, Eigen::ComputeThinU | Eigen::ComputeThinV);
-                double cond = svd.singularValues()(0) / svd.singularValues()(svd.singularValues().size() - 1);
-                if (cond < params_.max_cond_num)  // 3
-                {
-                    // TODO (gid)
-                    //        INIT_DEBUG_STREAM("Anchor " << anchor_id << ": solving LS ...");
-
-                    // [ 0 ,       1     ,       2     ,  3          , 4]
-                    // [b^2, b^2*p_AinG_x, b^2*p_AinG_y, b^2*p_AinG_z, k]
-                    Eigen::VectorXd LSSolution = svd.solve(measurements);
-
-                    // check that the squared value is positive
-                    if (LSSolution[0] > 0)
-                    {
-                        Eigen::Vector3d p_AinG = LSSolution.segment(1, 3) / LSSolution[0];
-                        double distance_bias_squared = LSSolution[0];
-                        double const_bias = LSSolution[4];
-
-                        // TODO (gid)
-                        //          INIT_DEBUG_STREAM("A" << anchor_id << " solution:\n"
-                        //                                << "\tLS:                " << LSSolution.transpose() << "\n"
-                        //                                << "\tp_AinG:            " << p_AinG.transpose() << "\n"
-                        //                                << "\tbeta_sq:           " << distance_bias_squared << "\n"
-                        //                                << "\td_bias(alpha):     " << std::sqrt(distance_bias_squared) - 1.0 << "\n"
-                        //                                << "\tconst_bias(gamma): " << const_bias << "\n");
-                        //                                << "\tpos_error:         " << (p_AinG - p_AinG_gt_[anchor_id]).transpose() << "("
-                        //                                << (p_AinG - p_AinG_gt_[anchor_id]).norm() << ") m");
-
-                        // Assign valid estimated values
-                        new_uwb_anchor.bias_d = std::sqrt(distance_bias_squared);  // NOTE(scm): this is beta with beta=1+alpha
-                        new_uwb_anchor.bias_c = const_bias;
-                        new_uwb_anchor.p_AinG = p_AinG;
-
-                        // Compute estimation Covariance
-                        Eigen::MatrixXd Cov =
-                                (std::pow((coeffs * LSSolution - measurements).norm(), 2) / (coeffs.rows() - coeffs.cols())) *
-                                ((svd.matrixV().transpose()).inverse() * svd.singularValues().asDiagonal().inverse() *
-                                 svd.singularValues().asDiagonal().inverse() * svd.matrixV().inverse());
-                        // TODO (gid)
-                        //          INIT_DEBUG_STREAM("\n\tCov:        " << Cov);
-
-                        // compare norm of singular values vector of covarnace matrix with threshold
-                        Eigen::JacobiSVD<Eigen::MatrixXd> svd_cov(Cov, Eigen::ComputeThinU | Eigen::ComputeThinV);
-
-                        // debug
-                        // TODO (gid)
-                        //          INIT_INFO_STREAM("\tsingular values:   " << svd_cov.singularValues().transpose());
-                        //          INIT_INFO_STREAM("\tsingular v norm:   " << svd_cov.singularValues().norm());
-                        if (svd_cov.singularValues().norm() <= params_.cov_sv_threshold)
-                        {
-
-                            // Retrive P_AinG Covariance applying error propagation law and assign to Anchors_Covs
-                            Eigen::MatrixXd J = Eigen::MatrixXd::Zero(3, 4);
-                            J.block(0, 0, 3, 1) = -p_AinG / distance_bias_squared;
-                            J.block(0, 1, 3, 3) = (1.0 / distance_bias_squared) * Eigen::Matrix3d::Identity();
-                            // TODO (gid)
-                            //            INIT_DEBUG_STREAM("\n\tJ:        " << J);
-                            new_uwb_anchor.cov_p_AinG = J * Cov.block(0, 0, 4, 4) * J.transpose();
-
-                            // Retrive Covariance of b and k applying error propagation law
-                            new_uwb_anchor.cov_bias_d = 1.0 / (4.0 * distance_bias_squared) * Cov(0, 0);
-                            new_uwb_anchor.cov_bias_c = Cov(4, 4);
-
-                            // set initialization to true
-                            new_uwb_anchor.initialized = true;
-                            successfully_initialized = true;
-                        }
-                        else
-                        {
-                            // TODO (gid)
-                            //            INIT_WARN_STREAM("Anchor " << anchor_id << ": issue with cov svd threshold ("
-                            //                                       << svd_cov.singularValues().norm() << ")");
-                            new_uwb_anchor.initialized = false;
-                            successfully_initialized = false;
-                        }  // if (svd_cov.singularValues().norm() <= params_.cov_sv_threshold_)
-                    }
-                    else  // if (LSSolution[0] > 0)
-                    {
-                        // TODO (gid)
-                        //          INIT_WARN_STREAM("Anchor " << anchor_id << ": issue with LS positiveness (bias_squared) (" << LSSolution[0]
-                        //                                     << ")");
-                        new_uwb_anchor.initialized = false;
-                        successfully_initialized = false;
-                    }  // if (LSSolution[0] > 0)
-                }
-                else  // if (cond < params_.max_cond_num)
-                {
-                    // TODO (gid)
-                    //        INIT_WARN_STREAM("Anchor " << anchor_id << ": issue with condition number (" << cond << ")" << std::endl);
-                    new_uwb_anchor.initialized = false;
-                    successfully_initialized = false;
-                }  // if (cond < params_.max_cond_num)
-            }
-            else
-            {
-                //      INIT_WARN_STREAM("Anchor " << anchor_id << ": issue with measurement baselines (c:" << coeffs_vec.size()
-                //                                 << " m:" << meas_vec.size() << ")" << std::endl);
-                // TODO (gid)
-                //      INIT_WARN_STREAM("Anchor " << anchor_id << ": issue with measurement baselines (rows:" << coeffs_vec.size() / 5
-                //                                 << ")" << std::endl);
-                new_uwb_anchor.initialized = false;
-                successfully_initialized = false;
-            }
-        }
-        else
-        {
-            successfully_initialized = false;
-        }
-
-        // regardless, add calculation to buffer
-        anchor_buffer.push_back(anchor_id, calc_time, new_uwb_anchor);
-
-        return successfully_initialized;
-    }  // bool UwbInitializer::ls_double_full_bias(...)
-
-
-    bool UwbInitializer::ls_single_no_bias(UwbAnchorBuffer& anchor_buffer, const uint& anchor_id,
-                                           const double& calc_time)
-    {
-        // TODO (gid)
-        //  INIT_DEBUG_STREAM("Anchor " << anchor_id << ": using 'NO_BIAS' method for initialization");
-
-        // setup return value
-        bool successfully_initialized = false;
-
-        // get anchor measurement data and create result
-        UwbAnchor new_uwb_anchor(anchor_id);
-        std::deque<std::pair<double, UwbData>> single_anchor_uwb_data;
-        if (uwb_data_buffer_.get_buffer_values(anchor_id, single_anchor_uwb_data))
-        {
-            // Coefficient matrix and measurement vector initialization
-            Eigen::MatrixXd coeffs = Eigen::MatrixXd::Zero(single_anchor_uwb_data.size(), 4);
-            Eigen::VectorXd measurements = Eigen::VectorXd::Zero(single_anchor_uwb_data.size());
-
-            // Fill the coefficient matrix and the measurement vector
-            for (uint i = 0; i < single_anchor_uwb_data.size(); ++i)
-            {
-                // get closest UWB module position
-                Eigen::Vector3d closest_p_UinG =
-                        buffer_p_UinG_.get_closest(single_anchor_uwb_data.at(i).first - params_.t_pose_diff);
-
-                Eigen::VectorXd row(4);
-                row << -2 * closest_p_UinG.x(), -2 * closest_p_UinG.y(), -2 * closest_p_UinG.z(), 1;
-
-                coeffs.row(i) = row.transpose();
-                measurements(i) = std::pow(single_anchor_uwb_data.at(i).second.distance, 2) - std::pow(closest_p_UinG.norm(), 2);
-            }
-
-            // Check the coefficient matrix condition number and solve the LS problem
-            Eigen::BDCSVD<Eigen::MatrixXd> svd(coeffs, Eigen::ComputeThinU | Eigen::ComputeThinV);
-            double cond = svd.singularValues()(0) / svd.singularValues()(svd.singularValues().size() - 1);
-            if (cond < params_.max_cond_num)  // 3
-            {
-                // [    0    ,    1   ,    2   ,        3       ]
-                // [p_AinG_x, p_AinG_y, p_AinG_z, norm(p_AinG)^2]
-                Eigen::VectorXd LSSolution = svd.solve(measurements);
-
-                Eigen::Vector3d p_AinG = LSSolution.segment(0, 3);
-                double distance_bias_squared = 0.0;
-                double const_bias = 0.0;
-
-                // TODO (gid)
-                //      INIT_DEBUG_STREAM("A" << anchor_id << " solution:\n"
-                //                            << "\tLS:         " << LSSolution.transpose() << "\n"
-                //                            << "\tp_AinG:     " << p_AinG.transpose() << "\n"
-                //                            << "\td_bias_sq:  " << distance_bias_squared << "\n"
-                //                            << "\tconst_bias: " << const_bias);
-
-                if ((LSSolution[3] - (std::pow(p_AinG.norm(), 2))) < 1)
-                {
-                    // Assign valid estimated values
-                    new_uwb_anchor.bias_d = std::sqrt(distance_bias_squared);  // NOTE(scm): this is beta with beta=1+alpha
-                    new_uwb_anchor.bias_c = const_bias;
-                    new_uwb_anchor.p_AinG = p_AinG;
-
-                    // Compute estimation Covariance
-                    Eigen::MatrixXd Cov =
-                            (std::pow((coeffs * LSSolution - measurements).norm(), 2) / (coeffs.rows() * coeffs.cols())) *
-                            (svd.matrixV().inverse().transpose() * svd.singularValues().asDiagonal().inverse() *
-                             svd.singularValues().asDiagonal().inverse() * svd.matrixV().inverse());
-                    // TODO (gid)
-                    //        INIT_DEBUG_STREAM("\n\tCov:        " << Cov);
-
-                    // compare norm of singular values vector of covarnace matrix with threshold
-                    Eigen::JacobiSVD<Eigen::MatrixXd> svd_cov(Cov, Eigen::ComputeThinU | Eigen::ComputeThinV);
-
-                    // debug
-                    // TODO (gid)
-                    //        INIT_INFO_STREAM("\tsingular values:   " << svd_cov.singularValues().transpose());
-                    //        INIT_INFO_STREAM("\tsingular v norm:   " << svd_cov.singularValues().norm());
-                    if (svd_cov.singularValues().norm() <= params_.cov_sv_threshold)
-                    {
-
-                        // Retrive P_AinG Covariance
-                        new_uwb_anchor.cov_p_AinG = Cov.block(0, 0, 3, 3);
-
-                        // Retrive Covariance of b and k applying error propagation law
-                        new_uwb_anchor.cov_bias_d = 0.0;
-                        new_uwb_anchor.cov_bias_c = 0.0;
-
-                        // set initialization to true
-                        new_uwb_anchor.initialized = true;
-                        successfully_initialized = true;
-
-                    }
-                    else
-                    {
-                        // TODO (gid)
-                        //          INIT_WARN_STREAM("Anchor " << anchor_id << ": issue with cov svd threshold ("
-                        //                                     << svd_cov.singularValues().norm() << ")");
-                        new_uwb_anchor.initialized = false;
-                        successfully_initialized = false;
-                    }  // if (svd_cov.singularValues().norm() <= params_.cov_sv_threshold_)
-                }
-                else
-                {
-                    // TODO (gid)
-                    //        INIT_WARN_STREAM("Anchor " << anchor_id << ": issue with LS solution ("
-                    //                                   << (LSSolution[3] - (std::pow(p_AinG.norm(), 2))) << ")");
-                    new_uwb_anchor.initialized = false;
-                    successfully_initialized = false;
-                }
-            }
-            else
-            {
-                // TODO (gid)
-                //      INIT_WARN_STREAM("Anchor " << anchor_id << ": issue with condition number (" << cond << ")" << std::endl);
-                new_uwb_anchor.initialized = false;
-                successfully_initialized = false;
-            }  // if anchor data found
-        }
-        else
-        {
-            successfully_initialized = false;
-        }
-
-        // regardless, add calculation to buffer
-        anchor_buffer.push_back(anchor_id, calc_time, new_uwb_anchor);
-
-        return successfully_initialized;
-    }  // bool UwbInitializer::ls_single_no_bias(...)
+    return true;
+}
 
 }  // namespace UwbInit

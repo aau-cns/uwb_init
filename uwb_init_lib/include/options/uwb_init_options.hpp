@@ -158,9 +158,20 @@ struct UwbInitOptions
   /// determines the variables to initialize in initialization routine \see UwbInit::UwbInitOptions::InitVariables
   InitVariables init_variables{ InitVariables::FULL_BIAS };
 
+  /// perform regularization (in general this should be avoided)
+  bool b_perform_regularization{ false };
+
+  /// determines if the constant bias of the anchors should be regularized to zero
+  /// in general this should be avoided
+  bool b_regularize_k{ false };
+
+  /// determines if the distance bias of the anchors should be regularized to one
+  /// in general this should be avoided
+  bool b_regularize_b{ false };
+
   /// determines if the z component of the anchors should be added to the regularization
   /// turn this off if the anchors are not placed on the ground (of the estimation frame)
-  bool b_regularize_z{ true };
+  bool b_regularize_z{ false };
 
   /// flag to determine if the initializer should exit once it has initialized all known anchors
   /// turn this off if new anchors are added on the fly without prior knowledge on number of anchors
