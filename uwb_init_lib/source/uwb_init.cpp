@@ -15,15 +15,86 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 //
-// You can contact the authors at <martin.scheiber@aau.at> and
-// <alessandro.fornasier@aau.at> <giulio.delama@aau.at>
+// You can contact the authors at <martin.scheiber@aau.at>,
+// <alessandro.fornasier@aau.at> and <giulio.delama@aau.at>
 
 #include "uwb_init.hpp"
-
 #include "utils/logger.hpp"
 
 namespace UwbInit
 {
+
+UwbInitializer::UwbInitializer(UwbInitOptions& params, const LoggerLevel& level)
+    : logger_(std::make_shared<Logger>(level)), params_(params)
+{
+    // Initialize buffers
+    buffer_p_UinG_.init(params_.buffer_size_s);
+    uwb_data_buffer_.init(params_.buffer_size_s);
+
+    // Bind LS-problem initialization function based on selected method and model variables
+    switch (params_.init_method) {
+
+    case UwbInitOptions::InitMethod::SINGLE:
+        switch (params_.init_variables) {
+
+        case UwbInitOptions::InitVariables::NO_BIAS:
+            ls_problem_ = std::bind(&UwbInitializer::ls_single_no_bias, this, std::placeholders::_1,
+                                    std::placeholders::_2, std::placeholders::_3);
+            break;
+
+        case UwbInitOptions::InitVariables::CONST_BIAS:
+            ls_problem_ = std::bind(&UwbInitializer::ls_single_const_bias, this, std::placeholders::_1,
+                                    std::placeholders::_2, std::placeholders::_3);
+            break;
+
+        case UwbInitOptions::InitVariables::DIST_BIAS:
+            ls_problem_ = std::bind(&UwbInitializer::ls_single_dist_bias, this, std::placeholders::_1,
+                                    std::placeholders::_2, std::placeholders::_3);
+            check_beta_sq = true;
+            break;
+
+        case UwbInitOptions::InitVariables::FULL_BIAS:
+            ls_problem_ = std::bind(&UwbInitializer::ls_single_full_bias, this, std::placeholders::_1,
+                                    std::placeholders::_2, std::placeholders::_3);
+            check_beta_sq = true;
+            break;
+
+        }
+        break;
+
+    case UwbInitOptions::InitMethod::DOUBLE:
+        switch (params_.init_variables) {
+
+        case UwbInitOptions::InitVariables::NO_BIAS:
+            ls_problem_ = std::bind(&UwbInitializer::ls_double_no_bias, this, std::placeholders::_1,
+                                    std::placeholders::_2, std::placeholders::_3);
+            break;
+
+        case UwbInitOptions::InitVariables::CONST_BIAS:
+            ls_problem_ = std::bind(&UwbInitializer::ls_double_const_bias, this, std::placeholders::_1,
+                                    std::placeholders::_2, std::placeholders::_3);
+            break;
+
+        case UwbInitOptions::InitVariables::DIST_BIAS:
+            ls_problem_ = std::bind(&UwbInitializer::ls_double_dist_bias, this, std::placeholders::_1,
+                                    std::placeholders::_2, std::placeholders::_3);
+            check_beta_sq = true;
+            break;
+
+        case UwbInitOptions::InitVariables::FULL_BIAS:
+            ls_problem_ = std::bind(&UwbInitializer::ls_double_full_bias, this, std::placeholders::_1,
+                                    std::placeholders::_2, std::placeholders::_3);
+            check_beta_sq = true;
+            break;
+        }
+        break;
+    }
+
+    // Logging
+    logger_->info("UwbInitializer::UwbInitializer(): ----- Initialization parameters -----");
+    logger_->info("UwbInitializer::UwbInitializer(): " + params_.InitMethod());
+    logger_->info("UwbInitializer::UwbInitializer(): " + params_.InitVariables());
+}
 
 void UwbInitializer::reset()
 {
@@ -45,9 +116,8 @@ void UwbInitializer::feed_uwb(const std::vector<UwbData> uwb_measurements)
             uwb_data_buffer_.push_back(uwb_measurements[i].id, uwb_measurements[i].timestamp, uwb_measurements[i]);
         }
         else {
-            // TODO (gid)
-            //      INIT_DEBUG_STREAM("DISCARDING measurment " << uwb_measurements[i].distance << " from anchor "
-            //                                                 << uwb_measurements[i].id);
+            logger_->warn("UwbInitializer::feed_uwb(): DISCARDING measurment " + std::to_string(uwb_measurements[i].distance)
+                          + " from anchor " + std::to_string(uwb_measurements[i].id));
         }
     }
 }
@@ -65,13 +135,13 @@ bool UwbInitializer::init_anchors(UwbAnchorBuffer& anchor_buffer)
 {
     // Check if pose buffer is empty
     if ( buffer_p_UinG_.is_emtpy() ) {
-        // TODO (gid) logging
+        logger_->err("UwbInitializer::init_anchors(): Initialization FAILED: pose buffer is empty.");
         return false;
     }
 
     // Check if uwb buffer is empty
     if ( uwb_data_buffer_.is_emtpy() ) {
-        // TODO (gid) logging
+        logger_->err("UwbInitializer::init_anchors(): Initialization FAILED: uwb buffer is empty.");
         return false;
     }
 
@@ -92,16 +162,18 @@ bool UwbInitializer::init_anchors(UwbAnchorBuffer& anchor_buffer)
         // Solve ls problem and initialize anchor
         else if (solve_ls(anchor_buffer, anchor_id))
         {
-            // TODO (gid) nonlinear optimization if option enabled
+            logger_->info("Anchor[" + std::to_string(anchor_id) + "]: Correctly initialized.");
+            /// \todo TODO (gid) nonlinear optimization if option enabled and planner
             continue;
         }
         else
         {
+            logger_->err("Anchor[" + std::to_string(anchor_id) + "]: Not initialized correctly.");
             init_successful = false;
         }
     }
 
-    // TODO (gid) logging initialization successful
+    logger_->info("UwbInitializer::init_anchors(): Initialization complete.");
     return init_successful;
 }
 
@@ -118,7 +190,8 @@ bool UwbInitializer::solve_ls(UwbAnchorBuffer& anchor_buffer, const uint& anchor
     std::deque<std::pair<double, UwbData>> single_anchor_uwb_data;
 
     // First check
-    if ( !(uwb_data_buffer_.get_buffer_values(anchor_id, single_anchor_uwb_data)) ) {
+    if ( !(uwb_data_buffer_.get_buffer_values(anchor_id, single_anchor_uwb_data)) ) {        
+        logger_->err("Anchor[" + std::to_string(anchor_id) + "]: Uwb data buffer can not be initialized.");
         return false;
     }
 
@@ -128,6 +201,7 @@ bool UwbInitializer::solve_ls(UwbAnchorBuffer& anchor_buffer, const uint& anchor
 
     // Initialize least squares problem
     if ( !(ls_problem_(single_anchor_uwb_data, coeffs, meas)) ) {
+        logger_->err("Anchor[" + std::to_string(anchor_id) + "]: Least Squares problem can not be initialized.");
         new_uwb_anchor.initialized = false;
         return false;
     }
@@ -136,8 +210,9 @@ bool UwbInitializer::solve_ls(UwbAnchorBuffer& anchor_buffer, const uint& anchor
     Eigen::BDCSVD<Eigen::MatrixXd> svd(coeffs, Eigen::ComputeThinU | Eigen::ComputeThinV);
     double cond = svd.singularValues()(0) / svd.singularValues()(svd.singularValues().size()-1);
 
-    // Second check (condition number) TODO (gid) add logger
+    // Second check (condition number)
     if ( !(cond < params_.max_cond_num) ) {
+        logger_->err("Anchor[" + std::to_string(anchor_id) + "]: Condition number greater than " + std::to_string(params_.max_cond_num));
         new_uwb_anchor.initialized = false;
         return false;
     }
@@ -145,7 +220,7 @@ bool UwbInitializer::solve_ls(UwbAnchorBuffer& anchor_buffer, const uint& anchor
     // Solve LS problem
     Eigen::VectorXd lsSolution = svd.solve(meas);
 
-    // lsSolution changes w.r.t. chosen method and variables!
+    /* lsSolution changes w.r.t. chosen method and variables!
     //
     // Full bias single:
     // [      0     ,       1     ,       2     ,  3 , 4,          5              ]
@@ -178,11 +253,11 @@ bool UwbInitializer::solve_ls(UwbAnchorBuffer& anchor_buffer, const uint& anchor
     // Unbiased double:
     // [    0    ,    1   ,    2    ]
     // [p_AinG_x, p_AinG_y, p_AinG_z]
-    //
+    */
 
     // Solution check (if exists beta squared must be positive)
     if ( check_beta_sq && !(lsSolution[3] > 0) ) {
-        // TODO (gid) logging
+        logger_->err("Anchor[" + std::to_string(anchor_id) + "]: Negative beta squared.");
         new_uwb_anchor.initialized = false;
         return false;
     }
@@ -256,6 +331,9 @@ bool UwbInitializer::solve_ls(UwbAnchorBuffer& anchor_buffer, const uint& anchor
     // Regardless, add calculation to buffer
     anchor_buffer.push_back(anchor_id, calc_time, new_uwb_anchor);
 
+    // Logging
+    logger_->info("Anchor[" + std::to_string(anchor_id) + "]: Elapsed time " + std::to_string(calc_time));
+
     return true;
 }
 
@@ -291,13 +369,14 @@ bool UwbInitializer::ls_single_full_bias(std::deque<std::pair<double, UwbData>> 
 
     // Check to have more than 6 rows in the coefficient matrix
     if ( !(A.rows() > A.cols()) ) {
-        // TODO (gid) logger: cannot perform regularzation
+        logger_->warn("UwbInitializer::ls_single_full_bias(): Regularization can not be performed (coeffs matrix has less than "
+                      + std::to_string(A.cols()) + " rows).");
         return true;
     }
 
     // Check lambda positive
     if ( !(params_.lamda > 0.0) ) {
-        // TODO (gid) logger: cannot perform regularzation (negative lambda)
+        logger_->warn("UwbInitializer::ls_single_full_bias(): Regularization can not be performed (negative lambda).");
         return true;
     }
 
@@ -367,13 +446,14 @@ bool UwbInitializer::ls_single_dist_bias(std::deque<std::pair<double, UwbData> >
 
     // Check to have more than 5 rows in the coefficient matrix
     if ( !(A.rows() > A.cols()) ) {
-        // TODO (gid) logger: cannot perform regularzation
+        logger_->warn("UwbInitializer::ls_single_dist_bias(): Regularization can not be performed (coeffs matrix has less than "
+                      + std::to_string(A.cols()) + " rows).");
         return true;
     }
 
     // Check lambda positive
     if ( !(params_.lamda > 0.0) ) {
-        // TODO (gid) logger: cannot perform regularzation (negative lambda)
+        logger_->warn("UwbInitializer::ls_single_dist_bias(): Regularization can not be performed (negative lambda).");
         return true;
     }
 
@@ -438,13 +518,14 @@ bool UwbInitializer::ls_single_const_bias(std::deque<std::pair<double, UwbData> 
 
     // Check to have more than 6 rows in the coefficient matrix
     if ( !(A.rows() > A.cols()) ) {
-        // TODO (gid) logger: cannot perform regularzation
+        logger_->warn("UwbInitializer::ls_single_const_bias(): Regularization can not be performed (coeffs matrix has less than "
+                      + std::to_string(A.cols()) + " rows).");
         return true;
     }
 
     // Check lambda positive
     if ( !(params_.lamda > 0.0) ) {
-        // TODO (gid) logger: cannot perform regularzation (negative lambda)
+        logger_->warn("UwbInitializer::ls_single_const_bias(): Regularization can not be performed (negative lambda).");
         return true;
     }
 
@@ -507,13 +588,14 @@ bool UwbInitializer::ls_single_no_bias(std::deque<std::pair<double, UwbData>> &u
 
     // Check to have more than 4 rows in the coefficient matrix
     if ( !(A.rows() > 4) ) {
-        // TODO (gid) logger: cannot perform regularzation
+        logger_->warn("UwbInitializer::ls_single_no_bias(): Regularization can not be performed (coeffs matrix has less than "
+                      + std::to_string(A.cols()) + " rows).");
         return true;
     }
 
     // Check lambda positive
     if ( !(params_.lamda > 0.0) ) {
-        // TODO (gid) logger: cannot perform regularzation (negative lambda)
+        logger_->warn("UwbInitializer::ls_single_no_bias(): Regularization can not be performed (negative lambda).");
         return true;
     }
 
@@ -600,13 +682,14 @@ bool UwbInitializer::ls_double_full_bias(std::deque<std::pair<double, UwbData>> 
 
     // Check to have more than 5 rows in the coefficient matrix
     if ( !(coeffs_vec.size() > n_params * n_params) ) {
-        // TODO (gid) logger: cannot perform regularzation
+        logger_->warn("UwbInitializer::ls_double_full_bias(): Regularization can not be performed (coeffs matrix has less than "
+                      + std::to_string(A.cols()) + " rows).");
         return true;
     }
 
     // Check lambda positive
     if ( !(params_.lamda > 0.0) ) {
-        // TODO (gid) logger: cannot perform regularzation (negative lambda)
+        logger_->warn("UwbInitializer::ls_double_full_bias(): Regularization can not be performed (negative lambda).");
         return true;
     }
 
@@ -733,13 +816,14 @@ bool UwbInitializer::ls_double_dist_bias(std::deque<std::pair<double, UwbData> >
 
     // Check to have more than 4 rows in the coefficient matrix
     if ( !(coeffs_vec.size() > n_params * n_params) ) {
-        // TODO (gid) logger: cannot perform regularzation
+        logger_->warn("UwbInitializer::ls_double_dist_bias(): Regularization can not be performed (coeffs matrix has less than "
+                      + std::to_string(A.cols()) + " rows).");
         return true;
     }
 
     // Check lambda positive
     if ( !(params_.lamda > 0.0) ) {
-        // TODO (gid) logger: cannot perform regularzation (negative lambda)
+        logger_->warn("UwbInitializer::ls_double_dist_bias(): Regularization can not be performed (negative lambda).");
         return true;
     }
 
@@ -850,13 +934,14 @@ bool UwbInitializer::ls_double_const_bias(std::deque<std::pair<double, UwbData> 
 
     // Check to have more than 4 rows in the coefficient matrix
     if ( !(coeffs_vec.size() > n_params * n_params) ) {
-        // TODO (gid) logger: cannot perform regularzation
+        logger_->warn("UwbInitializer::ls_double_const_bias(): Regularization can not be performed (coeffs matrix has less than "
+                      + std::to_string(A.cols()) + " rows).");
         return true;
     }
 
     // Check lambda positive
     if ( !(params_.lamda > 0.0) ) {
-        // TODO (gid) logger: cannot perform regularzation (negative lambda)
+        logger_->warn("UwbInitializer::ls_double_const_bias(): Regularization can not be performed (negative lambda).");
         return true;
     }
 
@@ -965,13 +1050,14 @@ bool UwbInitializer::ls_double_no_bias(std::deque<std::pair<double, UwbData> > &
 
     // Check to have more than 3 rows in the coefficient matrix
     if ( !(coeffs_vec.size() > n_params * n_params) ) {
-        // TODO (gid) logger: cannot perform regularzation
+        logger_->warn("UwbInitializer::ls_double_no_bias(): Regularization can not be performed (coeffs matrix has less than "
+                      + std::to_string(A.cols()) + " rows).");
         return true;
     }
 
     // Check lambda positive
     if ( !(params_.lamda > 0.0) ) {
-        // TODO (gid) logger: cannot perform regularzation (negative lambda)
+        logger_->warn("UwbInitializer::ls_double_no_bias(): Regularization can not be performed (negative lambda).");
         return true;
     }
 

@@ -63,8 +63,6 @@ public:
         // setup buffer size in s
         if (buffer_size_s <= 0.0)
         {
-            // TODO (gid)
-            //      ROS_WARN("Initializing infinite position buffer (%f)", buffer_size_s);
             buffer_size_s_ = 0.0;
         }
         else
@@ -105,8 +103,6 @@ public:
         // check if buffer is initialized
         if (!f_is_initialized)
         {
-            // TODO (gid)
-            //      ROS_ERROR("DataBuffer not initialized yet.");
             return false;
         }
 
@@ -121,8 +117,6 @@ public:
         {
 #endif
             // key not found
-            // TODO (gid)
-            //      ROS_DEBUG_STREAM("DataBuffer: key '" << data_id << "' not found, adding new entry");
             buffer_[data_id] = TimedBuffer<bufferType>();
             buffer_[data_id].init(buffer_size_s_, zero_value_);
         }
@@ -141,8 +135,6 @@ public:
     {
         if (buffer_.empty())
         {
-            // TODO (gid)
-            //      ROS_ERROR("PositionBuffer still empty.");
             return zero_value_;
         }
 
@@ -157,8 +149,6 @@ public:
         }
 
         // in case we have not returned any we do not have a measurement in the buffer anymore
-        // TODO (gid)
-        //    ROS_WARN_STREAM("We do not have any value in the buffer for time " << timestamp << " anymore." << std::endl);
         return buffer_.front().second;
     }
 

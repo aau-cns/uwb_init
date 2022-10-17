@@ -62,8 +62,6 @@ public:
         // setup buffer size in s
         if (buffer_size_s <= 0.0)
         {
-            // TODO (gid)
-            //      ROS_WARN("Initializing infinite position buffer (%f)", buffer_size_s);
             buffer_size_s_ = 0.0;
         }
         else
@@ -103,8 +101,6 @@ public:
         // check if buffer is initialized
         if (!f_is_initialized)
         {
-            // TODO (gid)
-            //      ROS_ERROR("TimedBuffer not initialized yet.");
             return false;
         }
 
@@ -114,8 +110,6 @@ public:
             // check for timestamp jump
             if (buffer_.back().first > timestamp)
             {
-                // TODO (gid)
-                //        ROS_ERROR("Timejump in buffer detected, not adding entry.");
                 return false;
             }
 
@@ -147,8 +141,6 @@ public:
     {
         if (buffer_.empty())
         {
-            // TODO (gid)
-            //      ROS_ERROR("PositionBuffer still empty.");
             return zero_value_;
         }
 
@@ -175,16 +167,12 @@ public:
     });
         if (it != buffer_.rend())
         {
-            // TODO (gid)
-            //      INIT_DEBUG_STREAM("\tTime diff: " << (timestamp - (*it).first));
             return (*it).second;
         }
         // it is most likeley always finding a value that satisifes the above criteria (has to be min) but it might not be
         // feasible (i.e. in general should be below 1/2 of period of frequency)
 
         // in case we have not returned any we do not have a measurement in the buffer anymore
-        // TODO (gid)
-        //    ROS_WARN_STREAM("We do not have any value in the buffer for time " << timestamp << " anymore." << std::endl);
         return zero_value_;
     }
 
@@ -192,8 +180,6 @@ public:
     {
         if (buffer_.empty())
         {
-            // TODO (gid)
-            //      ROS_ERROR("PositionBuffer still empty.");
             closest_val = zero_value_;
             return false;
         }
@@ -208,22 +194,13 @@ public:
     });
         if (it != buffer_.rend() && std::abs((*it).first - timestamp) < max_t_diff)
         {
-            // TODO (gid)
-            //      INIT_DEBUG_STREAM("\tTime diff: " << (timestamp - (*it).first));
             closest_val = (*it).second;
             return true;
-        }
-        else
-        {
-            // TODO (gid)
-            //      INIT_DEBUG_STREAM("\tTime diff not satisfied or element does not exist.");
         }
         // it is most likeley always finding a value that satisifes the above criteria (has to be min) but it might not be
         // feasible (i.e. in general should be below 1/2 of period of frequency)
 
         // in case we have not returned any we do not have a measurement in the buffer anymore
-        // TODO (gid)
-        //    ROS_WARN_STREAM("We do not have any value in the buffer for time " << timestamp << " anymore." << std::endl);
         closest_val = zero_value_;
         return false;
     }

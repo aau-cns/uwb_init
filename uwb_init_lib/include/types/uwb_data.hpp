@@ -34,17 +34,6 @@ struct UwbData
   uint8_t id{ 0 };             //!< anchor ID
 
   ///
-  /// \brief UwbData advanced constructor for measurement, using ros::Time::now() for timestamp
-  /// \param _valid validity flag
-  /// \param _distance distance measurement
-  ///
-  UwbData(bool _valid, double _distance) : valid(_valid), distance(_distance)
-  {
-      // TODO (gid)
-//    timestamp = ros::Time::now().toSec();
-  }
-
-  ///
   /// \brief UwbData default constructor for measurement
   /// \param _timestamp timestamp of measurement
   /// \param _valid validity flag

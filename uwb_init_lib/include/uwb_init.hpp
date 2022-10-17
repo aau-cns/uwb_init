@@ -28,6 +28,7 @@
 
 #include "options/uwb_init_options.hpp"
 #include "types/types.hpp"
+#include "utils/logger.hpp"
 
 namespace UwbInit
 {
@@ -43,79 +44,7 @@ public:
     /// \brief UwbInitializer default constructor
     /// \param params parameter/options used for UWB initialization
     ///
-    UwbInitializer(UwbInitOptions& params) : params_(params)
-    {
-        // Initialize buffers
-        buffer_p_UinG_.init(params_.buffer_size_s);
-        uwb_data_buffer_.init(params_.buffer_size_s);
-
-        // Bind LS-problem initialization function based on selected method and model variables
-        switch (params_.init_method) {
-
-        case UwbInitOptions::InitMethod::SINGLE:
-            switch (params_.init_variables) {
-
-            case UwbInitOptions::InitVariables::NO_BIAS:
-                ls_problem_ = std::bind(&UwbInitializer::ls_single_no_bias, this, std::placeholders::_1,
-                                        std::placeholders::_2, std::placeholders::_3);
-                break;
-
-            case UwbInitOptions::InitVariables::CONST_BIAS:
-                ls_problem_ = std::bind(&UwbInitializer::ls_single_const_bias, this, std::placeholders::_1,
-                                        std::placeholders::_2, std::placeholders::_3);
-                break;
-
-            case UwbInitOptions::InitVariables::DIST_BIAS:
-                ls_problem_ = std::bind(&UwbInitializer::ls_single_dist_bias, this, std::placeholders::_1,
-                                        std::placeholders::_2, std::placeholders::_3);
-                check_beta_sq = true;
-                break;
-
-            case UwbInitOptions::InitVariables::FULL_BIAS:
-                ls_problem_ = std::bind(&UwbInitializer::ls_single_full_bias, this, std::placeholders::_1,
-                                        std::placeholders::_2, std::placeholders::_3);
-                check_beta_sq = true;
-                break;
-
-            default:
-                exit(EXIT_FAILURE);
-            }
-            break;
-
-        case UwbInitOptions::InitMethod::DOUBLE:
-            switch (params_.init_variables) {
-
-            case UwbInitOptions::InitVariables::NO_BIAS:
-                ls_problem_ = std::bind(&UwbInitializer::ls_double_no_bias, this, std::placeholders::_1,
-                                        std::placeholders::_2, std::placeholders::_3);
-                break;
-
-            case UwbInitOptions::InitVariables::CONST_BIAS:
-                ls_problem_ = std::bind(&UwbInitializer::ls_double_const_bias, this, std::placeholders::_1,
-                                        std::placeholders::_2, std::placeholders::_3);
-                break;
-
-            case UwbInitOptions::InitVariables::DIST_BIAS:
-                ls_problem_ = std::bind(&UwbInitializer::ls_double_dist_bias, this, std::placeholders::_1,
-                                        std::placeholders::_2, std::placeholders::_3);
-                check_beta_sq = true;
-                break;
-
-            case UwbInitOptions::InitVariables::FULL_BIAS:
-                ls_problem_ = std::bind(&UwbInitializer::ls_double_full_bias, this, std::placeholders::_1,
-                                        std::placeholders::_2, std::placeholders::_3);
-                check_beta_sq = true;
-                break;
-
-            default:
-                exit(EXIT_FAILURE);
-            }
-            break;
-
-        default:
-            exit(EXIT_FAILURE);
-        }
-    }
+    UwbInitializer(UwbInitOptions& params, const LoggerLevel& level = LoggerLevel::FULL);
 
     ///
     /// \brief reset resets the initializer and all its buffers
@@ -152,8 +81,13 @@ public:
     ///
     bool init_anchors(UwbAnchorBuffer& anchor_buffer);
 
+    // Shared pointer to logger
+    std::shared_ptr<Logger> logger_ = nullptr;
+
 private:
-    UwbInitOptions params_;  //!< initializer parameters
+
+    // Initializer parameters
+    UwbInitOptions params_;
 
     // Auxiliary variables for checks depending on parameters
     bool check_beta_sq = false;
