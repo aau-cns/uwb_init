@@ -30,7 +30,7 @@
 #include "types/types.hpp"
 #include "utils/logger.hpp"
 
-namespace UwbInit
+namespace UavInit
 {
 ///
 /// \brief The UwbInitializer class is the main object used for UWB data handling
@@ -81,6 +81,16 @@ public:
     ///
     bool init_anchors(UwbAnchorBuffer& anchor_buffer);
 
+    ///
+    /// \todo TODO (gid) planner for waypoint generation to refine anchors
+    ///
+
+    ///
+    /// \brief refine_anchors refines the already initialized anchors via optimal waypoints for non-
+    /// linear least squares optimization
+    ///
+    bool refine_anchors(UwbAnchorBuffer& anchor_buffer);
+
     // Shared pointer to logger
     std::shared_ptr<Logger> logger_ = nullptr;
 
@@ -93,7 +103,6 @@ private:
     bool check_beta_sq = false;
 
     // Anchor and measurement handling
-    Eigen::Vector3d cur_p_UinG_;            //!< current position of the UWB module in global frame
     PositionBufferTimed buffer_p_UinG_;     //!< buffer of UWB module positions in global frame
 
     UwbDataBuffer uwb_data_buffer_;     //!< history of uwb readings in DataBuffer
@@ -101,13 +110,16 @@ private:
     // Least squares initialization handling
     std::function<bool(std::deque<std::pair<double, UwbData>>&, Eigen::MatrixXd&, Eigen::VectorXd&)> ls_problem_;
 
-    // Initialization handling
+    // Least squares solver
     bool solve_ls(UwbAnchorBuffer& anchor_buffer, const uint& anchor_id);
+
+    // Nonlinear Least Squares solver
+    bool solve_nls(UwbAnchor& anchor, std::deque<std::pair<double, UwbData>>& uwb_data);
 
     ///
     /// \brief functions for least squares problem formulation depending on selected method and variables
-    /// \param
-    /// \return coefficient matrix A, measurement vector b (A * x = b)
+    /// \param UWB data for the single anchor, coefficient matrix A, measurement vector b (A * x = b)
+    /// \return ture if successful, false if not
     ///
     bool ls_single_full_bias(std::deque<std::pair<double, UwbData>>& uwb_data,
                              Eigen::MatrixXd& A, Eigen::VectorXd& b);
@@ -125,8 +137,9 @@ private:
                               Eigen::MatrixXd& A, Eigen::VectorXd& b);
     bool ls_double_no_bias(std::deque<std::pair<double, UwbData>>& uwb_data,
                            Eigen::MatrixXd& A, Eigen::VectorXd& b);
+
 };
 
-}  // namespace UwbInit
+}  // namespace UavInit
 
 #endif  // UAV_INIT_UWB_INIT_HPP_

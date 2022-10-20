@@ -21,7 +21,7 @@
 #include "uwb_init.hpp"
 #include "utils/logger.hpp"
 
-namespace UwbInit
+namespace UavInit
 {
 
 UwbInitializer::UwbInitializer(UwbInitOptions& params, const LoggerLevel& level)
@@ -91,9 +91,9 @@ UwbInitializer::UwbInitializer(UwbInitOptions& params, const LoggerLevel& level)
     }
 
     // Logging
-    logger_->info("UwbInitializer::UwbInitializer(): ----- Initialization parameters -----");
-    logger_->info("UwbInitializer::UwbInitializer(): " + params_.InitMethod());
-    logger_->info("UwbInitializer::UwbInitializer(): " + params_.InitVariables());
+    logger_->info("----- Initialization Parameters -----");
+    logger_->info(params_.InitMethod());
+    logger_->info(params_.InitVariables());
 }
 
 void UwbInitializer::reset()
@@ -101,9 +101,6 @@ void UwbInitializer::reset()
     // Reset buffers
     uwb_data_buffer_.reset();
     buffer_p_UinG_.reset();
-
-    // Reset positions
-    cur_p_UinG_ = Eigen::Vector3d::Zero();
 }
 
 
@@ -133,19 +130,22 @@ void UwbInitializer::feed_pose(const double timestamp, const Eigen::Vector3d p_U
 
 bool UwbInitializer::init_anchors(UwbAnchorBuffer& anchor_buffer)
 {
+    // Logging
+    logger_->info("UwbInitializer::init_anchors(): Performing uwb anchors initialization.");
+
     // Check if pose buffer is empty
     if ( buffer_p_UinG_.is_emtpy() ) {
-        logger_->err("UwbInitializer::init_anchors(): Initialization FAILED: pose buffer is empty.");
+        logger_->err("UwbInitializer::init_anchors(): Initialization FAILED (pose buffer is empty).");
         return false;
     }
 
     // Check if uwb buffer is empty
     if ( uwb_data_buffer_.is_emtpy() ) {
-        logger_->err("UwbInitializer::init_anchors(): Initialization FAILED: uwb buffer is empty.");
+        logger_->err("UwbInitializer::init_anchors(): Initialization FAILED (uwb buffer is empty).");
         return false;
     }
 
-    // Variable for keeping track if all anchors has been correctly initialized
+    // Variable for keeping track if all anchors have been correctly initialized
     bool init_successful = true;
 
     /// \todo TODO(scm): this can be improved by making DataBuffer a iterable class
@@ -163,7 +163,6 @@ bool UwbInitializer::init_anchors(UwbAnchorBuffer& anchor_buffer)
         else if (solve_ls(anchor_buffer, anchor_id))
         {
             logger_->info("Anchor[" + std::to_string(anchor_id) + "]: Correctly initialized.");
-            /// \todo TODO (gid) nonlinear optimization if option enabled and planner
             continue;
         }
         else
@@ -173,8 +172,70 @@ bool UwbInitializer::init_anchors(UwbAnchorBuffer& anchor_buffer)
         }
     }
 
+    // If initialization is not successful return
+    if ( !(init_successful) ) {
+        logger_->err("UwbInitializer::init_anchors(): Initialization FAILED.");
+        return false;
+    }
+
+    // Else all anchors have been initialized correctly
     logger_->info("UwbInitializer::init_anchors(): Initialization complete.");
-    return init_successful;
+    return true;
+}
+
+bool UwbInitializer::refine_anchors(UwbAnchorBuffer& anchor_buffer)
+{
+    // Logging
+    logger_->info("UwbInitializer::refine_anchors(): Performing anchors refinement.");
+
+    // Check if pose buffer is empty
+    if ( buffer_p_UinG_.is_emtpy() ) {
+        logger_->err("UwbInitializer::refine_anchors(): Operation FAILED (pose buffer is empty).");
+        return false;
+    }
+
+    // Check if uwb buffer is empty
+    if ( uwb_data_buffer_.is_emtpy() ) {
+        logger_->err("UwbInitializer::refine_anchors(): Operation FAILED (uwb buffer is empty).");
+        return false;
+    }
+
+    // Variable for keeping track if all anchors have been correctly refined
+    bool refine_successful = true;
+
+    /// \todo TODO(gid): iterable buffers
+    for (const auto& e: anchor_buffer.get_buffer()) {
+
+        // check if anchor is initialized
+        if ( !anchor_buffer.is_initialized(e.first) ) {
+            refine_successful = false;
+            continue;
+        }
+
+        // Get anchor
+        UwbAnchor anchor = e.second;
+
+        // Define uwb data
+        std::deque<std::pair<double, UwbData>> single_anchor_uwb_data;
+
+        // First check
+        if ( !(uwb_data_buffer_.get_buffer_values(anchor.id, single_anchor_uwb_data)) ) {
+            logger_->err("Anchor[" + std::to_string(anchor.id) + "]: Uwb data buffer can not be initialized.");
+            refine_successful = false;
+            continue;
+        }
+
+        if ( !solve_nls(anchor, single_anchor_uwb_data) ) {
+            refine_successful = false;
+        }
+
+        // Update anchor
+        anchor_buffer.set(e.first, anchor);
+
+        return true;
+    }
+
+    return true;
 }
 
 
@@ -329,10 +390,103 @@ bool UwbInitializer::solve_ls(UwbAnchorBuffer& anchor_buffer, const uint& anchor
     double calc_time = std::chrono::duration_cast<std::chrono::seconds>(end_t - start_t).count();
 
     // Regardless, add calculation to buffer
-    anchor_buffer.push_back(anchor_id, calc_time, new_uwb_anchor);
+    anchor_buffer.set(anchor_id, new_uwb_anchor);
 
     // Logging
     logger_->info("Anchor[" + std::to_string(anchor_id) + "]: Elapsed time " + std::to_string(calc_time));
+
+    return true;
+}
+
+bool UwbInitializer::solve_nls(UwbAnchor& anchor, std::deque<std::pair<double, UwbData>>& uwb_data)
+{
+    // Parameter vector
+    Eigen::VectorXd theta;
+    theta << anchor.p_AinG, anchor.bias_d, anchor.bias_c;
+
+    // Step norm vector
+    Eigen::VectorXd step_vec = params_.step_vec;
+
+    // Data vectors initialization
+    Eigen::VectorXd uwb_vec = Eigen::VectorXd::Zero(uwb_data.size());
+    Eigen::MatrixXd pose_vec = Eigen::MatrixXd::Zero(uwb_vec.size(), 3);
+
+    for (uint i = 0; i < uwb_vec.size(); ++i) {
+        uwb_vec(i) = uwb_data.at(i).first;
+        pose_vec.row(i) = buffer_p_UinG_.get_closest(uwb_vec(i) - params_.t_pose_diff);
+    }
+
+    for (uint i = 0; i < params_.max_iter; ++i) {
+
+        // Jacobian and residual initialization
+        Eigen::MatrixXd J = Eigen::MatrixXd::Zero(uwb_data.size(), 5);
+        Eigen::VectorXd res = Eigen::VectorXd::Zero(uwb_data.size());
+        Eigen::VectorXd res_vec = Eigen::VectorXd::Zero(step_vec.size());
+
+        // Compute Jacobian
+        for (uint j = 0; j < uwb_data.size(); ++j) {
+            // Get closest UWB module position
+            Eigen::VectorXd row(J.cols());
+            row << theta[3] * (theta[0] - pose_vec.row(j)[0]) / (theta.segment(0, 3) - pose_vec.row(j)).norm(),
+                    theta[3] * (theta[1] - pose_vec.row(j)[1]) / (theta.segment(0, 3) - pose_vec.row(j)).norm(),
+                    theta[3] * (theta[2] - pose_vec.row(j)[2]) / (theta.segment(0, 3) - pose_vec.row(j)).norm(),
+                    (theta.segment(0, 3) - pose_vec.row(j)).norm(),
+                    1;
+            J.row(j) = row.transpose();
+            res(j) = uwb_data.at(j).second.distance - (theta[3] * (theta.segment(0, 3) - pose_vec.row(j)).norm() + theta[4]);
+        }
+
+        // Calculate Moore-Penrose Pseudo-Inverse of matrix J
+        Eigen::JacobiSVD<Eigen::MatrixXd> svd(J, Eigen::ComputeThinU | Eigen::ComputeThinV);
+        double tolerance = std::numeric_limits<double>::epsilon() * std::max(J.cols(), J.rows()) * svd.singularValues().array().abs()(0);
+        Eigen::MatrixXd pinv_J = svd.matrixV()
+                * (svd.singularValues().array().abs() > tolerance).select(svd.singularValues().array().inverse(), 0).matrix().asDiagonal()
+                * svd.matrixU().adjoint();
+
+        // Compute norm of step
+        Eigen::VectorXd d_theta = pinv_J * res;
+
+        // Calculate residual for each step
+        for (uint j = 0; j < step_vec.size(); ++j) {
+            Eigen::VectorXd theta_new = theta + step_vec(j) * d_theta;
+            for (uint k = 0; k < uwb_vec.size(); ++k) {
+                res_vec(j) += std::pow(uwb_vec(k) - (theta_new[3] * (theta_new.segment(0, 3) - pose_vec.row(k)).norm() + theta[4]), 2);
+            }
+            res_vec(j) /= uwb_vec.size();
+        }
+
+        // Choose minimum residual index
+        Eigen::Index step_idx;
+        res_vec.minCoeff(&step_idx);
+        theta += step_vec(step_idx) * d_theta;
+
+        // If step norm is minimum reduce the step
+        if ( step_idx == 0 )
+        {
+            step_vec /= 2;
+        }
+
+        // Norm of step stopping condition
+        if ( step_vec(step_idx) < params_.step_cond ) {
+            logger_->info("Anchor[ " + std::to_string(anchor.id) + "]: Step norm is less than " + std::to_string(params_.step_cond));
+            break;
+        }
+
+        // Residual stopping condition
+        if ( res_vec(step_idx) < params_.res_cond ) {
+            logger_->info("Anchor[ " + std::to_string(anchor.id) + "]: Residual is less than " + std::to_string(params_.res_cond));
+            break;
+        }
+
+        // Check if maximum number of iteration reached
+        if ( i == (params_.max_iter - 1) ) {
+            logger_->warn("Anchor[ " + std::to_string(anchor.id) + "]: Maximum number of iterations reached (" + std::to_string(params_.max_iter) + ")");
+        }
+    }
+
+    anchor.p_AinG = theta.segment(0, 3);
+    anchor.bias_d = theta(4);
+    anchor.bias_c = theta(5);
 
     return true;
 }
@@ -1098,4 +1252,4 @@ bool UwbInitializer::ls_double_no_bias(std::deque<std::pair<double, UwbData> > &
     return true;
 }
 
-}  // namespace UwbInit
+}  // namespace UavInit
