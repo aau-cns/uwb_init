@@ -21,7 +21,7 @@
 
 #include <Eigen/Eigen>
 
-namespace UwbInit
+namespace UavInit
 {
 ///
 /// \brief The UwbAnchor struct is an object describing an UWB anchor.
@@ -43,6 +43,6 @@ struct UwbAnchor
   UwbAnchor(uint _id) : id(_id){};
 
 };  // struct UwbAnchor
-}  // namespace UwbInit
+}  // namespace UavInit
 
 #endif  // UAV_INIT_TYPES_UWB_ANCHOR_HPP_

@@ -21,7 +21,7 @@
 
 #include <cstdint>
 
-namespace UwbInit
+namespace UavInit
 {
 ///
 /// \brief The UwbData struct is an object used for received UWB measurements.
@@ -46,6 +46,6 @@ struct UwbData
   UwbData(){}
 };  // struct UwbData
 
-}  // namespace UwbInit
+}  // namespace UavInit
 
 #endif  // UAV_INIT_TYPES_UWB_DATA_HPP_

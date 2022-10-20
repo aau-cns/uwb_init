@@ -23,7 +23,7 @@
 #include <memory>
 #include <mutex>
 
-namespace UwbInit
+namespace UavInit
 {
 enum LoggerLevel
 {
@@ -108,6 +108,6 @@ class Logger
   std::mutex logger_mtx_;
 };
 
-}  // namespace UwbInit
+}  // namespace UavInit
 
 #endif  // UAV_INIT_LOGGER_HPP_

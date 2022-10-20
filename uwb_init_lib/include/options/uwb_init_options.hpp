@@ -23,7 +23,7 @@
 
 #include "utils/logger.hpp"
 
-namespace UwbInit
+namespace UavInit
 {
 ///
 /// \brief The UwbInitOptions struct is an object containing all 'static' parameters used.
@@ -77,7 +77,7 @@ struct UwbInitOptions
     std::string service_start_init{ "/uwb_init/start" };
 
     /// Flag to allow publsihing of initialized anchors only if all anchors have been initialized
-    bool publish_only_when_all_initialized{false};
+    bool b_publish_only_when_all_initialized{false};
 
     // UWB INITIALIZER ==========================================================
 
@@ -149,10 +149,28 @@ struct UwbInitOptions
     /// holdtime at waypoints
     double wp_holdtime{ 0.5 };
 
-    std::string InitMethod()
-    {
-        switch (init_method)
-        {
+    // NONLINEAR OPTIMIZATION ==================================================
+
+    /// flag to determine if nonlinear optimization should be performed
+    bool b_nonlin_opt{ true };
+
+    /// norm of step ( theta(k+1) = theta(k) + zeta(i)*d_theta )
+    Eigen::VectorXd step_vec{ (Eigen::VectorXd() << 1e-3, 1e-2, 1e-1, 1, 5, 10, 50, 1e2, 5e2, 1e3).finished() };
+
+    /// stopping condition for norm of step
+    double step_cond{ 1e-4 };
+
+    /// stopping condition for residual
+    double res_cond{ 1e-2 };
+
+    /// stopping condition for maximum number of iterations
+    uint max_iter{ 100000 };
+
+    // GET INFO ================================================================
+
+    /// get initialization method
+    std::string InitMethod() {
+        switch (init_method) {
         case InitMethod::SINGLE:
             return "InitMethod::SINGLE";
         case InitMethod::DOUBLE:
@@ -160,10 +178,9 @@ struct UwbInitOptions
         }
     }
 
-    std::string InitVariables()
-    {
-        switch (init_variables)
-        {
+    /// get initialization variables
+    std::string InitVariables() {
+        switch (init_variables) {
         case InitVariables::FULL_BIAS:
             return "InitVariables::FULL_BIAS";
         case InitVariables::NO_BIAS:
@@ -176,6 +193,6 @@ struct UwbInitOptions
     }
 
 };  // class UwbInitOptions
-}  // namespace UwbInit
+}  // namespace UavInit
 
 #endif  // UAV_INIT_UWB_OPTIONS_HPP_

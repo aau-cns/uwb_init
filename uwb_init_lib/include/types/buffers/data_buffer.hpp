@@ -25,7 +25,7 @@
 
 #include "types/buffers/timed_buffer.hpp"
 
-namespace UwbInit
+namespace UavInit
 {
 template <typename bufferType>
 ///
@@ -51,7 +51,7 @@ public:
     ///
     /// \todo add a feature to be able to add messages regardless of their arrival time (timestamp) in an ordered fashion.
     ///
-    DataBuffer(){};
+    DataBuffer(){}
 
     ///
     /// \brief init initialize the TimedBuffer
@@ -205,6 +205,6 @@ public:
     }
 
 };  // class DataBuffer
-}  // namespace UwbInit
+}  // namespace UavInit
 
 #endif  // UAV_INIT_TYPES_DATA_BUFFER_HPP_

@@ -14,12 +14,14 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 //
-// You can contact the author at <martin.scheiber@aau.at>
+// You can contact the authors at <martin.scheiber@aau.at> and
+// <giulio.delama@aau.at>
 
 #ifndef UAV_INIT_TYPES_BUFFERS_HPP_
 #define UAV_INIT_TYPES_BUFFERS_HPP_
 
 #include "types/buffers/data_buffer.hpp"
 #include "types/buffers/timed_buffer.hpp"
+#include "types/buffers/simple_buffer.hpp"
 
 #endif  // UAV_INIT_TYPES_BUFFERS_HPP_
