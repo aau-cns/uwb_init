@@ -99,18 +99,17 @@ private:
     // Initializer parameters
     UwbInitOptions params_;
 
-    // Auxiliary variables for checks depending on parameters
+    // Auxiliary variables to perform checks depending on parameters
     bool check_beta_sq = false;
 
     // Anchor and measurement handling
     PositionBufferTimed buffer_p_UinG_;     //!< buffer of UWB module positions in global frame
-
     UwbDataBuffer uwb_data_buffer_;     //!< history of uwb readings in DataBuffer
 
     // Least squares initialization handling
     std::function<bool(std::deque<std::pair<double, UwbData>>&, Eigen::MatrixXd&, Eigen::VectorXd&)> ls_problem_;
 
-    // Least squares solver
+    // Least Squares solver
     bool solve_ls(UwbAnchorBuffer& anchor_buffer, const uint& anchor_id);
 
     // Nonlinear Least Squares solver

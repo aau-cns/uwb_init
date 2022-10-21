@@ -232,7 +232,8 @@ bool UwbInitializer::refine_anchors(UwbAnchorBuffer& anchor_buffer)
         // Update anchor
         anchor_buffer.set(e.first, anchor);
 
-        return true;
+        // Refine successful
+        logger_->err("Anchor[" + std::to_string(anchor.id) + "]: Correctly refined.");
     }
 
     return true;
@@ -251,7 +252,7 @@ bool UwbInitializer::solve_ls(UwbAnchorBuffer& anchor_buffer, const uint& anchor
     std::deque<std::pair<double, UwbData>> single_anchor_uwb_data;
 
     // First check
-    if ( !(uwb_data_buffer_.get_buffer_values(anchor_id, single_anchor_uwb_data)) ) {        
+    if ( !(uwb_data_buffer_.get_buffer_values(anchor_id, single_anchor_uwb_data)) ) {
         logger_->err("Anchor[" + std::to_string(anchor_id) + "]: Uwb data buffer can not be initialized.");
         return false;
     }
@@ -411,29 +412,38 @@ bool UwbInitializer::solve_nls(UwbAnchor& anchor, std::deque<std::pair<double, U
     Eigen::VectorXd uwb_vec = Eigen::VectorXd::Zero(uwb_data.size());
     Eigen::MatrixXd pose_vec = Eigen::MatrixXd::Zero(uwb_vec.size(), 3);
 
+    // Create consistent data vectors
     for (uint i = 0; i < uwb_vec.size(); ++i) {
         uwb_vec(i) = uwb_data.at(i).first;
         pose_vec.row(i) = buffer_p_UinG_.get_closest(uwb_vec(i) - params_.t_pose_diff);
     }
 
-    for (uint i = 0; i < params_.max_iter; ++i) {
+    // Check for consistency
+    if ( uwb_vec.size() != pose_vec.rows() ) {
+        // Refine unsuccessful
+        logger_->err("Anchor[" + std::to_string(anchor.id) + "]: Can not be refined (data vectors have different dimensions).");
+        return false;
+    }
 
+    // Non-linear Least Squares
+    for (uint i = 0; i < params_.max_iter; ++i) {
         // Jacobian and residual initialization
-        Eigen::MatrixXd J = Eigen::MatrixXd::Zero(uwb_data.size(), 5);
-        Eigen::VectorXd res = Eigen::VectorXd::Zero(uwb_data.size());
+        Eigen::MatrixXd J = Eigen::MatrixXd::Zero(uwb_vec.size(), 5);
+        Eigen::VectorXd res = Eigen::VectorXd::Zero(uwb_vec.size());
         Eigen::VectorXd res_vec = Eigen::VectorXd::Zero(step_vec.size());
 
-        // Compute Jacobian
-        for (uint j = 0; j < uwb_data.size(); ++j) {
-            // Get closest UWB module position
+        // Compute Jacobian and residual
+        for (uint j = 0; j < uwb_vec.size(); ++j) {
+            // Jacobian
             Eigen::VectorXd row(J.cols());
-            row << theta[3] * (theta[0] - pose_vec.row(j)[0]) / (theta.segment(0, 3) - pose_vec.row(j)).norm(),
-                    theta[3] * (theta[1] - pose_vec.row(j)[1]) / (theta.segment(0, 3) - pose_vec.row(j)).norm(),
-                    theta[3] * (theta[2] - pose_vec.row(j)[2]) / (theta.segment(0, 3) - pose_vec.row(j)).norm(),
-                    (theta.segment(0, 3) - pose_vec.row(j)).norm(),
-                    1;
+            row << theta[3] * (theta[0] - pose_vec.row(j)[0]) / (theta.segment(0, 3) - pose_vec.row(j)).norm(),     // df/dx
+                    theta[3] * (theta[1] - pose_vec.row(j)[1]) / (theta.segment(0, 3) - pose_vec.row(j)).norm(),    // df/dy
+                    theta[3] * (theta[2] - pose_vec.row(j)[2]) / (theta.segment(0, 3) - pose_vec.row(j)).norm(),    // df/dz
+                    (theta.segment(0, 3) - pose_vec.row(j)).norm(),                                                 // df/dbeta
+                    1;                                                                                              // df/dgamma
             J.row(j) = row.transpose();
-            res(j) = uwb_data.at(j).second.distance - (theta[3] * (theta.segment(0, 3) - pose_vec.row(j)).norm() + theta[4]);
+            // Residual res = meas - (beta * ||p_AinG - p_UinG|| + gamma)
+            res(j) = uwb_vec(j) - ( theta[3] * (theta.segment(0, 3) - pose_vec.row(j)).norm() + theta[4] );   // y - f(theta)
         }
 
         // Calculate Moore-Penrose Pseudo-Inverse of matrix J
@@ -458,32 +468,34 @@ bool UwbInitializer::solve_nls(UwbAnchor& anchor, std::deque<std::pair<double, U
         // Choose minimum residual index
         Eigen::Index step_idx;
         res_vec.minCoeff(&step_idx);
+
+        // Perform parameters update theta(k+1) = theta(k) + step_norm * d_theta
         theta += step_vec(step_idx) * d_theta;
 
         // If step norm is minimum reduce the step
-        if ( step_idx == 0 )
-        {
+        if ( step_idx == 0 ) {
             step_vec /= 2;
         }
 
         // Norm of step stopping condition
         if ( step_vec(step_idx) < params_.step_cond ) {
-            logger_->info("Anchor[ " + std::to_string(anchor.id) + "]: Step norm is less than " + std::to_string(params_.step_cond));
+            logger_->info("Anchor[" + std::to_string(anchor.id) + "]: Step norm is less than " + std::to_string(params_.step_cond));
             break;
         }
 
         // Residual stopping condition
         if ( res_vec(step_idx) < params_.res_cond ) {
-            logger_->info("Anchor[ " + std::to_string(anchor.id) + "]: Residual is less than " + std::to_string(params_.res_cond));
+            logger_->info("Anchor[" + std::to_string(anchor.id) + "]: Residual is less than " + std::to_string(params_.res_cond));
             break;
         }
 
         // Check if maximum number of iteration reached
         if ( i == (params_.max_iter - 1) ) {
-            logger_->warn("Anchor[ " + std::to_string(anchor.id) + "]: Maximum number of iterations reached (" + std::to_string(params_.max_iter) + ")");
+            logger_->warn("Anchor[" + std::to_string(anchor.id) + "]: Maximum number of iterations reached (" + std::to_string(params_.max_iter) + ")");
         }
     }
 
+    // Update anchor parameters
     anchor.p_AinG = theta.segment(0, 3);
     anchor.bias_d = theta(4);
     anchor.bias_c = theta(5);
