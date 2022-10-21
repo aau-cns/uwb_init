@@ -21,9 +21,7 @@
 
 #include <Eigen/Eigen>
 
-#include "utils/logger.hpp"
-
-namespace UavInit
+namespace uav_init
 {
 ///
 /// \brief The UwbInitOptions struct is an object containing all 'static' parameters used.
@@ -155,7 +153,7 @@ struct UwbInitOptions
     bool b_nonlin_opt{ true };
 
     /// norm of step ( theta(k+1) = theta(k) + zeta(i)*d_theta )
-    Eigen::VectorXd step_vec{ (Eigen::VectorXd() << 1e-3, 1e-2, 1e-1, 1, 5, 10, 50, 1e2, 5e2, 1e3).finished() };
+    Eigen::VectorXd step_vec{ Eigen::VectorXd::LinSpaced(10, 1, 100) };
 
     /// stopping condition for norm of step
     double step_cond{ 1e-4 };
@@ -169,7 +167,7 @@ struct UwbInitOptions
     // GET INFO ================================================================
 
     /// get initialization method
-    std::string InitMethod() {
+    inline std::string InitMethod() {
         switch (init_method) {
         case InitMethod::SINGLE:
             return "InitMethod::SINGLE";
@@ -179,7 +177,7 @@ struct UwbInitOptions
     }
 
     /// get initialization variables
-    std::string InitVariables() {
+    inline std::string InitVariables() {
         switch (init_variables) {
         case InitVariables::FULL_BIAS:
             return "InitVariables::FULL_BIAS";
@@ -192,7 +190,7 @@ struct UwbInitOptions
         }
     }
 
-};  // class UwbInitOptions
-}  // namespace UavInit
+};  // struct UwbInitOptions
+}  // namespace uav_init
 
 #endif  // UAV_INIT_UWB_OPTIONS_HPP_
