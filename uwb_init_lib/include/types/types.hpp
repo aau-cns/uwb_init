@@ -25,7 +25,7 @@
 #include "types/uwb_anchor.hpp"
 #include "types/uwb_data.hpp"
 
-namespace UavInit
+namespace uav_init
 {
 ///
 /// \brief The PositionBufferTimed class TimedBuffer buffer handler for Eigen::Vector3d.
@@ -78,6 +78,6 @@ public:
 
 };  // class UwbAnchorBuffer
 
-}  // namespace UavInit
+}  // namespace uav_init
 
 #endif  // UAV_INIT_TYPES_HPP_

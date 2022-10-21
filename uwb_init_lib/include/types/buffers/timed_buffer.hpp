@@ -24,7 +24,7 @@
 
 #include "utils/logger.hpp"
 
-namespace UavInit
+namespace uav_init
 {
 template <typename bufferType>
 ///
@@ -224,6 +224,6 @@ public:
     }
 
 };  // class TimedBuffer
-}  // namespace UavInit
+}  // namespace uav_init
 
 #endif  // UAV_INIT_TYPES_TIMED_BUFFER_HPP_

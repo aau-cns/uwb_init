@@ -22,7 +22,7 @@
 
 #include <unordered_map>
 
-namespace UavInit
+namespace uav_init
 {
 template <typename dataType>
 ///
@@ -115,6 +115,6 @@ public:
     }
 
 };  // class DataBuffer
-}  // namespace UavInit
+}  // namespace uav_init
 
 #endif  // UAV_INIT_TYPES_DATA_BUFFER_HPP_

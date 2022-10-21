@@ -77,8 +77,10 @@ list(
 )
 
 ## Declare a C++ library
-add_library(uwb_init SHARED ${lib_sources})
-target_link_libraries(uwb_init ${thirdparty_libraries})
+add_library(uav_init SHARED ${lib_sources})
+target_link_libraries(uav_init ${thirdparty_libraries})
 
 ## Declare a C++ executable
-#add_executable(test test/test_lib.cpp)
+add_executable(test_init test/test_init.cpp)
+target_link_libraries(test_init ${thirdparty_libraries} uav_init)
+

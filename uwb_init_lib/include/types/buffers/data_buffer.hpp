@@ -25,7 +25,7 @@
 
 #include "types/buffers/timed_buffer.hpp"
 
-namespace UavInit
+namespace uav_init
 {
 template <typename bufferType>
 ///
@@ -205,6 +205,6 @@ public:
     }
 
 };  // class DataBuffer
-}  // namespace UavInit
+}  // namespace uav_init
 
 #endif  // UAV_INIT_TYPES_DATA_BUFFER_HPP_

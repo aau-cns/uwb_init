@@ -21,7 +21,7 @@
 #include "uwb_init.hpp"
 #include "utils/logger.hpp"
 
-namespace UavInit
+namespace uav_init
 {
 
 UwbInitializer::UwbInitializer(UwbInitOptions& params, const LoggerLevel& level)
@@ -1264,4 +1264,4 @@ bool UwbInitializer::ls_double_no_bias(std::deque<std::pair<double, UwbData> > &
     return true;
 }
 
-}  // namespace UavInit
+}  // namespace uav_init

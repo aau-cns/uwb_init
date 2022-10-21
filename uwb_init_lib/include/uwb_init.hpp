@@ -30,7 +30,7 @@
 #include "types/types.hpp"
 #include "utils/logger.hpp"
 
-namespace UavInit
+namespace uav_init
 {
 ///
 /// \brief The UwbInitializer class is the main object used for UWB data handling
@@ -139,6 +139,6 @@ private:
 
 };
 
-}  // namespace UavInit
+}  // namespace uav_init
 
 #endif  // UAV_INIT_UWB_INIT_HPP_
