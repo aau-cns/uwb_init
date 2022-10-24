@@ -83,7 +83,7 @@ struct UwbInitOptions
     bool b_do_continous_init{ false };
 
     /// buffer size of all buffers in s
-    double buffer_size_s{ 10.0 };
+    double buffer_size_s{ 100.0 };
 
     /// maximum condition number of the LS matrix for valid initialization
     double max_cond_num{ 100.0 };

@@ -26,9 +26,32 @@ using namespace uav_init;
 int main()
 {
     UwbInitOptions options;
+    UwbAnchorBuffer anchorBuf;
     UwbInitializer uwbInit(options);
 
-    UwbAnchorBuffer anchorBuf;
+    double pose_t;
+    uav_init::UwbData uwb;
+    std::vector<UwbData> uwb_meas;
+    Eigen::Vector3d pose;
+
+    for (uint i = 0; i < 100; ++i) {
+
+        pose = Eigen::Vector3d::Zero();
+
+        pose << 1.0, 1.0, 1.0;
+        pose_t = 0.1 * i;
+
+        uwb.id = 1;
+        uwb.valid = 1;
+        uwb.distance = 1.0;
+        uwb.timestamp = 0.1 * i;
+
+        uwb_meas = {uwb};
+
+        uwbInit.feed_pose(pose_t, pose);
+        uwbInit.feed_uwb(uwb_meas);
+
+    }
 
     uwbInit.init_anchors(anchorBuf);
 
