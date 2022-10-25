@@ -14,7 +14,8 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 //
-// You can contact the author at <martin.scheiber@aau.at>
+// You can contact the authors at <martin.scheiber@aau.at> and
+// <giulio.delama@aau.at>
 
 #ifndef UAV_INIT_TYPES_UWB_DATA_HPP_
 #define UAV_INIT_TYPES_UWB_DATA_HPP_
@@ -28,22 +29,13 @@ namespace uav_init
 ///
 struct UwbData
 {
-  double timestamp{ 0.0 };  //!< timestamp of measurement
   bool valid{ false };      //!< validity flag, determines if distance is valid
   double distance{ -1.0 };  //!< distance between anchor and tag
-  uint8_t id{ 0 };             //!< anchor ID
-
-  ///
-  /// \brief UwbData default constructor for measurement
-  /// \param _timestamp timestamp of measurement
-  /// \param _valid validity flag
-  /// \param _distance distance measurement
-  /// \param _id anchor ID
-  ///
-  UwbData(double _timestamp, bool _valid, double _distance, uint16_t _id)
-    : timestamp(_timestamp), valid(_valid), distance(_distance), id(_id){}
 
   UwbData(){}
+  UwbData(bool _valid, double _distance)
+    : valid(_valid), distance(_distance){}
+
 };  // struct UwbData
 
 }  // namespace uav_init

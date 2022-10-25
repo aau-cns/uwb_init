@@ -1,4 +1,4 @@
-// Copyright (C) 2021 Martin Scheiber, Control of Networked Systems, University of Klagenfurt, Austria.
+// Copyright (C) 2021 Alessandro Fornasier, Control of Networked Systems, University of Klagenfurt, Austria.
 //
 // All rights reserved.
 //
@@ -14,14 +14,13 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 //
-// You can contact the author at <martin.scheiber@aau.at>
+// You can contact the author at <alessandro.fornasier@aau.at>
 
 #ifndef UAV_INIT_LOGGER_HPP_
 #define UAV_INIT_LOGGER_HPP_
 
 #include <iostream>
 #include <memory>
-#include <mutex>
 
 namespace uav_init
 {
@@ -97,15 +96,11 @@ class Logger
    */
   inline void log(const std::string& msg)
   {
-    std::scoped_lock lock(logger_mtx_);
     std::cout << msg << '\n' << std::endl;
   }
 
   /// Logger level
   LoggerLevel level_;
-
-  /// Logger mutex
-  std::mutex logger_mtx_;
 };
 
 }  // namespace uav_init

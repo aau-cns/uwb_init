@@ -20,8 +20,49 @@
 #ifndef UAV_INIT_TYPES_BUFFERS_HPP_
 #define UAV_INIT_TYPES_BUFFERS_HPP_
 
-#include "types/buffers/data_buffer.hpp"
-#include "types/buffers/timed_buffer.hpp"
-#include "types/buffers/simple_buffer.hpp"
+#include <vector>
+#include <algorithm>
+
+template <typename bufferType>
+
+struct TimedBuffer
+{
+    std::vector<std::pair<double, bufferType>> buffer_;  // main buffer variable storing the values with timestamps
+
+    inline bool prev(const double timestamp, bufferType& prev) {
+        sort(buffer_.begin(), buffer_.end());
+
+        auto const it = std::lower_bound(buffer_.begin(), buffer_.end(), timestamp,
+                                         [](std::pair<double, bufferType> const & lhs, double const & rhs)
+                                            { return lhs.first < rhs; });
+
+        if (it == buffer_.end()) {
+            return false;
+        }
+
+        prev = (*it).second;
+
+        return true;
+    }
+
+    inline bool next(const double timestamp, bufferType& next) {
+        sort(buffer_.begin(), buffer_.end());
+
+        auto const it = std::upper_bound(buffer_.begin(), buffer_.end(), timestamp,
+                                         [](std::pair<double, bufferType> const & lhs, double const & rhs)
+                                            { return lhs.first > rhs; });
+
+        if (it == buffer_.end()) {
+            return false;
+        }
+
+        next = (*it).second;
+
+        return true;
+    }
+
+    TimedBuffer(){}
+
+};  // struct TimedBuffer
 
 #endif  // UAV_INIT_TYPES_BUFFERS_HPP_

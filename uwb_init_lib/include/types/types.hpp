@@ -27,57 +27,9 @@
 
 namespace uav_init
 {
-///
-/// \brief The PositionBufferTimed class TimedBuffer buffer handler for Eigen::Vector3d.
-///
-class PositionBufferTimed : public TimedBuffer<Eigen::Vector3d>
-{
-public:
-    using TimedBuffer::init;
-    PositionBufferTimed(){}
-    void init(const double buffer_size_s)
-    {
-        init(buffer_size_s, Eigen::Vector3d(0, 0, 0));
-    }
-};  // class PositionBufferTimed
-
-///
-/// \brief The UwbDataBuffer class DataBuffer buffer handler for UwbData.
-///
-class UwbDataBuffer : public DataBuffer<UwbData>
-{
-public:
-    using DataBuffer::init;
-    UwbDataBuffer(){}
-    void init(const double buffer_size_s)
-    {
-        init(buffer_size_s, UwbData());
-    }
-};  // class UwbDataBuffer
-
-///
-/// \brief The UwbAnchorBuffer class is a DataBuffer buffer handler for UwbAnchor.
-///
-class UwbAnchorBuffer : public SimpleBuffer<UwbAnchor>
-{
-public:
-    ///
-    /// \brief UwbAnchorBuffer default constructor for the UwbAnchorBuffer. This already sets the buffer size to 1.0 s and
-    /// the data type to UwbAnchor.
-    ///
-    UwbAnchorBuffer(){}
-    ///
-    /// \brief is_initialized checks if the anchor with the given ID has been initialized
-    /// \param anchor_id ID of anchor to check
-    /// \return true if the anchor id exists and has been initialized
-    ///
-    bool is_initialized(const uint anchor_id)
-    {
-        return ((contains_id(anchor_id)) && (get(anchor_id).initialized));
-    }
-
-};  // class UwbAnchorBuffer
-
+typedef TimedBuffer<Eigen::Vector3d> PositionBuffer;
+typedef std::unordered_map<size_t, TimedBuffer<UwbData>> UwbDataBuffer;
+typedef std::unordered_map<size_t, UwbAnchor> UwbAnchorBuffer;
 }  // namespace uav_init
 
 #endif  // UAV_INIT_TYPES_HPP_
