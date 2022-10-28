@@ -1,4 +1,4 @@
-// Copyright (C) 2021 Alessandro Fornasier, Control of Networked Systems, University of Klagenfurt, Austria.
+// Copyright (C) 2022 Alessandro Fornasier, Control of Networked Systems, University of Klagenfurt, Austria.
 //
 // All rights reserved.
 //
@@ -16,13 +16,13 @@
 //
 // You can contact the author at <alessandro.fornasier@aau.at>
 
-#ifndef UAV_INIT_LOGGER_HPP_
-#define UAV_INIT_LOGGER_HPP_
+#ifndef LOGGER_HPP_
+#define LOGGER_HPP_
 
 #include <iostream>
 #include <memory>
 
-namespace uav_init
+namespace uwb_init
 {
 enum LoggerLevel
 {
@@ -35,23 +35,31 @@ enum LoggerLevel
 
 class Logger
 {
- public:
+public:
   /**
    * @brief Logger constructor
    */
-  Logger(const LoggerLevel& level) : level_(level) {}
+  Logger(const LoggerLevel& level) : level_(level)
+  {
+  }
 
   /**
    * @brief Getter. Get the MSP version in use
    * @return msp version (const reference to MSPVer)
    */
-  inline const LoggerLevel& getlevel() const { return level_; }
+  inline const LoggerLevel& getlevel() const
+  {
+    return level_;
+  }
 
   /**
    * @brief Setter. Set the logger level version
    * @param level (const reference to LoggerLevel)
    */
-  inline void setLevel(const LoggerLevel& level) { level_ = level; }
+  inline void setLevel(const LoggerLevel& level)
+  {
+    level_ = level;
+  }
 
   /**
    * @brief Format a info message and log it
@@ -89,7 +97,7 @@ class Logger
     }
   }
 
- private:
+private:
   /**
    * @brief Log a message if logger is active
    * @param msg (std::string)
@@ -103,6 +111,6 @@ class Logger
   LoggerLevel level_;
 };
 
-}  // namespace uav_init
+}  // namespace uwb_init
 
-#endif  // UAV_INIT_LOGGER_HPP_
+#endif  // LOGGER_HPP_
