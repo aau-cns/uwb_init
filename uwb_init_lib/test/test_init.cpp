@@ -38,7 +38,7 @@ int main()
 
   // Test TimedBuffer (PositionBuffer) functionalities
   PositionBuffer pos;
-  for (size_t i = 0; i < 100; ++i)
+  for (uint i = 0; i < 100; ++i)
   {
     double val = static_cast<double>(i);
     Eigen::Vector3d position(val, val, val);
