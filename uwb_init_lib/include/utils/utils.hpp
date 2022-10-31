@@ -56,7 +56,7 @@ requires(std::floating_point<T> || EigenVectord<T>) T lerp(const T& x0, const T&
  * @return true if matrix is PD (Positive Definite)
  * @return false otherwise
  */
-bool isPD(const Eigen::MatrixXd& A)
+inline bool isPD(const Eigen::MatrixXd& A)
 {
   const Eigen::LLT<Eigen::MatrixXd> llt(A);
   if (!A.isApprox(A.transpose()) || llt.info() == Eigen::NumericalIssue)
@@ -73,7 +73,7 @@ bool isPD(const Eigen::MatrixXd& A)
  * @return true if matrix is SPD (Semi Positive Definite)
  * @return false otherwise
  */
-bool isSPD(const Eigen::MatrixXd& A)
+inline bool isSPD(const Eigen::MatrixXd& A)
 {
   const auto ldlt = A.selfadjointView<Eigen::Upper>().ldlt();
   if (!A.isApprox(A.transpose()) || ldlt.info() == Eigen::NumericalIssue || !ldlt.isPositive())

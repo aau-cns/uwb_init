@@ -11,7 +11,7 @@ find_package(Boost REQUIRED)
 find_package(Eigen3 3.4 REQUIRED)
 
 ## Display packages version
-message(STATUS "EIGEN VERSION: " ${EIGEN3_VERSION})
+message(STATUS "EIGEN VERSION: " ${Eigen3_VERSION})
 message(STATUS "BOOST VERSION: " ${Boost_VERSION})
 
 # Try to compile with newer versions of C++

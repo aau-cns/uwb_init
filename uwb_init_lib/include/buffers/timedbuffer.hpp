@@ -102,7 +102,7 @@ public:
    * @brief Clear the buffer
    *
    */
-  void clear()
+  inline void clear()
   {
     buffer_.clear();
   }
@@ -113,7 +113,7 @@ public:
    * @param timestamp
    * @return BufferType
    */
-  BufferType get_closest(const double& timestamp) const
+  inline BufferType get_closest(const double& timestamp) const
   {
     return get_closest_cit(timestamp)->second;
   }
@@ -125,7 +125,7 @@ public:
    * @param timestamp
    * @return BufferType
    */
-  BufferType get_at_timestamp(const double& timestamp) const
+  inline BufferType get_at_timestamp(const double& timestamp) const
   {
     // Check if we have an element at a given timestamp, if not perform linear interpolation
     auto it =
@@ -181,7 +181,7 @@ private:
    * @param timestamp
    * @return const iterator (std::vector<std::pair<double, BufferType>>::const_iterator)
    */
-  std::vector<std::pair<double, BufferType>>::const_iterator get_closest_cit(const double& timestamp) const
+  inline std::vector<std::pair<double, BufferType>>::const_iterator get_closest_cit(const double& timestamp) const
   {
     // Check that buffer is not empty
     if (buffer_.empty())
