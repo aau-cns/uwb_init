@@ -37,18 +37,47 @@ int main()
   // std::cout << lerp(Eigen::Vector3d(49, 49, 49), Eigen::Vector3d(50, 50, 50), 1.0) << std::endl;   // Should be 50
 
   // Test TimedBuffer (PositionBuffer) functionalities
-  PositionBuffer pos;
-  for (uint i = 0; i < 100; ++i)
-  {
-    double val = static_cast<double>(i);
-    Eigen::Vector3d position(val, val, val);
-    double t = 0.01 * val;
-    pos.push_back(t, position);
-  }
+  // PositionBuffer pos;
+  // for (uint i = 0; i < 100; ++i)
+  // {
+  //   double val = static_cast<double>(i);
+  //   Eigen::Vector3d position(val, val, val);
+  //   double t = 0.01 * val;
+  //   pos.push_back(t, position);
+  // }
   // std::cout << pos.get_closest(0.498) << std::endl;          // Should be 50
   // std::cout << pos.get_closest(0.492) << std::endl;          // Should be 49
   // std::cout << pos.get_at_timestamp(0.49) << std::endl;      // Should be 49
   // std::cout << pos.get_at_timestamp(0.49572) << std::endl;   // Should be 49.572
+
+  // Test clear buffer
+  // std::cout << pos.size() << std::endl;     // Should be 100
+  // pos.clear();
+  // std::cout << pos.size() << std::endl;     // Should be 0
+
+  // Test initialization
+  UwbInitOptions options;
+  UwbInitializer uwbInit(options);
+  for (uint i = 0; i < 500; ++i)
+  {
+    double val = static_cast<double>(i);
+    Eigen::Vector3d position(val, val, val);
+    double t = 0.008 * val;
+    uwbInit.feed_pose(t, position);
+  }
+  for (uint i = 0; i < 80; ++i)
+  {
+    double val = static_cast<double>(i);
+    UwbData uwb1(1, val, 1);
+    UwbData uwb2(1, val, 2);
+    double t = 0.05 * val;
+    std::vector<UwbData> uwb_meas = {uwb1, uwb2};
+    uwbInit.feed_uwb(t, uwb_meas);
+  }
+
+  uwbInit.init_anchors();
+
+  uwbInit.refine_anchors();
 
   return 0;
 }

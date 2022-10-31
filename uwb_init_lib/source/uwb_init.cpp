@@ -60,9 +60,8 @@ UwbInitializer::UwbInitializer(UwbInitOptions& params, const LoggerLevel& level)
   }
 
   // Logging
-  logger_->info("Display Initialization Parameters");
-  logger_->info(params_.InitMethod());
-  logger_->info(params_.InitVariables());
+  logger_->info("UwbInitializer: " + params_.InitMethod());
+  logger_->info("UwbInitializer: " + params_.InitVariables());
 }
 
 void UwbInitializer::clear_buffers()
@@ -174,10 +173,6 @@ bool UwbInitializer::refine_anchors()
     return false;
   }
 
-  // TODO(alf): Unused variable! Please check (Assigned to gdl)
-  // // Variable for keeping track if all anchors have been correctly refined
-  // bool refine_successful = true;
-
   for (const auto& ls_sol : ls_sols_)
   {
     // Check if uwb buffer is empty
@@ -195,13 +190,11 @@ bool UwbInitializer::refine_anchors()
 
     if (!solve_nls(ls_sol.first))
     {
-      // TODO(alf): Unused variable! Please check (Assigned to gdl)
-      //   refine_successful = false;
       return false;
     }
 
     // Refine successful
-    logger_->err("Anchor[" + std::to_string(ls_sol.first) + "]: Correctly refined");
+    logger_->info("Anchor[" + std::to_string(ls_sol.first) + "]: Correctly refined");
   }
 
   return true;
@@ -209,9 +202,6 @@ bool UwbInitializer::refine_anchors()
 
 bool UwbInitializer::solve_ls(const uint& anchor_id)
 {
-  // starting time for elapsed time calculation
-  auto start_t = std::chrono::steady_clock::now();
-
   // Coefficient matrix and measurement vector initialization
   Eigen::MatrixXd coeffs;
   Eigen::VectorXd meas;
@@ -249,13 +239,13 @@ bool UwbInitializer::solve_ls(const uint& anchor_id)
  */
 
   // Assign values to parameters
-  Eigen::Vector3d p_AinG = lsSolution.segment(0, 3);
+  Eigen::Vector3d p_AinG = lsSolution.head(3);
   double const_bias = 0.0;
 
   // If constant bias was estimated assign the value
   if (lsSolution.size() > 3)
   {
-    const_bias = lsSolution[3];
+    const_bias = lsSolution(3);
   }
 
   // Compute estimation Covariance
@@ -263,19 +253,12 @@ bool UwbInitializer::solve_ls(const uint& anchor_id)
                         (svd.matrixV().inverse().transpose() * svd.singularValues().asDiagonal().inverse() *
                          svd.singularValues().asDiagonal().inverse() * svd.matrixV().inverse());
 
-  // Elapsed time for initialization
-  auto end_t = std::chrono::steady_clock::now();
-  double calc_time = std::chrono::duration_cast<std::chrono::seconds>(end_t - start_t).count();
-
   // Initialize anchor and solution
   UwbAnchor new_anchor(anchor_id, p_AinG);
   LSSolution ls_sol(new_anchor, const_bias, cov);
 
   // Add solution to vector
-  ls_sols_.at(anchor_id) = ls_sol;
-
-  // Logging
-  logger_->info("Anchor[" + std::to_string(anchor_id) + "]: Elapsed time " + std::to_string(calc_time));
+  ls_sols_.emplace(std::make_pair(anchor_id, ls_sol));
 
   return true;
 }
@@ -283,7 +266,7 @@ bool UwbInitializer::solve_ls(const uint& anchor_id)
 bool UwbInitializer::solve_nls(const uint& anchor_id)
 {
   // Parameter vector (p_AinG, gamma, beta)
-  Eigen::VectorXd theta;
+  Eigen::VectorXd theta(5);
   theta << ls_sols_.at(anchor_id).anchor_.p_AinG_, 1.0, ls_sols_.at(anchor_id).gamma_;
 
   // Step norm vector
@@ -322,13 +305,17 @@ bool UwbInitializer::solve_nls(const uint& anchor_id)
     {
       // Jacobian [df/dp_AinG, df/dbeta, df/dgamma]
       Eigen::VectorXd row(J.cols());
-      row << theta[3] * (theta[0] - pose_vec.row(j)[0]) / (theta.segment(0, 3) - pose_vec.row(j)).norm(),
-          theta[3] * (theta[1] - pose_vec.row(j)[1]) / (theta.segment(0, 3) - pose_vec.row(j)).norm(),
-          theta[3] * (theta[2] - pose_vec.row(j)[2]) / (theta.segment(0, 3) - pose_vec.row(j)).norm(),
-          (theta.segment(0, 3) - pose_vec.row(j)).norm(), 1;
+      Eigen::VectorXd theta_pose = theta.head(3);
+      Eigen::VectorXd pose_vec_row = pose_vec.row(j);
+      Eigen::VectorXd diff = theta_pose - pose_vec_row;
+      double diff_norm = diff.norm();
+      row << theta(3) * (theta(0) - pose_vec(j, 0)) / diff_norm,
+          theta(3) * (theta(1) - pose_vec(j, 1)) / diff_norm,
+          theta(3) * (theta(2) - pose_vec(j, 2)) / diff_norm,
+          diff_norm, 1;
       J.row(j) = row.transpose();
       // Residual res = y - f(theta) =  uwb_meas - (beta * ||p_AinG - p_UinG|| + gamma)
-      res(j) = uwb_vec(j) - (theta[3] * (theta.segment(0, 3) - pose_vec.row(j)).norm() + theta[4]);
+      res(j) = uwb_vec(j) - (theta(3) * diff_norm + theta(4));
     }
 
     // Calculate Moore-Penrose Pseudo-Inverse of matrix J
@@ -351,8 +338,12 @@ bool UwbInitializer::solve_nls(const uint& anchor_id)
       Eigen::VectorXd theta_new = theta + step_vec(j) * d_theta;
       for (uint k = 0; k < uwb_vec.size(); ++k)
       {
+        Eigen::VectorXd theta_pose = theta_new.head(3);
+        Eigen::VectorXd pose_vec_row = pose_vec.row(j);
+        Eigen::VectorXd diff = theta_pose - pose_vec_row;
+        double diff_norm = diff.norm();
         res_vec(j) +=
-            std::pow(uwb_vec(k) - (theta_new[3] * (theta_new.segment(0, 3) - pose_vec.row(k)).norm() + theta[4]), 2);
+            std::pow(uwb_vec(k) - (theta_new(3) * diff_norm + theta(4)), 2);
       }
       res_vec(j) /= uwb_vec.size();
     }
@@ -395,11 +386,12 @@ bool UwbInitializer::solve_nls(const uint& anchor_id)
   }
 
   // Initialize anchor and solution
-  UwbAnchor new_anchor(anchor_id, theta.segment(0, 3));
-  NLSSolution nls_sol(new_anchor, theta(3), theta(4), ls_sols_.at(anchor_id).cov_);
+  UwbAnchor new_anchor(anchor_id, theta.head(3));
+  Eigen::MatrixXd cov = Eigen::MatrixXd::Ones(5, 5);
+  NLSSolution nls_sol(new_anchor, theta(3), theta(4), cov);
 
   // Add solution to vector
-  nls_sols_.at(anchor_id) = nls_sol;
+  nls_sols_.emplace(std::make_pair(anchor_id, nls_sol));
 
   return true;
 }
