@@ -18,19 +18,19 @@
 // You can contact the authors at <martin.scheiber@aau.at> and
 // <alessandro.fornasier@aau.at> <giulio.delama@aau.at>
 
-#ifndef UAV_INIT_UWB_INIT_HPP_
-#define UAV_INIT_UWB_INIT_HPP_
+#ifndef UWB_INIT_HPP_
+#define UWB_INIT_HPP_
 
 #include <Eigen/Dense>
+#include <chrono>
 #include <deque>
 #include <map>
-#include <chrono>
 
+#include "logger/logger.hpp"
 #include "options/uwb_init_options.hpp"
-#include "types/types.hpp"
-#include "utils/logger.hpp"
+#include "utils/data_structs.hpp"
 
-namespace uav_init
+namespace uwb_init
 {
 ///
 /// \brief The UwbInitializer class is the main object used for UWB data handling
@@ -38,107 +38,97 @@ namespace uav_init
 ///
 class UwbInitializer
 {
-
 public:
-    ///
-    /// \brief UwbInitializer default constructor
-    /// \param params parameter/options used for UWB initialization
-    ///
-    UwbInitializer(UwbInitOptions& params, const LoggerLevel& level = LoggerLevel::FULL);
+  ///
+  /// \brief UwbInitializer default constructor
+  /// \param params parameter/options used for UWB initialization
+  ///
+  UwbInitializer(UwbInitOptions& params, const LoggerLevel& level = LoggerLevel::FULL);
 
-    ///
-    /// \brief reset resets the initializer and all its buffers
-    ///
-    void reset();
+  ///
+  /// \brief clear clears all the buffers
+  ///
+  void clear_buffers();
 
-    ///
-    /// \brief feed_uwb stores incoming UWB (valid) readings
-    /// \param uwb_measurements UwbData vector of measurements
-    ///
-    /// \todo allow feeding of old(er) measurements
-    ///
-    void feed_uwb(const std::vector<UwbData> uwb_measurements);
+  ///
+  /// \brief reset resets the initializer and all its buffers
+  ///
+  void reset();
 
-    ///
-    /// \brief feed_pose stores incoming positions of the UAV in the global frame
-    /// \param timestamp timestamp of pose
-    /// \param p_UinG position to add to buffer
-    ///
-    /// \todo allow feeding of old(er) measurements
-    ///
-    void feed_pose(const double timestamp, const Eigen::Vector3d p_UinG);
+  ///
+  /// \brief feed_uwb stores incoming UWB (valid) readings
+  /// \param uwb_measurements UwbData vector of measurements
+  ///
+  /// \todo allow feeding of old(er) measurements
+  ///
+  void feed_uwb(const double timestamp, const std::vector<UwbData> uwb_measurements);
 
-    ///
-    /// \brief init_anchors tries to initialize all anchors for which readings exist
-    /// \param anchor_buffer
-    /// \return true if all anchors were successfully initialized
-    ///
-    /// This function performs a least-squares initialization using the per anchor measurments given the measurement model
-    /// from \cite Blueml2021. It will try to initialize each anchor (validated per ID) individually. If an anchor was already
-    /// successfully initialized in the past it is skipped.
-    /// It will also return 'true' if all anchors, for which measurements are present were successfully initialized at
-    /// some point.
-    ///
-    bool init_anchors(UwbAnchorBuffer& anchor_buffer);
+  ///
+  /// \brief feed_pose stores incoming positions of the UAV in the global frame
+  /// \param timestamp timestamp of pose
+  /// \param p_UinG position to add to buffer
+  ///
+  /// \todo allow feeding of old(er) measurements
+  ///
+  void feed_pose(const double timestamp, const Eigen::Vector3d p_UinG);
 
-    ///
-    /// \todo TODO (gid) planner for waypoint generation to refine anchors
-    ///
+  ///
+  /// \brief init_anchors tries to initialize all anchors for which readings exist
+  /// \param anchor_buffer
+  /// \return true if all anchors were successfully initialized
+  ///
+  /// This function performs a least-squares initialization using the per anchor measurments given the measurement model
+  /// from \cite Blueml2021. It will try to initialize each anchor (validated per ID) individually. If an anchor was
+  /// already successfully initialized in the past it is skipped. It will also return 'true' if all anchors, for which
+  /// measurements are present were successfully initialized at some point.
+  ///
+  bool init_anchors();
 
-    ///
-    /// \brief refine_anchors refines the already initialized anchors via optimal waypoints for non-
-    /// linear least squares optimization
-    ///
-    bool refine_anchors(UwbAnchorBuffer& anchor_buffer);
+  ///
+  /// \todo TODO (gid) planner for waypoint generation to refine anchors
+  ///
 
-    // Shared pointer to logger
-    std::shared_ptr<Logger> logger_ = nullptr;
+  ///
+  /// \brief refine_anchors refines the already initialized anchors via optimal waypoints for non-
+  /// linear least squares optimization
+  ///
+  bool refine_anchors();
+
+  // Shared pointer to logger
+  std::shared_ptr<Logger> logger_ = nullptr;
 
 private:
+  // Initializer parameters
+  UwbInitOptions params_;
 
-    // Initializer parameters
-    UwbInitOptions params_;
+  // Anchor and measurement handling
+  PositionBuffer p_UinG_buffer;    //!< buffer of UWB module positions in global frame
+  UwbDataBuffer uwb_data_buffer_;  //!< history of uwb readings in DataBuffer
 
-    // Auxiliary variables to perform checks depending on parameters
-    bool check_beta_sq = false;
+  // Solutions handling
+  LSSolutions ls_sols_;
+  NLSSolutions nls_sols_;
 
-    // Anchor and measurement handling
-    PositionBufferTimed buffer_p_UinG_;     //!< buffer of UWB module positions in global frame
-    UwbDataBuffer uwb_data_buffer_;     //!< history of uwb readings in DataBuffer
+  // Least squares initialization handling
+  std::function<bool(const TimedBuffer<UwbData>&, Eigen::MatrixXd&, Eigen::VectorXd&)> ls_problem;
 
-    // Least squares initialization handling
-    std::function<bool(std::deque<std::pair<double, UwbData>>&, Eigen::MatrixXd&, Eigen::VectorXd&)> ls_problem_;
+  // Least Squares solver
+  bool solve_ls(const uint& anchor_id);
 
-    // Least Squares solver
-    bool solve_ls(UwbAnchorBuffer& anchor_buffer, const uint& anchor_id);
+  // Nonlinear Least Squares solver
+  bool solve_nls(const uint& anchor_id);
 
-    // Nonlinear Least Squares solver
-    bool solve_nls(UwbAnchor& anchor, std::deque<std::pair<double, UwbData>>& uwb_data);
-
-    ///
-    /// \brief functions for least squares problem formulation depending on selected method and variables
-    /// \param UWB data for the single anchor, coefficient matrix A, measurement vector b (A * x = b)
-    /// \return ture if successful, false if not
-    ///
-    bool ls_single_full_bias(std::deque<std::pair<double, UwbData>>& uwb_data,
-                             Eigen::MatrixXd& A, Eigen::VectorXd& b);
-    bool ls_single_dist_bias(std::deque<std::pair<double, UwbData>>& uwb_data,
-                             Eigen::MatrixXd& A, Eigen::VectorXd& b);
-    bool ls_single_const_bias(std::deque<std::pair<double, UwbData>>& uwb_data,
-                              Eigen::MatrixXd& A, Eigen::VectorXd& b);
-    bool ls_single_no_bias(std::deque<std::pair<double, UwbData>>& uwb_data,
-                           Eigen::MatrixXd& A, Eigen::VectorXd& b);
-    bool ls_double_full_bias(std::deque<std::pair<double, UwbData>>& uwb_data,
-                             Eigen::MatrixXd& A, Eigen::VectorXd& b);
-    bool ls_double_dist_bias(std::deque<std::pair<double, UwbData>>& uwb_data,
-                             Eigen::MatrixXd& A, Eigen::VectorXd& b);
-    bool ls_double_const_bias(std::deque<std::pair<double, UwbData>>& uwb_data,
-                              Eigen::MatrixXd& A, Eigen::VectorXd& b);
-    bool ls_double_no_bias(std::deque<std::pair<double, UwbData>>& uwb_data,
-                           Eigen::MatrixXd& A, Eigen::VectorXd& b);
-
+  ///
+  /// \brief functions for least squares problem formulation depending on selected method and variables
+  /// \param UWB data for the single anchor, coefficient matrix A, measurement vector b (A * x = b)
+  /// \return ture if successful, false if not
+  ///
+  bool ls_single_const_bias(const TimedBuffer<UwbData>& uwb_data, Eigen::MatrixXd& A, Eigen::VectorXd& b);
+  bool ls_single_no_bias(const TimedBuffer<UwbData>& uwb_data, Eigen::MatrixXd& A, Eigen::VectorXd& b);
+  bool ls_double_const_bias(const TimedBuffer<UwbData>& uwb_data, Eigen::MatrixXd& A, Eigen::VectorXd& b);
+  bool ls_double_no_bias(const TimedBuffer<UwbData>& uwb_data, Eigen::MatrixXd& A, Eigen::VectorXd& b);
 };
 
-}  // namespace uav_init
+}  // namespace uwb_init
 
-#endif  // UAV_INIT_UWB_INIT_HPP_
+#endif  // UWB_INIT_HPP_

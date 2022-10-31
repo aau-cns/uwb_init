@@ -1,4 +1,4 @@
-﻿// Copyright (C) 2021 Martin Scheiber, Alessandro Fornasier
+﻿// Copyright (C) 202w Giulio Delama, Alessandro Fornasier
 // Control of Networked Systems, Universitaet Klagenfurt, Austria
 //
 // All rights reserved.
@@ -15,45 +15,40 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 //
-// You can contact the author at <giulio.delama@aau.at>
+// You can contact the author at <giulio.delama@aau.at> and
+// <alessandro.fornasier@aau.at>
 
 #include <iostream>
 
 #include "uwb_init.hpp"
 
-using namespace uav_init;
+using namespace uwb_init;
 
 int main()
 {
-    UwbInitOptions options;
-    UwbAnchorBuffer anchorBuf;
-    UwbInitializer uwbInit(options);
+  // Test linear interpolation with floating-point values
+  // std::cout << lerp(49.0, 50.0, 0.0) << std::endl;   // Should be 49
+  // std::cout << lerp(49.0, 50.0, 0.63) << std::endl;  // Should be 49.63
+  // std::cout << lerp(49.0, 50.0, 1.0) << std::endl;   // Should be 50
 
-    double pose_t;
-    uav_init::UwbData uwb;
-    std::vector<UwbData> uwb_meas;
-    Eigen::Vector3d pose;
+  // Test linear interpolation with Eigen::vectorXd values
+  // std::cout << lerp(Eigen::Vector3d(49, 49, 49), Eigen::Vector3d(50, 50, 50), 0.0) << std::endl;   // Should be 49
+  // std::cout << lerp(Eigen::Vector3d(49, 49, 49), Eigen::Vector3d(50, 50, 50), 0.63) << std::endl;  // Should be 49.63
+  // std::cout << lerp(Eigen::Vector3d(49, 49, 49), Eigen::Vector3d(50, 50, 50), 1.0) << std::endl;   // Should be 50
 
-    for (uint i = 0; i < 100; ++i) {
+  // Test TimedBuffer (PositionBuffer) functionalities
+  PositionBuffer pos;
+  for (uint i = 0; i < 100; ++i)
+  {
+    double val = static_cast<double>(i);
+    Eigen::Vector3d position(val, val, val);
+    double t = 0.01 * val;
+    pos.push_back(t, position);
+  }
+  // std::cout << pos.get_closest(0.498) << std::endl;          // Should be 50
+  // std::cout << pos.get_closest(0.492) << std::endl;          // Should be 49
+  // std::cout << pos.get_at_timestamp(0.49) << std::endl;      // Should be 49
+  // std::cout << pos.get_at_timestamp(0.49572) << std::endl;   // Should be 49.572
 
-        pose = Eigen::Vector3d::Zero();
-
-        pose << 1.0, 1.0, 1.0;
-        pose_t = 0.1 * i;
-
-        uwb.id = 1;
-        uwb.valid = 1;
-        uwb.distance = 1.0;
-        uwb.timestamp = 0.1 * i;
-
-        uwb_meas = {uwb};
-
-        uwbInit.feed_pose(pose_t, pose);
-        uwbInit.feed_uwb(uwb_meas);
-
-    }
-
-    uwbInit.init_anchors(anchorBuf);
-
-    return 0;
+  return 0;
 }
