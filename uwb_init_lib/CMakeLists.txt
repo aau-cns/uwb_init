@@ -8,7 +8,7 @@ project(
 
 # Include libraries
 find_package(Boost REQUIRED)
-find_package(Eigen3 REQUIRED)
+find_package(Eigen3 3.4 REQUIRED)
 
 ## Display packages version
 message(STATUS "EIGEN VERSION: " ${EIGEN3_VERSION})
