@@ -28,77 +28,81 @@ namespace uwb_init
 ///
 struct UwbInitOptions
 {
-    ///
-    /// \brief The InitMethod enum describes the method used for initialization
-    ///
-    enum class InitMethod
+  ///
+  /// \brief The InitMethod enum describes the method used for initialization
+  ///
+  enum class InitMethod
+  {
+    SINGLE,  //!< use only one measurement to construct LLS matrix
+    DOUBLE,  //!< use a pair of measurements to construct LLS matrix
+  };
+
+  ///
+  /// \brief The InitVariables enum describes the type of variables to initialize
+  ///
+  enum class InitVariables
+  {
+    NO_BIAS,     //!< use no bias for initialization, i.e. position only
+    CONST_BIAS,  //!< only use constant bias and position in initialization
+  };
+
+  // WRAPPER AND CALIBRATION ==================================================
+
+  /// translational offset of the UWB module w.r.t. the IMU (or body frame) in meter
+  Eigen::Vector3d p_ItoU{ Eigen::VectorXd::Zero(3) };
+
+  /// determines the method to use for initialization \see UwbInit::UwbInitOptions::InitMethod
+  InitMethod init_method{ InitMethod::SINGLE };
+
+  /// determines the variables to initialize in initialization routine \see UwbInit::UwbInitOptions::InitVariables
+  InitVariables init_variables{ InitVariables::NO_BIAS };
+
+  // NONLINEAR OPTIMIZATION ==================================================
+
+  /// flag to determine if nonlinear optimization should be performed
+  bool b_nonlin_opt{ true };
+
+  /// norm of step ( theta(k+1) = theta(k) + zeta(i)*d_theta )
+  Eigen::VectorXd step_vec{ Eigen::VectorXd::LinSpaced(10, 1, 100) };
+
+  /// stopping condition for norm of step
+  double step_cond{ 1e-4 };
+
+  /// stopping condition for residual
+  double res_cond{ 1e-2 };
+
+  /// stopping condition for maximum number of iterations
+  uint max_iter{ 100000 };
+
+  // GET INFO ================================================================
+
+  /// get initialization method
+  inline std::string InitMethod()
+  {
+    switch (init_method)
     {
-        SINGLE,  //!< use only one measurement to construct LLS matrix
-        DOUBLE,  //!< use a pair of measurements to construct LLS matrix
-    };
-
-    ///
-    /// \brief The InitVariables enum describes the type of variables to initialize
-    ///
-    enum class InitVariables
-    {
-        NO_BIAS,     //!< use no bias for initialization, i.e. position only
-        CONST_BIAS,  //!< only use constant bias and position in initialization
-    };
-
-    // WRAPPER AND CALIBRATION ==================================================
-
-    /// translational offset of the UWB module w.r.t. the IMU (or body frame) in meter
-    Eigen::Vector3d p_ItoU{ Eigen::VectorXd::Zero(3) };
-
-    /// determines the method to use for initialization \see UwbInit::UwbInitOptions::InitMethod
-    InitMethod init_method{ InitMethod::SINGLE };
-
-    /// determines the variables to initialize in initialization routine \see UwbInit::UwbInitOptions::InitVariables
-    InitVariables init_variables{ InitVariables::NO_BIAS };
-
-    // NONLINEAR OPTIMIZATION ==================================================
-
-    /// flag to determine if nonlinear optimization should be performed
-    bool b_nonlin_opt{ true };
-
-    /// norm of step ( theta(k+1) = theta(k) + zeta(i)*d_theta )
-    Eigen::VectorXd step_vec{ Eigen::VectorXd::LinSpaced(10, 1, 100) };
-
-    /// stopping condition for norm of step
-    double step_cond{ 1e-4 };
-
-    /// stopping condition for residual
-    double res_cond{ 1e-2 };
-
-    /// stopping condition for maximum number of iterations
-    uint max_iter{ 100000 };
-
-    // GET INFO ================================================================
-
-    /// get initialization method
-    inline std::string InitMethod()
-    {
-        switch (init_method)
-        {
-        case InitMethod::SINGLE:
-            return "InitMethod::SINGLE";
-        case InitMethod::DOUBLE:
-            return "InitMethod::DOUBLE";
-        }
+      case InitMethod::SINGLE:
+        return "InitMethod::SINGLE";
+      case InitMethod::DOUBLE:
+        return "InitMethod::DOUBLE";
+      default:
+        return "InitMethod::UNDEFINED";
     }
+  }
 
-    /// get initialization variables
-    inline std::string InitVariables()
+  /// get initialization variables
+  inline std::string InitVariables()
+  {
+    switch (init_variables)
     {
-        switch (init_variables)
-        {
-        case InitVariables::NO_BIAS:
-            return "InitVariables::NO_BIAS";
-        case InitVariables::CONST_BIAS:
-            return "InitVariables::CONST_BIAS";
-        }
+      case InitVariables::NO_BIAS:
+        return "InitVariables::NO_BIAS";
+      case InitVariables::CONST_BIAS:
+        return "InitVariables::CONST_BIAS";
+      default:
+        return "InitVariables::UNDEFINED";
     }
+  }
 
 };  // struct UwbInitOptions
 }  // namespace uwb_init

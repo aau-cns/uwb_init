@@ -34,164 +34,171 @@ template <typename BufferType>
 class TimedBuffer
 {
 public:
-    TimedBuffer()
-    {
-    }
+  TimedBuffer()
+  {
+  }
 
-    typename std::vector<std::pair<double, BufferType>>::iterator begin() { return buffer_.begin(); }
-    typename std::vector<std::pair<double, BufferType>>::iterator end() { return buffer_.end(); }
-    typename std::vector<std::pair<double, BufferType>>::const_iterator begin() const { return buffer_.begin(); }
-    typename std::vector<std::pair<double, BufferType>>::const_iterator end() const  { return buffer_.end(); }
-    typename std::vector<std::pair<double, BufferType>>::const_iterator cbegin() const { return buffer_.cbegin(); }
-    typename std::vector<std::pair<double, BufferType>>::const_iterator cend() const  { return buffer_.cend(); }
+  /**
+   * @brief Operator []
+   * @param index
+   * @return const reference to std::pair<double, BufferType>
+   */
+  inline const std::pair<double, BufferType>& operator[](size_t index) const
+  {
+    return buffer_[index];
+  }
 
-    /**
-     * @brief operator []
-     * @param index
-     * @return Buffer iterator
-     */
-    const std::pair<double, BufferType>& operator[](size_t index) const { return buffer_[index]; }
+  /**
+   * @brief Get the buffer object
+   *
+   * @return const reference to std::vector<std::pair<double, BufferType>>
+   */
+  inline const std::vector<std::pair<double, BufferType>>& get_buffer() const
+  {
+    return buffer_;
+  }
 
-    /**
-     * @brief size
-     * @return Size of buffer
-     */
-    size_t size() const
-    {
-        return buffer_.size();
-    }
+  /**
+   *
+   * @brief Return the size of the buffer
+   * @return Size of buffer
+   */
+  inline const size_t size() const
+  {
+    return buffer_.size();
+  }
 
-    /**
-     * @brief empty
-     * @return True if buffer is empty, false otherwise
-     */
-    bool empty() const
-    {
-        return buffer_.empty();
-    }
+  /**
+   * @brief Return true if the buffer is empty
+   * @return True if buffer is empty, false otherwise
+   */
+  [[nodiscard]] inline bool empty() const
+  {
+    return buffer_.empty();
+  }
 
-    /**
+  /**
    * @brief Push a new element into buffer
    *
    * @param timestamp const reference to double
    * @param elem const reference to BufferType
    */
-    void push_back(const double& timestamp, const BufferType& elem)
-    {
-        buffer_.emplace_back(std::make_pair(timestamp, elem));
-    }
+  inline void push_back(const double& timestamp, const BufferType& elem)
+  {
+    buffer_.emplace_back(std::make_pair(timestamp, elem));
+  }
 
-    /**
+  /**
    * @brief Push a new element into buffer
    *
    * @param p const reference to std::pair<double, BufferType>
    */
-    void push_back(const std::pair<double, BufferType>& p)
-    {
-        buffer_.emplace_back(p);
-    }
+  inline void push_back(const std::pair<double, BufferType>& p)
+  {
+    buffer_.emplace_back(p);
+  }
 
-    /**
+  /**
    * @brief Clear the buffer
    *
    */
-    void clear()
-    {
-        buffer_.clear();
-    }
+  void clear()
+  {
+    buffer_.clear();
+  }
 
-    /**
+  /**
    * @brief Get the closest element to given timestamp from unsorted TimedBuffer
    *
    * @param timestamp
    * @return BufferType
    */
-    BufferType get_closest(const double& timestamp) const
-    {
-        return get_closest_cit(timestamp)->second;
-    }
+  BufferType get_closest(const double& timestamp) const
+  {
+    return get_closest_cit(timestamp)->second;
+  }
 
-    /**
+  /**
    * @brief Get an object of BufferType at timestamp.
    * If this object does not exist the function perform linear interpolation of the object
    *
    * @param timestamp
    * @return BufferType
    */
-    BufferType get_at_timestamp(const double& timestamp) const
+  BufferType get_at_timestamp(const double& timestamp) const
+  {
+    // Check if we have an element at a given timestamp, if not perform linear interpolation
+    auto it =
+        std::find_if(buffer_.cbegin(), buffer_.cend(),
+                     [&timestamp](const std::pair<double, BufferType>& element) { return element.first == timestamp; });
+    if (it != buffer_.cend())
     {
-        // Check if we have an element at a given timestamp, if not perform linear interpolation
-        auto it =
-                std::find_if(buffer_.cbegin(), buffer_.cend(),
-                             [&timestamp](const std::pair<double, BufferType>& element) { return element.first == timestamp; });
-        if (it != buffer_.cend())
-        {
-            return it->second;
-        }
-        else
-        {
-            // Get closest iterator
-            auto it = get_closest_cit(timestamp);
-
-            // Check if closest timestamp is before or after timestamp
-            if (it->first < timestamp)
-            {
-                // Get the first element and timestamp
-                double t0 = it->first;
-                BufferType elem0 = it->second;
-
-                // Increment iterator
-                ++it;
-
-                // get the second element and timestamp
-                double t1 = it->first;
-                BufferType elem1 = it->second;
-
-                return lerp(elem0, elem1, (timestamp - t0) / (t1 - t0));
-            }
-            else
-            {
-                // Get the secont element and timestamp
-                double t1 = it->first;
-                BufferType elem1 = it->second;
-
-                // Decrement iterator
-                --it;
-
-                // get the first element and timestamp
-                double t0 = it->first;
-                BufferType elem0 = it->second;
-
-                return lerp(elem0, elem1, (timestamp - t0) / (t1 - t0));
-            }
-        }
+      return it->second;
     }
+    else
+    {
+      // Get closest iterator
+      auto it = get_closest_cit(timestamp);
+
+      // Check if closest timestamp is before or after timestamp
+      if (it->first < timestamp)
+      {
+        // Get the first element and timestamp
+        double t0 = it->first;
+        BufferType elem0 = it->second;
+
+        // Increment iterator
+        ++it;
+
+        // get the second element and timestamp
+        double t1 = it->first;
+        BufferType elem1 = it->second;
+
+        return lerp(elem0, elem1, (timestamp - t0) / (t1 - t0));
+      }
+      else
+      {
+        // Get the secont element and timestamp
+        double t1 = it->first;
+        BufferType elem1 = it->second;
+
+        // Decrement iterator
+        --it;
+
+        // get the first element and timestamp
+        double t0 = it->first;
+        BufferType elem0 = it->second;
+
+        return lerp(elem0, elem1, (timestamp - t0) / (t1 - t0));
+      }
+    }
+  }
 
 private:
-    /**
+  /**
    * @brief Get a constant iterator to closest element to given timestamp from unsorted TimedBuffer
    *
    * @param timestamp
-   * @return const TimedBuffer::iterator
+   * @return const iterator (std::vector<std::pair<double, BufferType>>::const_iterator)
    */
-    auto get_closest_cit(const double& timestamp) const
+  std::vector<std::pair<double, BufferType>>::const_iterator get_closest_cit(const double& timestamp) const
+  {
+    // Check that buffer is not empty
+    if (buffer_.empty())
     {
-        // Check that buffer is not empty
-        if (buffer_.empty())
-        {
-            throw std::range_error("TimedBuffer::get_closest called for empty buffer");
-        }
-
-        // retrun iterator to closest element
-        return std::min_element(
-                    buffer_.cbegin(), buffer_.cend(),
-                    [&timestamp](const std::pair<double, BufferType>& elem_pre, const std::pair<double, BufferType>& elem_post) {
-            return std::abs(elem_pre.first - timestamp) < std::abs(elem_post.first - timestamp);
-        });
+      throw std::range_error("TimedBuffer::get_closest called for empty buffer");
     }
 
-    /// Buffer
-    std::vector<std::pair<double, BufferType>> buffer_;
+    // retrun iterator to closest element
+    return std::min_element(
+        buffer_.cbegin(), buffer_.cend(),
+        [&timestamp](const std::pair<double, BufferType>& elem_pre, const std::pair<double, BufferType>& elem_post) {
+          return std::abs(elem_pre.first - timestamp) < std::abs(elem_post.first - timestamp);
+        });
+  }
+
+  /// Buffer
+  std::vector<std::pair<double, BufferType>> buffer_;
 };
 }  // namespace uwb_init
 

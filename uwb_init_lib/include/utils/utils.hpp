@@ -28,12 +28,12 @@
 namespace uwb_init
 {
 template <typename T>
-concept EigenVectord = (std::same_as<T, Eigen::Vector2d> || std::same_as<T, Eigen::Vector3d> ||
-                        std::same_as<T, Eigen::Vector4d> || std::same_as<T, Eigen::VectorXd>);
+concept EigenVectord = std::same_as<T, Eigen::Vector2d> || std::same_as<T, Eigen::Vector3d> ||
+                       std::same_as<T, Eigen::Vector4d> || std::same_as<T, Eigen::VectorXd>;
 
 template <typename T>
-concept EigenMatrixd = (std::same_as<T, Eigen::Matrix2d> || std::same_as<T, Eigen::Matrix3d> ||
-                        std::same_as<T, Eigen::Matrix4d> || std::same_as<T, Eigen::MatrixXd>);
+concept EigenMatrixd = std::same_as<T, Eigen::Matrix2d> || std::same_as<T, Eigen::Matrix3d> ||
+                       std::same_as<T, Eigen::Matrix4d> || std::same_as<T, Eigen::MatrixXd>;
 
 /**
  * @brief linear interpolation
@@ -46,7 +46,7 @@ concept EigenMatrixd = (std::same_as<T, Eigen::Matrix2d> || std::same_as<T, Eige
 template <typename T>
 requires(std::floating_point<T> || EigenVectord<T>) T lerp(const T& x0, const T& x1, const double& alpha)
 {
-    return (1 - alpha) * x0 + alpha * x1;
+  return (1 - alpha) * x0 + alpha * x1;
 }
 
 /**
@@ -58,30 +58,30 @@ requires(std::floating_point<T> || EigenVectord<T>) T lerp(const T& x0, const T&
  */
 bool isPD(const Eigen::MatrixXd& A)
 {
-    const Eigen::LLT<Eigen::MatrixXd> llt(A);
-    if (!A.isApprox(A.transpose()) || llt.info() == Eigen::NumericalIssue)
-    {
-        return false;
-    }
-    return true;
+  const Eigen::LLT<Eigen::MatrixXd> llt(A);
+  if (!A.isApprox(A.transpose()) || llt.info() == Eigen::NumericalIssue)
+  {
+    return false;
+  }
+  return true;
 }
 
-///**
-//  * @brief Check if a matrix is semi positive definite via Cholesky decomposition (LLT)
-//  *
-//  * @param A matrix
-//  * @return true if matrix is SPD (Semi Positive Definite)
-//  * @return false otherwise
-//  */
-//bool isSPD(const Eigen::MatrixXd& A)
-//{
-//    const auto ldlt = A.selfadjointView<Eigen::Upper>().ldlt();
-//    if (!A.isApprox(A.transpose()) || ldlt.info() == Eigen::NumericalIssue || !ldlt.isPositive())
-//    {
-//        return false;
-//    }
-//    return true;
-//}
+/**
+ * @brief Check if a matrix is semi positive definite via Cholesky decomposition (LLT)
+ *
+ * @param A matrix
+ * @return true if matrix is SPD (Semi Positive Definite)
+ * @return false otherwise
+ */
+bool isSPD(const Eigen::MatrixXd& A)
+{
+  const auto ldlt = A.selfadjointView<Eigen::Upper>().ldlt();
+  if (!A.isApprox(A.transpose()) || ldlt.info() == Eigen::NumericalIssue || !ldlt.isPositive())
+  {
+    return false;
+  }
+  return true;
+}
 
 }  // namespace uwb_init
 

@@ -19,8 +19,8 @@
 // <alessandro.fornasier@aau.at>, <giulio.delama@aau.at>, and
 // <martin.scheiber@aau.at>
 
-#ifndef UWB_INIT_TYPES_HPP_
-#define UWB_INIT_TYPES_HPP_
+#ifndef DATA_STRUCTURES_HPP_
+#define DATA_STRUCTURES_HPP_
 
 #include <Eigen/Eigen>
 #include <cstdint>
@@ -36,15 +36,15 @@ namespace uwb_init
  */
 struct UwbAnchor
 {
-    /// Id of the anchor
-    uint id_;
+  /// Id of the anchor
+  uint id_;
 
-    /// Position of the anchor (A) in the global frame of reference (G)
-    Eigen::Vector3d p_AinG_;
+  /// Position of the anchor (A) in the global frame of reference (G)
+  Eigen::Vector3d p_AinG_;
 
-    UwbAnchor(const uint& id, const Eigen::Vector3d& p_AinG) : id_(id), p_AinG_(p_AinG)
-    {
-    }
+  UwbAnchor(const uint& id, const Eigen::Vector3d& p_AinG) : id_(id), p_AinG_(p_AinG)
+  {
+  }
 };
 
 /**
@@ -52,23 +52,24 @@ struct UwbAnchor
  */
 struct LSSolution
 {
-    /// UWB anchor
-    UwbAnchor anchor_;
+  /// UWB anchor
+  UwbAnchor anchor_;
 
-    /// Gamma: Constant bias
-    double gamma_;
+  /// Gamma: Constant bias
+  double gamma_;
 
-    /// Covariance of the solution
-    Eigen::MatrixXd cov_;
+  /// Covariance of the solution
+  Eigen::MatrixXd cov_;
 
-    LSSolution(const UwbAnchor& anchor, const double& gamma, const Eigen::MatrixXd& cov) : anchor_(anchor), gamma_(gamma)
+  LSSolution(const UwbAnchor& anchor, const double& gamma, const Eigen::MatrixXd& cov) : anchor_(anchor), gamma_(gamma)
+  {
+    // Check if cov is either 3x3 or 4x4 and if it is semi positive definite
+    if (!(((cov.rows() == 3 && cov.cols() == 3) || (cov.rows() == 4 && cov.cols() == 4)) && isSPD(cov)))
     {
-        if (!(cov.rows() == 3 && cov.cols() == 3 && isPD(cov)) || !(cov.rows() == 4 && cov.cols() == 4 && isPD(cov)))
-        {
-            throw std::invalid_argument("UwbLSSolution: Invalid covariance");
-        }
-        cov_ = cov;
+      throw std::invalid_argument("UwbLSSolution: Invalid covariance");
     }
+    cov_ = cov;
+  }
 };
 
 /**
@@ -76,27 +77,28 @@ struct LSSolution
  */
 struct NLSSolution
 {
-    /// UWB anchor
-    UwbAnchor anchor_;
+  /// UWB anchor
+  UwbAnchor anchor_;
 
-    /// Gamma: Constant bias
-    double gamma_;
+  /// Gamma: Constant bias
+  double gamma_;
 
-    /// Beta: Distance multiplier bias
-    double beta_;
+  /// Beta: Distance multiplier bias
+  double beta_;
 
-    /// Covariance of the solution
-    Eigen::MatrixXd cov_;
+  /// Covariance of the solution
+  Eigen::MatrixXd cov_;
 
-    NLSSolution(const UwbAnchor& anchor, const double& beta, const double& gamma, const Eigen::MatrixXd& cov)
-        : anchor_(anchor), beta_(beta), gamma_(gamma)
+  NLSSolution(const UwbAnchor& anchor, const double& beta, const double& gamma, const Eigen::MatrixXd& cov)
+    : anchor_(anchor), gamma_(gamma), beta_(beta)
+  {
+    // Check if cov is 5x5 and if it is semi positive definite
+    if (!(cov.rows() == 5 && cov.cols() == 5 && isSPD(cov)))
     {
-        if (!(cov.rows() == 5 && cov.cols() == 5 && isPD(cov)))
-        {
-            throw std::invalid_argument("UwbLSSolution: Invalid covariance");
-        }
-        cov_ = cov;
+      throw std::invalid_argument("UwbLSSolution: Invalid covariance");
     }
+    cov_ = cov;
+  }
 };
 
 /**
@@ -105,18 +107,18 @@ struct NLSSolution
  */
 struct UwbData
 {
-    /// Validity flag, determines if distance is valid
-    bool valid_;
+  /// Validity flag, determines if distance is valid
+  bool valid_;
 
-    /// Distance measurement between anchor and tag in meters
-    double distance_;
+  /// Distance measurement between anchor and tag in meters
+  double distance_;
 
-    /// Id of the anchor from which the measurement is received
-    uint id_;
+  /// Id of the anchor from which the measurement is received
+  uint id_;
 
-    UwbData(const bool& valid, const double& distance, const uint& id) : valid_(valid), distance_(distance), id_(id)
-    {
-    }
+  UwbData(const bool& valid, const double& distance, const uint& id) : valid_(valid), distance_(distance), id_(id)
+  {
+  }
 };
 
 typedef TimedBuffer<Eigen::Vector3d> PositionBuffer;
@@ -126,4 +128,4 @@ typedef std::unordered_map<uint, NLSSolution> NLSSolutions;
 
 }  // namespace uwb_init
 
-#endif  // UWB_INIT_TYPES_HPP_
+#endif  // DATA_STRUCTURES_HPP_
