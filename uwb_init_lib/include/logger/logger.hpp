@@ -30,7 +30,8 @@ enum LoggerLevel
   INFO,
   WARN,
   ERR,
-  FULL
+  FULL,
+  DEBUG
 };
 
 class Logger
@@ -94,6 +95,18 @@ public:
     if (level_ == LoggerLevel::WARN || level_ == LoggerLevel::FULL)
     {
       log("\033[33m[WARNING] " + msg + ".\033[0m");
+    }
+  }
+
+  /**
+   * @brief Format a warning message (yellow) and log it
+   * @param msg (std::string)
+   */
+  inline void debug(const std::string& msg)
+  {
+    if (level_ == LoggerLevel::DEBUG || level_ == LoggerLevel::FULL)
+    {
+      log("\033[33m[DEBUG] " + msg + ".\033[0m");
     }
   }
 

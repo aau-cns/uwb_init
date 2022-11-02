@@ -243,6 +243,7 @@ bool UwbInitializer::solve_ls(const uint& anchor_id)
   double const_bias = 0.0;
 
   // If constant bias was estimated assign the value
+  // TODO(alf): Wrong check, note that both single_no_bias and double_const_bias solutions' are 4dim vectors
   if (lsSolution.size() > 3)
   {
     const_bias = lsSolution(3);
@@ -252,6 +253,10 @@ bool UwbInitializer::solve_ls(const uint& anchor_id)
   Eigen::MatrixXd cov = (std::pow((coeffs * lsSolution - meas).norm(), 2) / (coeffs.rows() * coeffs.cols())) *
                         (svd.matrixV().inverse().transpose() * svd.singularValues().asDiagonal().inverse() *
                          svd.singularValues().asDiagonal().inverse() * svd.matrixV().inverse());
+
+  // std::stringstream ss;
+  // ss << '\n' << cov;
+  // logger_->debug(ss.str());
 
   // Initialize anchor and solution
   UwbAnchor new_anchor(anchor_id, p_AinG);
@@ -306,12 +311,12 @@ bool UwbInitializer::solve_nls(const uint& anchor_id)
       // Jacobian [df/dp_AinG, df/dbeta, df/dgamma]
       Eigen::VectorXd row(J.cols());
       Eigen::VectorXd theta_pose = theta.head(3);
+      // Eigen::Vector3d theta_pose = theta.block(0, 0, 3, 1);
       Eigen::VectorXd pose_vec_row = pose_vec.row(j);
       Eigen::VectorXd diff = theta_pose - pose_vec_row;
       double diff_norm = diff.norm();
-      row << theta(3) * (theta(0) - pose_vec(j, 0)) / diff_norm,
-          theta(3) * (theta(1) - pose_vec(j, 1)) / diff_norm,
-          theta(3) * (theta(2) - pose_vec(j, 2)) / diff_norm,
+      row << theta(3) * (theta(0) - pose_vec(j, 0)) / ((theta_pose - pose_vec_row).norm()),
+          theta(3) * (theta(1) - pose_vec(j, 1)) / diff_norm, theta(3) * (theta(2) - pose_vec(j, 2)) / diff_norm,
           diff_norm, 1;
       J.row(j) = row.transpose();
       // Residual res = y - f(theta) =  uwb_meas - (beta * ||p_AinG - p_UinG|| + gamma)
@@ -342,8 +347,7 @@ bool UwbInitializer::solve_nls(const uint& anchor_id)
         Eigen::VectorXd pose_vec_row = pose_vec.row(j);
         Eigen::VectorXd diff = theta_pose - pose_vec_row;
         double diff_norm = diff.norm();
-        res_vec(j) +=
-            std::pow(uwb_vec(k) - (theta_new(3) * diff_norm + theta(4)), 2);
+        res_vec(j) += std::pow(uwb_vec(k) - (theta_new(3) * diff_norm + theta(4)), 2);
       }
       res_vec(j) /= uwb_vec.size();
     }

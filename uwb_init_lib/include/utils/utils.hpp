@@ -23,18 +23,12 @@
 #define UTILS_HPP_
 
 #include <Eigen/Eigen>
+#include <array>
 #include <concepts>
+#include <vector>
 
 namespace uwb_init
 {
-template <typename T>
-concept EigenVectord = std::same_as<T, Eigen::Vector2d> || std::same_as<T, Eigen::Vector3d> ||
-                       std::same_as<T, Eigen::Vector4d> || std::same_as<T, Eigen::VectorXd>;
-
-template <typename T>
-concept EigenMatrixd = std::same_as<T, Eigen::Matrix2d> || std::same_as<T, Eigen::Matrix3d> ||
-                       std::same_as<T, Eigen::Matrix4d> || std::same_as<T, Eigen::MatrixXd>;
-
 /**
  * @brief linear interpolation
  *
@@ -44,7 +38,8 @@ concept EigenMatrixd = std::same_as<T, Eigen::Matrix2d> || std::same_as<T, Eigen
  * @param alpha interpolation parameter [0,1]
  */
 template <typename T>
-requires(std::floating_point<T> || EigenVectord<T>) T lerp(const T& x0, const T& x1, const double& alpha)
+requires(std::floating_point<T> || std::derived_from<T, Eigen::MatrixBase<T>>) T
+    lerp(const T& x0, const T& x1, const double& alpha)
 {
   return (1 - alpha) * x0 + alpha * x1;
 }
@@ -81,6 +76,29 @@ inline bool isSPD(const Eigen::MatrixXd& A)
     return false;
   }
   return true;
+}
+
+/**
+ * @brief Stream a vector or an array
+ * @tparam T type of data to be streamed
+ * @param stream (reference to std::ostream)
+ * @param x data to be streamed (const reference to T)
+ */
+template <typename T>
+requires(std::same_as<T, std::vector<typename T::value_type>> ||
+         std::same_as<T, std::array<typename T::value_type, std::tuple_size<T>::value>>) std::ostream&
+operator<<(std::ostream& stream, const T& v)
+{
+  // Beginning bracket
+  stream << "[";
+
+  // Copy element of vector into output stream
+  std::copy(v.begin(), v.end() - 1, std::ostream_iterator<typename T::value_type>(stream, ", "));
+
+  // Last element and end bracket
+  stream << *(v.end() - 1) << "]";
+
+  return stream;
 }
 
 }  // namespace uwb_init
