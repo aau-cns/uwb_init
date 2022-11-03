@@ -52,10 +52,10 @@ struct UwbInitOptions
   Eigen::Vector3d p_ItoU{ Eigen::VectorXd::Zero(3) };
 
   /// determines the method to use for initialization \see UwbInit::UwbInitOptions::InitMethod
-  InitMethod init_method{ InitMethod::SINGLE };
+  InitMethod init_method{ InitMethod::DOUBLE };
 
   /// determines the variables to initialize in initialization routine \see UwbInit::UwbInitOptions::InitVariables
-  InitVariables init_variables{ InitVariables::NO_BIAS };
+  InitVariables init_variables{ InitVariables::CONST_BIAS };
 
   // GENERALIZED LEAST SQUARES ===============================================
 

@@ -70,6 +70,11 @@ struct LSSolution
     }
     cov_ = cov;
   }
+
+  inline Eigen::Vector3d p_AinG()
+  {
+      return anchor_.p_AinG_;
+  }
 };
 
 /**
@@ -98,6 +103,11 @@ struct NLSSolution
       throw std::invalid_argument("NLSSolution: Invalid covariance");
     }
     cov_ = cov;
+  }
+
+  inline Eigen::Vector3d p_AinG()
+  {
+      return anchor_.p_AinG_;
   }
 };
 
