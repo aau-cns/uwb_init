@@ -325,13 +325,11 @@ bool UwbInitializer::solve_nls(const uint& anchor_id)
     for (uint j = 0; j < uwb_vec.size(); ++j)
     {
       // Jacobian [df/dp_AinG, df/dbeta, df/dgamma]
-      Eigen::VectorXd row(J.cols());
-      row << theta(3) * (theta(0) - pose_vec(j, 0)) / (theta.head(3) - pose_vec.row(j).transpose()).norm(),
+      J.row(j) << theta(3) * (theta(0) - pose_vec(j, 0)) / (theta.head(3) - pose_vec.row(j).transpose()).norm(),
               theta(3) * (theta(1) - pose_vec(j, 1)) / (theta.head(3) - pose_vec.row(j).transpose()).norm(),
               theta(3) * (theta(2) - pose_vec(j, 2)) / (theta.head(3) - pose_vec.row(j).transpose()).norm(),
               (theta.head(3) - pose_vec.row(j).transpose()).norm(),
               1;
-      J.row(j) = row.transpose();
       // Residual res = y - f(theta) =  uwb_meas - (beta * ||p_AinG - p_UinG|| + gamma)
       res(j) = uwb_vec(j) - (theta(3) * (theta.head(3) - pose_vec.row(j).transpose()).norm() + theta(4));
     }
@@ -472,17 +470,20 @@ bool UwbInitializer::ls_double_const_bias(const TimedBuffer<UwbData>& uwb_data, 
 
   // Find pivot index (minimize weight uwb_dist^2*sigma_d + p_UinG'*sigma_p*p_UinG)
   uint pivot_idx = 0;
+  double weight_pivot = (std::pow(uwb_data[pivot_idx].second.distance_, 2) * params_.sigma_meas +
+                    p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first).transpose() *
+                    Eigen::Matrix3d::Identity() * params_.sigma_pos * p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first));
   for (uint i = 0; i < uwb_data.size(); ++i)
   {
     double weight_i = (std::pow(uwb_data[i].second.distance_, 2) * params_.sigma_meas +
                       p_UinG_buffer.get_at_timestamp(uwb_data[i].first).transpose() *
                       Eigen::Matrix3d::Identity() * params_.sigma_pos * p_UinG_buffer.get_at_timestamp(uwb_data[i].first));
-    double weight_pivot = (std::pow(uwb_data[pivot_idx].second.distance_, 2) * params_.sigma_meas +
-                      p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first).transpose() *
-                      Eigen::Matrix3d::Identity() * params_.sigma_pos * p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first));
     if (weight_i < weight_pivot)
     {
       pivot_idx = i;
+      weight_pivot = (std::pow(uwb_data[pivot_idx].second.distance_, 2) * params_.sigma_meas +
+                      p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first).transpose() *
+                      Eigen::Matrix3d::Identity() * params_.sigma_pos * p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first));
     }
   }
 
@@ -510,8 +511,8 @@ bool UwbInitializer::ls_double_const_bias(const TimedBuffer<UwbData>& uwb_data, 
     b(j) = 0.5 * (std::pow(uwb_data[i].second.distance_, 2) - std::pow(uwb_pivot, 2) -
                               (std::pow(p_UinG.norm(), 2) - std::pow(p_UinG_pivot.norm(), 2)));
 
-    s(j, j) = (std::pow(uwb_data[i].second.distance_, 2) + std::pow(uwb_pivot, 2) * params_.sigma_meas +
-                              (p_UinG - p_UinG_pivot).transpose() * params_.sigma_pos * Eigen::VectorXd::Ones(3).asDiagonal() * (p_UinG - p_UinG_pivot));
+    s(j, j) = std::pow(uwb_data[i].second.distance_, 2) + std::pow(uwb_pivot, 2) * params_.sigma_meas +
+                              p_UinG.transpose() * Eigen::Matrix3d::Identity() * params_.sigma_pos * p_UinG + weight_pivot;
 
     // Increment row index
     j += 1;
@@ -533,17 +534,20 @@ bool UwbInitializer::ls_double_no_bias(const TimedBuffer<UwbData>& uwb_data, Eig
 
   // Find pivot index (minimize weight uwb_dist^2*sigma_d + p_UinG'*sigma_p*p_UinG)
   uint pivot_idx = 0;
+  double weight_pivot = (std::pow(uwb_data[pivot_idx].second.distance_, 2) * params_.sigma_meas +
+                    p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first).transpose() *
+                    Eigen::Matrix3d::Identity() * params_.sigma_pos * p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first));
   for (uint i = 0; i < uwb_data.size(); ++i)
   {
     double weight_i = (std::pow(uwb_data[i].second.distance_, 2) * params_.sigma_meas +
                       p_UinG_buffer.get_at_timestamp(uwb_data[i].first).transpose() *
                       Eigen::Matrix3d::Identity() * params_.sigma_pos * p_UinG_buffer.get_at_timestamp(uwb_data[i].first));
-    double weight_pivot = (std::pow(uwb_data[pivot_idx].second.distance_, 2) * params_.sigma_meas +
-                      p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first).transpose() *
-                      Eigen::Matrix3d::Identity() * params_.sigma_pos * p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first));
     if (weight_i < weight_pivot)
     {
       pivot_idx = i;
+      weight_pivot = (std::pow(uwb_data[pivot_idx].second.distance_, 2) * params_.sigma_meas +
+                      p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first).transpose() *
+                      Eigen::Matrix3d::Identity() * params_.sigma_pos * p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first));
     }
   }
 
@@ -569,8 +573,8 @@ bool UwbInitializer::ls_double_no_bias(const TimedBuffer<UwbData>& uwb_data, Eig
 
     b(j) = 0.5 * (std::pow(uwb_data[i].second.distance_, 2) - std::pow(uwb_pivot, 2) -
                               (std::pow(p_UinG.norm(), 2) - std::pow(p_UinG_pivot.norm(), 2)));
-    s(j, j) = (std::pow(uwb_data[i].second.distance_, 2) + std::pow(uwb_pivot, 2) * params_.sigma_meas +
-                              (p_UinG - p_UinG_pivot).transpose() * params_.sigma_pos * Eigen::VectorXd::Ones(3).asDiagonal() * (p_UinG - p_UinG_pivot));
+    s(j, j) = std::pow(uwb_data[i].second.distance_, 2) + std::pow(uwb_pivot, 2) * params_.sigma_meas +
+            p_UinG.transpose() * params_.sigma_pos * Eigen::Matrix3d::Identity() * p_UinG + weight_pivot;
 
     // Increment row index
     j += 1;

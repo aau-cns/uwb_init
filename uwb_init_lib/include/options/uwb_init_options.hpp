@@ -57,6 +57,14 @@ struct UwbInitOptions
   /// determines the variables to initialize in initialization routine \see UwbInit::UwbInitOptions::InitVariables
   InitVariables init_variables{ InitVariables::NO_BIAS };
 
+  // GENERALIZED LEAST SQUARES ===============================================
+
+  /// position uncertainty
+  double sigma_pos{ 0.03 };
+
+  /// uwb uncertainty
+  double sigma_meas{ 0.1 };
+
   // NONLINEAR OPTIMIZATION ==================================================
 
   /// flag to determine if nonlinear optimization should be performed
@@ -85,8 +93,6 @@ struct UwbInitOptions
         return "InitMethod::SINGLE";
       case InitMethod::DOUBLE:
         return "InitMethod::DOUBLE";
-      default:
-        return "InitMethod::UNDEFINED";
     }
   }
 
@@ -99,8 +105,6 @@ struct UwbInitOptions
         return "InitVariables::NO_BIAS";
       case InitVariables::CONST_BIAS:
         return "InitVariables::CONST_BIAS";
-      default:
-        return "InitVariables::UNDEFINED";
     }
   }
 
