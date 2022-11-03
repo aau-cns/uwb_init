@@ -61,7 +61,8 @@ public:
   ///
   /// \todo allow feeding of old(er) measurements
   ///
-  void feed_uwb(const double timestamp, const std::vector<UwbData> uwb_measurements);
+  void feed_uwb(const double timestamp, const std::vector<UwbData> uwb_measurements);  
+  void feed_uwb(const double timestamp, const UwbData uwb_measurement);
 
   ///
   /// \brief feed_pose stores incoming positions of the UAV in the global frame
@@ -110,7 +111,7 @@ private:
   NLSSolutions nls_sols_;
 
   // Least squares initialization handling
-  std::function<bool(const TimedBuffer<UwbData>&, Eigen::MatrixXd&, Eigen::VectorXd&, Eigen::MatrixXd&)> ls_problem;
+  std::function<bool(const TimedBuffer<UwbData>&, Eigen::MatrixXd&, Eigen::VectorXd&, Eigen::VectorXd&)> ls_problem;
 
   // Least Squares solver
   bool solve_ls(const uint& anchor_id);
@@ -123,10 +124,10 @@ private:
   /// \param UWB data for the single anchor, coefficient matrix A, measurement vector b (A * x = b), uncertainty s
   /// \return ture if successful, false if not
   ///
-  bool ls_single_const_bias(const TimedBuffer<UwbData>& uwb_data, Eigen::MatrixXd& A, Eigen::VectorXd& b, Eigen::MatrixXd& s);
-  bool ls_single_no_bias(const TimedBuffer<UwbData>& uwb_data, Eigen::MatrixXd& A, Eigen::VectorXd& b, Eigen::MatrixXd& s);
-  bool ls_double_const_bias(const TimedBuffer<UwbData>& uwb_data, Eigen::MatrixXd& A, Eigen::VectorXd& b, Eigen::MatrixXd& s);
-  bool ls_double_no_bias(const TimedBuffer<UwbData>& uwb_data, Eigen::MatrixXd& A, Eigen::VectorXd& b, Eigen::MatrixXd& s);
+  bool ls_single_const_bias(const TimedBuffer<UwbData>& uwb_data, Eigen::MatrixXd& A, Eigen::VectorXd& b, Eigen::VectorXd& s);
+  bool ls_single_no_bias(const TimedBuffer<UwbData>& uwb_data, Eigen::MatrixXd& A, Eigen::VectorXd& b, Eigen::VectorXd& s);
+  bool ls_double_const_bias(const TimedBuffer<UwbData>& uwb_data, Eigen::MatrixXd& A, Eigen::VectorXd& b, Eigen::VectorXd& s);
+  bool ls_double_no_bias(const TimedBuffer<UwbData>& uwb_data, Eigen::MatrixXd& A, Eigen::VectorXd& b, Eigen::VectorXd& s);
 };
 
 }  // namespace uwb_init
