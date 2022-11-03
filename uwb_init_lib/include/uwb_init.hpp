@@ -110,7 +110,7 @@ private:
   NLSSolutions nls_sols_;
 
   // Least squares initialization handling
-  std::function<bool(const TimedBuffer<UwbData>&, Eigen::MatrixXd&, Eigen::VectorXd&)> ls_problem;
+  std::function<bool(const TimedBuffer<UwbData>&, Eigen::MatrixXd&, Eigen::VectorXd&, Eigen::MatrixXd&)> ls_problem;
 
   // Least Squares solver
   bool solve_ls(const uint& anchor_id);
@@ -120,13 +120,13 @@ private:
 
   ///
   /// \brief functions for least squares problem formulation depending on selected method and variables
-  /// \param UWB data for the single anchor, coefficient matrix A, measurement vector b (A * x = b)
+  /// \param UWB data for the single anchor, coefficient matrix A, measurement vector b (A * x = b), uncertainty s
   /// \return ture if successful, false if not
   ///
-  bool ls_single_const_bias(const TimedBuffer<UwbData>& uwb_data, Eigen::MatrixXd& A, Eigen::VectorXd& b);
-  bool ls_single_no_bias(const TimedBuffer<UwbData>& uwb_data, Eigen::MatrixXd& A, Eigen::VectorXd& b);
-  bool ls_double_const_bias(const TimedBuffer<UwbData>& uwb_data, Eigen::MatrixXd& A, Eigen::VectorXd& b);
-  bool ls_double_no_bias(const TimedBuffer<UwbData>& uwb_data, Eigen::MatrixXd& A, Eigen::VectorXd& b);
+  bool ls_single_const_bias(const TimedBuffer<UwbData>& uwb_data, Eigen::MatrixXd& A, Eigen::VectorXd& b, Eigen::MatrixXd& s);
+  bool ls_single_no_bias(const TimedBuffer<UwbData>& uwb_data, Eigen::MatrixXd& A, Eigen::VectorXd& b, Eigen::MatrixXd& s);
+  bool ls_double_const_bias(const TimedBuffer<UwbData>& uwb_data, Eigen::MatrixXd& A, Eigen::VectorXd& b, Eigen::MatrixXd& s);
+  bool ls_double_no_bias(const TimedBuffer<UwbData>& uwb_data, Eigen::MatrixXd& A, Eigen::VectorXd& b, Eigen::MatrixXd& s);
 };
 
 }  // namespace uwb_init
