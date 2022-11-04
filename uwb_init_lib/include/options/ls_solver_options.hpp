@@ -33,6 +33,9 @@ struct LsSolverOptions
   /// uwb uncertainty
   double sigma_meas{ 0.1 };
 
+  /// const bias flag
+  bool const_bias_flag{ false };
+
 };  // struct LsSolverOptions
 }  // namespace uwb_init
 

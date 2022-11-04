@@ -25,39 +25,8 @@ namespace uwb_init
 UwbInitializer::UwbInitializer(const LoggerLevel& level)
   : logger_(std::make_shared<Logger>(level))
 {
-  // Bind LS-problem initialization function based on selected method and model variables
-  switch (init_params_.init_method)
-  {
-    case UwbInitOptions::InitMethod::SINGLE:
-      switch (init_params_.init_variables)
-      {
-        case UwbInitOptions::InitVariables::NO_BIAS:
-          ls_problem = std::bind(&UwbInitializer::ls_single_no_bias, this, std::placeholders::_1, std::placeholders::_2,
-                                 std::placeholders::_3, std::placeholders::_4);
-          break;
-
-        case UwbInitOptions::InitVariables::CONST_BIAS:
-          ls_problem = std::bind(&UwbInitializer::ls_single_const_bias, this, std::placeholders::_1,
-                                 std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
-          break;
-      }
-      break;
-
-    case UwbInitOptions::InitMethod::DOUBLE:
-      switch (init_params_.init_variables)
-      {
-        case UwbInitOptions::InitVariables::NO_BIAS:
-          ls_problem = std::bind(&UwbInitializer::ls_double_no_bias, this, std::placeholders::_1, std::placeholders::_2,
-                                 std::placeholders::_3, std::placeholders::_4);
-          break;
-
-        case UwbInitOptions::InitVariables::CONST_BIAS:
-          ls_problem = std::bind(&UwbInitializer::ls_double_const_bias, this, std::placeholders::_1,
-                                 std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
-          break;
-      }
-      break;
-  }
+  // Initialize least squares solver
+  ls_solver_ = std::make_shared<LsSolver>(logger_, init_params_);
 
   // Logging
   logger_->info("UwbInitializer: " + get_init_method());
@@ -67,39 +36,8 @@ UwbInitializer::UwbInitializer(const LoggerLevel& level)
 UwbInitializer::UwbInitializer(const UwbInitOptions init_params, const LoggerLevel& level)
   : logger_(std::make_shared<Logger>(level)), init_params_(init_params)
 {
-  // Bind LS-problem initialization function based on selected method and model variables
-  switch (init_params_.init_method)
-  {
-    case UwbInitOptions::InitMethod::SINGLE:
-      switch (init_params_.init_variables)
-      {
-        case UwbInitOptions::InitVariables::NO_BIAS:
-          ls_problem = std::bind(&UwbInitializer::ls_single_no_bias, this, std::placeholders::_1, std::placeholders::_2,
-                                 std::placeholders::_3, std::placeholders::_4);
-          break;
-
-        case UwbInitOptions::InitVariables::CONST_BIAS:
-          ls_problem = std::bind(&UwbInitializer::ls_single_const_bias, this, std::placeholders::_1,
-                                 std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
-          break;
-      }
-      break;
-
-    case UwbInitOptions::InitMethod::DOUBLE:
-      switch (init_params_.init_variables)
-      {
-        case UwbInitOptions::InitVariables::NO_BIAS:
-          ls_problem = std::bind(&UwbInitializer::ls_double_no_bias, this, std::placeholders::_1, std::placeholders::_2,
-                                 std::placeholders::_3, std::placeholders::_4);
-          break;
-
-        case UwbInitOptions::InitVariables::CONST_BIAS:
-          ls_problem = std::bind(&UwbInitializer::ls_double_const_bias, this, std::placeholders::_1,
-                                 std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
-          break;
-      }
-      break;
-  }
+  // Initialize least squares solver
+  ls_solver_ = std::make_shared<LsSolver>(logger_, init_params_);
 
   // Logging
   logger_->info("UwbInitializer: " + get_init_method());
@@ -109,6 +47,7 @@ UwbInitializer::UwbInitializer(const UwbInitOptions init_params, const LoggerLev
 void UwbInitializer::set_init_method_single()
 {
   init_params_.init_method = UwbInitOptions::InitMethod::SINGLE;
+  ls_solver_->configure(init_params_);
 
   // Logging
   logger_->info("UwbInitializer: " + get_init_method());
@@ -117,6 +56,7 @@ void UwbInitializer::set_init_method_single()
 void UwbInitializer::set_init_method_double()
 {
   init_params_.init_method = UwbInitOptions::InitMethod::DOUBLE;
+  ls_solver_->configure(init_params_);
 
   // Logging
   logger_->info("UwbInitializer: " + get_init_method());
@@ -125,6 +65,7 @@ void UwbInitializer::set_init_method_double()
 void UwbInitializer::set_init_unbiased()
 {
   init_params_.init_variables = UwbInitOptions::InitVariables::NO_BIAS;
+  ls_solver_->configure(init_params_);
 
   // Logging
   logger_->info("UwbInitializer: " + get_init_variables());
@@ -133,6 +74,7 @@ void UwbInitializer::set_init_unbiased()
 void UwbInitializer::set_init_const_bias()
 {
   init_params_.init_variables = UwbInitOptions::InitVariables::CONST_BIAS;
+  ls_solver_->configure(init_params_);
 
   // Logging
   logger_->info("UwbInitializer: " + get_init_variables());
@@ -164,18 +106,20 @@ std::string const UwbInitializer::get_init_variables() const
 
 void UwbInitializer::clear_buffers()
 {
-  // Clear buffers
   uwb_data_buffer_.clear();
-  p_UinG_buffer.clear();
+  p_UinG_buffer_.clear();
+}
+
+void UwbInitializer::clear_solutions()
+{
+  ls_sols_.clear();
+  nls_sols_.clear();
 }
 
 void UwbInitializer::reset()
 {
   clear_buffers();
-
-  // Reset status
-  ls_sols_.clear();
-  nls_sols_.clear();
+  clear_solutions();
 }
 
 void UwbInitializer::feed_uwb(const double timestamp, const std::vector<UwbData> uwb_measurements)
@@ -216,18 +160,18 @@ void UwbInitializer::feed_uwb(const double timestamp, const UwbData uwb_measurem
 
 void UwbInitializer::feed_pose(const double timestamp, const Eigen::Vector3d p_UinG)
 {
-  p_UinG_buffer.push_back(timestamp, p_UinG);
+  p_UinG_buffer_.push_back(timestamp, p_UinG);
 }
 
 bool UwbInitializer::init_anchors()
 {
   // Logging
-  logger_->info("UwbInitializer::init_anchors(): Performing uwb anchors initialization");
+  logger_->info("UwbInitializer: Performing uwb anchors initialization");
 
   // Check if pose buffer is empty
-  if (p_UinG_buffer.empty())
+  if (p_UinG_buffer_.empty())
   {
-    logger_->err("UwbInitializer::init_anchors(): Initialization FAILED (pose buffer is empty)");
+    logger_->err("UwbInitializer: Initialization FAILED (pose buffer is empty)");
     return false;
   }
 
@@ -244,52 +188,75 @@ bool UwbInitializer::init_anchors()
       init_successful = false;
       continue;
     }
+
     // Check if a solution is already present
-    else if (ls_sols_.contains(uwb_data.first))
+    if (ls_sols_.contains(uwb_data.first))
     {
       logger_->info("Anchor[" + std::to_string(uwb_data.first) + "]: Already initialized");
       std::cout << "Anchor[" << uwb_data.first << "]: p_AinG = " << ls_sols_.at(uwb_data.first).p_AinG().transpose() << "\n" << std::endl;
       std::cout << "Anchor[" << uwb_data.first << "]: covariance =\n" << ls_sols_.at(uwb_data.first).cov_ << "\n" << std::endl;
+      std::cout << "Anchor[" << uwb_data.first << "]: gamma = " << ls_sols_.at(uwb_data.first).gamma_ << "\n" << std::endl;
       continue;
     }
+
+    // Initialize solution and covariance
+    Eigen::VectorXd lsSolution;
+    Eigen::MatrixXd cov;
+
     // Solve ls problem and initialize anchor
-    else if (solve_ls(uwb_data.first))
+    if (ls_solver_->solve_ls(uwb_data.second, p_UinG_buffer_, lsSolution, cov))
     {
+      // Assign values to parameters
+      Eigen::Vector3d p_AinG = lsSolution.head(3);
+      double const_bias = 0.0;
+
+      // If constant bias was estimated assign the value
+      if (init_params_.init_variables == UwbInitOptions::InitVariables::CONST_BIAS)
+      {
+        const_bias = lsSolution(3);
+      }
+
+      // Initialize anchor and solution
+      UwbAnchor new_anchor(uwb_data.first, p_AinG);
+      LSSolution ls_sol(new_anchor, const_bias, cov);
+
+      // Add solution to vector
+      ls_sols_.emplace(std::make_pair(uwb_data.first, ls_sol));
+
       logger_->info("Anchor[" + std::to_string(uwb_data.first) + "]: Correctly initialized");
       std::cout << "Anchor[" << uwb_data.first << "]: p_AinG = " << ls_sols_.at(uwb_data.first).p_AinG().transpose() << "\n" << std::endl;
       std::cout << "Anchor[" << uwb_data.first << "]: covariance =\n" << ls_sols_.at(uwb_data.first).cov_ << "\n" << std::endl;
-      continue;
+      std::cout << "Anchor[" << uwb_data.first << "]: gamma = " << ls_sols_.at(uwb_data.first).gamma_ << "\n" << std::endl;
     }
     // Can not initialize
     else
     {
       logger_->err("Anchor[" + std::to_string(uwb_data.first) + "]: Not initialized correctly");
       init_successful = false;
-      continue;
     }
   }
 
   // If initialization is not successful return false
   if (!(init_successful))
   {
-    logger_->err("UwbInitializer::init_anchors(): Initialization FAILED");
+    logger_->err("UwbInitializer: Initialization FAILED");
     return false;
   }
 
   // Else all anchors have been initialized correctly
-  logger_->info("UwbInitializer::init_anchors(): Initialization complete");
+  logger_->info("UwbInitializer: Initialization complete");
   return true;
 }
 
 bool UwbInitializer::refine_anchors()
 {
   // Logging
-  logger_->info("UwbInitializer::refine_anchors(): Performing anchors refinement");
+  logger_->info("UwbInitializer: Performing anchors refinement");
 
   // Check if pose buffer is empty
-  if (p_UinG_buffer.empty())
+  if (p_UinG_buffer_.empty())
   {
-    logger_->err("UwbInitializer::refine_anchors(): Operation FAILED (pose buffer is empty)");
+    logger_->err("UwbInitializer: Operation FAILED (pose buffer is empty)");
     return false;
   }
 
@@ -312,6 +279,8 @@ bool UwbInitializer::refine_anchors()
       logger_->info("Anchor[" + std::to_string(ls_sol.first) + "]: Already refined");
       std::cout << "Anchor[" << ls_sol.first << "]: p_AinG = " << nls_sols_.at(ls_sol.first).p_AinG().transpose() << "\n" << std::endl;
       std::cout << "Anchor[" << ls_sol.first << "]: covariance =\n" << nls_sols_.at(ls_sol.first).cov_ << "\n" << std::endl;
+      std::cout << "Anchor[" << ls_sol.first << "]: beta = " << nls_sols_.at(ls_sol.first).beta_ << "\n" << std::endl;
+      std::cout << "Anchor[" << ls_sol.first << "]: gamma = " << nls_sols_.at(ls_sol.first).gamma_ << "\n" << std::endl;
       continue;
     }
     // Perform nonlinear optimization
@@ -321,6 +290,8 @@ bool UwbInitializer::refine_anchors()
       logger_->info("Anchor[" + std::to_string(ls_sol.first) + "]: Correctly refined");
       std::cout << "Anchor[" << ls_sol.first << "]: p_AinG = " << nls_sols_.at(ls_sol.first).p_AinG().transpose() << "\n" << std::endl;
       std::cout << "Anchor[" << ls_sol.first << "]: covariance =\n" << nls_sols_.at(ls_sol.first).cov_ << "\n" << std::endl;
+      std::cout << "Anchor[" << ls_sol.first << "]: beta = " << nls_sols_.at(ls_sol.first).beta_ << "\n" << std::endl;
+      std::cout << "Anchor[" << ls_sol.first << "]: gamma = " << nls_sols_.at(ls_sol.first).gamma_ << "\n" << std::endl;
       continue;
     }
     // Can not refine
@@ -335,85 +306,12 @@ bool UwbInitializer::refine_anchors()
   // If refinement is not successful return false
   if (!(refine_successful))
   {
-    logger_->err("UwbInitializer::refine_anchors(): Refinement FAILED");
+    logger_->err("UwbInitializer: Refinement FAILED");
     return false;
   }
 
   // Else all anchors have been initialized correctly
-  logger_->info("UwbInitializer::refine_anchors(): Refinement complete");
-  return true;
-}
-
-bool UwbInitializer::solve_ls(const uint& anchor_id)
-{
-  // Coefficient matrix and measurement vector initialization
-  Eigen::MatrixXd coeffs;
-  Eigen::VectorXd meas;
-  Eigen::VectorXd sigma;
-
-  // Initialize least squares problem
-  if (!(ls_problem(uwb_data_buffer_.at(anchor_id), coeffs, meas, sigma)))
-  {
-    logger_->err("Anchor[" + std::to_string(anchor_id) + "]: Least Squares problem can not be initialized");
-    return false;
-  }
-
-  // Compute weighted coefficients
-  Eigen::MatrixXd W = sigma.cwiseInverse().cwiseSqrt().asDiagonal();
-  Eigen::MatrixXd weighted_coeffs = W * coeffs;
-  Eigen::VectorXd weighted_meas = W * meas;
-
-  // Solve GLS
-  Eigen::BDCSVD<Eigen::MatrixXd> svd(weighted_coeffs, Eigen::ComputeThinU | Eigen::ComputeThinV);
-  Eigen::VectorXd lsSolution = svd.solve(weighted_meas);
-
-  /* lsSolution changes w.r.t. chosen method and variables
- //
- // Const bias single:
- // [    0   ,     1   ,    2    ,  3 ,      4            ]
- // [p_AinG_x, p_AinG_y, p_AinG_z,  k , norm(p_AinG)^2-k^2]
- //
- // Const bias double:
- // [    0   ,     1   ,    2    ,  3 ]
- // [p_AinG_x, p_AinG_y, p_AinG_z,  k ]
- //
- // Unbiased single:
- // [    0    ,    1   ,    2   ,        3       ]
- // [p_AinG_x, p_AinG_y, p_AinG_z, norm(p_AinG)^2]
- //
- // Unbiased double:
- // [    0    ,    1   ,    2    ]
- // [p_AinG_x, p_AinG_y, p_AinG_z]
- */
-
-  // Assign values to parameters
-  Eigen::Vector3d p_AinG = lsSolution.head(3);
-  double const_bias = 0.0;
-
-  // If constant bias was estimated assign the value
-  if (init_params_.init_variables == UwbInitOptions::InitVariables::CONST_BIAS)
-  {
-    const_bias = lsSolution(3);
-  }
-
-  // Compute estimation Covariance (Var(X) = (A'*sigma^-1*A)^-1 = ((W*A)'*(W*A))^-1) = (A_'*A_)^-1)
-  // if A_ = U*S*V' then (A_'*A_)^-1 = V*S^-1*S^-1*V' (see properties of SVD)
-  Eigen::MatrixXd cov = svd.matrixV() * svd.singularValues().asDiagonal().inverse() *
-                         svd.singularValues().asDiagonal().inverse() * svd.matrixV().transpose();
-
-  // If covariance matrix is not semi-positive-definite return
-  if (!isSPD(cov))
-  {
-    return false;
-  }
-
-  // Initialize anchor and solution
-  UwbAnchor new_anchor(anchor_id, p_AinG);
-  LSSolution ls_sol(new_anchor, const_bias, cov);
-
-  // Add solution to vector
-  ls_sols_.emplace(std::make_pair(anchor_id, ls_sol));
-
+  logger_->info("UwbInitializer: Refinement complete");
   return true;
 }
 
@@ -435,7 +333,7 @@ bool UwbInitializer::solve_nls(const uint& anchor_id)
   for (uint i = 0; i < uwb_vec.size(); ++i)
   {
     uwb_vec(i) = uwb_data_buffer_.at(anchor_id)[i].second.distance_;
-    pose_vec.row(i) = p_UinG_buffer.get_at_timestamp(uwb_data_buffer_.at(anchor_id)[i].first);
+    pose_vec.row(i) = p_UinG_buffer_.get_at_timestamp(uwb_data_buffer_.at(anchor_id)[i].first);
   }
 
   // Check for consistency
@@ -546,178 +444,6 @@ bool UwbInitializer::solve_nls(const uint& anchor_id)
 
   // Add solution to vector
   nls_sols_.emplace(std::make_pair(anchor_id, nls_sol));
-
-  return true;
-}
-
-bool UwbInitializer::ls_single_const_bias(const TimedBuffer<UwbData>& uwb_data, Eigen::MatrixXd& A, Eigen::VectorXd& b, Eigen::VectorXd& s)
-{
-  // Const bias single:
-  // [    0   ,     1   ,    2    ,  3 ,      4            ]
-  // [p_AinG_x, p_AinG_y, p_AinG_z,  k , norm(p_AinG)^2-k^2]
-
-  // Coefficient matrix and measurement vector initialization
-  A = Eigen::MatrixXd::Zero(uwb_data.size(), 5);
-  b = Eigen::VectorXd::Zero(A.rows());
-  s = Eigen::VectorXd::Ones(A.rows());
-
-  // Fill the coefficient matrix and the measurement vector
-  for (uint i = 0; i < uwb_data.size(); ++i)
-  {
-    // Get position at uwb timestamp
-    Eigen::Vector3d p_UinG = p_UinG_buffer.get_at_timestamp(uwb_data[i].first);
-
-    // Fill row(i) of A and b
-    A.row(i) << -2 * p_UinG.x(), -2 * p_UinG.y(), -2 * p_UinG.z(), 2 * uwb_data[i].second.distance_, 1;
-    b(i) = std::pow(uwb_data[i].second.distance_, 2) - std::pow(p_UinG.norm(), 2);
-  }
-
-  return true;
-}
-
-bool UwbInitializer::ls_single_no_bias(const TimedBuffer<UwbData>& uwb_data, Eigen::MatrixXd& A, Eigen::VectorXd& b, Eigen::VectorXd& s)
-{
-  // Unbiased single:
-  // [    0    ,    1   ,    2   ,        3       ]
-  // [p_AinG_x, p_AinG_y, p_AinG_z, norm(p_AinG)^2]
-
-  // Coefficient matrix and measurement vector initialization
-  A = Eigen::MatrixXd::Zero(uwb_data.size(), 4);
-  b = Eigen::VectorXd::Zero(A.rows());
-  s = Eigen::VectorXd::Ones(A.rows());
-
-  // Fill the coefficient matrix and the measurement vector
-  for (uint i = 0; i < uwb_data.size(); ++i)
-  {
-    // Get position at uwb timestamp
-    Eigen::Vector3d p_UinG = p_UinG_buffer.get_at_timestamp(uwb_data[i].first);
-
-    // Fill row(i) of A and b
-    A.row(i) << -2 * p_UinG.x(), -2 * p_UinG.y(), -2 * p_UinG.z(), 1;
-    b(i) = std::pow(uwb_data[i].second.distance_, 2) - std::pow(p_UinG.norm(), 2);
-  }
-
-  return true;
-}
-
-bool UwbInitializer::ls_double_const_bias(const TimedBuffer<UwbData>& uwb_data, Eigen::MatrixXd& A, Eigen::VectorXd& b, Eigen::VectorXd& s)
-{
-  // Const bias double:
-  // [    0   ,     1   ,    2    ,  3 ]
-  // [p_AinG_x, p_AinG_y, p_AinG_z,  k ]
-
-  // Coefficient matrix and measurement vector initialization
-  A = Eigen::MatrixXd::Zero(uwb_data.size()-1, 4);
-  b = Eigen::VectorXd::Zero(A.rows());
-  s = Eigen::VectorXd::Zero(A.rows());
-
-  // Find pivot index (minimize weight uwb_dist^2*sigma_d + p_UinG'*sigma_p*p_UinG)
-  uint pivot_idx = 0;
-  double weight_pivot = (std::pow(uwb_data[pivot_idx].second.distance_, 2) * ls_params_.sigma_meas +
-                    p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first).transpose() *
-                    Eigen::Matrix3d::Identity() * ls_params_.sigma_pos * p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first));
-  for (uint i = 1; i < uwb_data.size(); ++i)
-  {
-    double weight_i = (std::pow(uwb_data[i].second.distance_, 2) * ls_params_.sigma_meas +
-                      p_UinG_buffer.get_at_timestamp(uwb_data[i].first).transpose() *
-                      Eigen::Matrix3d::Identity() * ls_params_.sigma_pos * p_UinG_buffer.get_at_timestamp(uwb_data[i].first));
-    if (weight_i < weight_pivot)
-    {
-      pivot_idx = i;
-      weight_pivot = weight_i;
-    }
-  }
-
-  // Position and distance at pivot_index
-  Eigen::Vector3d p_UinG_pivot = p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first);
-  double uwb_pivot = uwb_data[pivot_idx].second.distance_;
-
-  // Fill the coefficient matrix and the measurement vector  
-  uint j = 0;
-  for (uint i = 0; i < uwb_data.size(); ++i)
-  {
-    // Skip pivot
-    if (i == pivot_idx)
-    {
-      continue;
-    }
-
-    // Get position at timestamp
-    Eigen::Vector3d p_UinG = p_UinG_buffer.get_at_timestamp(uwb_data[i].first);
-
-    // Fill row(j) of A and b
-    A.row(j) << -(p_UinG.x() - p_UinG_pivot.x()), -(p_UinG.y() - p_UinG_pivot.y()), -(p_UinG.z() - p_UinG_pivot.z()),
-        (uwb_data[i].second.distance_ - uwb_pivot);
-
-    b(j) = 0.5 * (std::pow(uwb_data[i].second.distance_, 2) - std::pow(uwb_pivot, 2) -
-                              (std::pow(p_UinG.norm(), 2) - std::pow(p_UinG_pivot.norm(), 2)));
-
-    s(j) = std::pow(uwb_data[i].second.distance_, 2) * ls_params_.sigma_meas +
-            p_UinG.transpose() * Eigen::Matrix3d::Identity() * ls_params_.sigma_pos * p_UinG + weight_pivot;
-
-    // Increment row index
-    j += 1;
-  }
-
-  return true;
-}
-
-bool UwbInitializer::ls_double_no_bias(const TimedBuffer<UwbData>& uwb_data, Eigen::MatrixXd& A, Eigen::VectorXd& b, Eigen::VectorXd& s)
-{
-  // Unbiased double:
-  // [    0    ,    1   ,    2    ]
-  // [p_AinG_x, p_AinG_y, p_AinG_z]
-
-  // Coefficient matrix and measurement vector initialization
-  A = Eigen::MatrixXd::Zero(uwb_data.size()-1, 3);
-  b = Eigen::VectorXd::Zero(A.rows());
-  s = Eigen::VectorXd::Zero(A.rows());
-
-  // Find pivot index (minimize weight uwb_dist^2*sigma_d + p_UinG'*sigma_p*p_UinG)
-  uint pivot_idx = 0;
-  double weight_pivot = (std::pow(uwb_data[pivot_idx].second.distance_, 2) * ls_params_.sigma_meas +
-                    p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first).transpose() *
-                    Eigen::Matrix3d::Identity() * ls_params_.sigma_pos * p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first));
-  for (uint i = 1; i < uwb_data.size(); ++i)
-  {
-    double weight_i = (std::pow(uwb_data[i].second.distance_, 2) * ls_params_.sigma_meas +
-                      p_UinG_buffer.get_at_timestamp(uwb_data[i].first).transpose() *
-                      Eigen::Matrix3d::Identity() * ls_params_.sigma_pos * p_UinG_buffer.get_at_timestamp(uwb_data[i].first));
-    if (weight_i < weight_pivot)
-    {
-      pivot_idx = i;
-      weight_pivot = weight_i;
-    }
-  }
-
-  // Position and distance at pivot_index
-  Eigen::Vector3d p_UinG_pivot = p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first);
-  double uwb_pivot = uwb_data[pivot_idx].second.distance_;
-
-  // Fill the coefficient matrix and the measurement vector
-  uint j = 0;
-  for (uint i = 0; i < uwb_data.size(); ++i)
-  {
-    // Skip pivot
-    if (i == pivot_idx)
-    {
-      continue;
-    }
-
-    // Get position at uwb timestamp
-    Eigen::Vector3d p_UinG = p_UinG_buffer.get_at_timestamp(uwb_data[i].first);
-
-    // Fill row(j) of A and b
-    A.row(j) << -(p_UinG.x() - p_UinG_pivot.x()), -(p_UinG.y() - p_UinG_pivot.y()), -(p_UinG.z() - p_UinG_pivot.z());
-
-    b(j) = 0.5 * (std::pow(uwb_data[i].second.distance_, 2) - std::pow(uwb_pivot, 2) -
-                              (std::pow(p_UinG.norm(), 2) - std::pow(p_UinG_pivot.norm(), 2)));
-    s(j) = std::pow(uwb_data[i].second.distance_, 2) * ls_params_.sigma_meas +
-            p_UinG.transpose() * ls_params_.sigma_pos * Eigen::Matrix3d::Identity() * p_UinG + weight_pivot;
-
-    // Increment row index
-    j += 1;
-  }
 
   return true;
 }

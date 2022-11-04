@@ -1,4 +1,4 @@
-// Copyright (C) 2021 Martin Scheiber, Alessandro Fornasier
+// Copyright (C) 2021 Martin Scheiber, Alessandro Fornasier, Giulio Delama
 // Control of Networked Systems, Universitaet Klagenfurt, Austria
 //
 // All rights reserved.
@@ -15,8 +15,8 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 //
-// You can contact the authors at <martin.scheiber@aau.at> and
-// <alessandro.fornasier@aau.at> <giulio.delama@aau.at>
+// You can contact the authors at <martin.scheiber@aau.at>,
+// <alessandro.fornasier@aau.at> and <giulio.delama@aau.at>
 
 #ifndef UWB_INIT_HPP_
 #define UWB_INIT_HPP_
@@ -28,9 +28,9 @@
 
 #include "logger/logger.hpp"
 #include "options/uwb_init_options.hpp"
-#include "options/ls_solver_options.hpp"
 #include "options/nls_solver_options.hpp"
 #include "utils/data_structs.hpp"
+#include "utils/ls_solver.hpp"
 
 namespace uwb_init
 {
@@ -63,9 +63,14 @@ public:
   std::string const get_init_variables() const;
 
   ///
-  /// \brief clear clears all the buffers
+  /// \brief clears all the data buffers
   ///
   void clear_buffers();
+
+  ///
+  /// \brief clear clears all the solutions
+  ///
+  void clear_solutions();
 
   ///
   /// \brief reset resets the initializer and all its buffers
@@ -111,38 +116,25 @@ public:
   // Shared pointer to logger
   std::shared_ptr<Logger> logger_ = nullptr;
 
+  // Shared pointer to least squares solver
+  std::shared_ptr<LsSolver> ls_solver_ = nullptr;
+
 private:
   // Initializer parameters
   UwbInitOptions init_params_;
-  LsSolverOptions ls_params_;
   NlsSolverOptions nls_params_;
 
   // Anchor and measurement handling
-  PositionBuffer p_UinG_buffer;    //!< buffer of UWB module positions in global frame
+  PositionBuffer p_UinG_buffer_;    //!< buffer of UWB module positions in global frame
   UwbDataBuffer uwb_data_buffer_;  //!< history of uwb readings in DataBuffer
 
   // Solutions handling
   LSSolutions ls_sols_;
   NLSSolutions nls_sols_;
 
-  // Least squares initialization handling
-  std::function<bool(const TimedBuffer<UwbData>&, Eigen::MatrixXd&, Eigen::VectorXd&, Eigen::VectorXd&)> ls_problem;
-
-  // Least Squares solver
-  bool solve_ls(const uint& anchor_id);
-
   // Nonlinear Least Squares solver
   bool solve_nls(const uint& anchor_id);
 
-  ///
-  /// \brief functions for least squares problem formulation depending on selected method and variables
-  /// \param UWB data for the single anchor, coefficient matrix A, measurement vector b (A * x = b), uncertainty s
-  /// \return ture if successful, false if not
-  ///
-  bool ls_single_const_bias(const TimedBuffer<UwbData>& uwb_data, Eigen::MatrixXd& A, Eigen::VectorXd& b, Eigen::VectorXd& s);
-  bool ls_single_no_bias(const TimedBuffer<UwbData>& uwb_data, Eigen::MatrixXd& A, Eigen::VectorXd& b, Eigen::VectorXd& s);
-  bool ls_double_const_bias(const TimedBuffer<UwbData>& uwb_data, Eigen::MatrixXd& A, Eigen::VectorXd& b, Eigen::VectorXd& s);
-  bool ls_double_no_bias(const TimedBuffer<UwbData>& uwb_data, Eigen::MatrixXd& A, Eigen::VectorXd& b, Eigen::VectorXd& s);
 };
 
 }  // namespace uwb_init
