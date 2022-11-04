@@ -31,6 +31,7 @@
 #include "options/nls_solver_options.hpp"
 #include "utils/data_structs.hpp"
 #include "utils/ls_solver.hpp"
+#include "utils/nls_solver.hpp"
 
 namespace uwb_init
 {
@@ -119,10 +120,12 @@ public:
   // Shared pointer to least squares solver
   std::shared_ptr<LsSolver> ls_solver_ = nullptr;
 
+  // Shared pointer to nonlinear least squares solver
+  std::shared_ptr<NlsSolver> nls_solver_ = nullptr;
+
 private:
   // Initializer parameters
   UwbInitOptions init_params_;
-  NlsSolverOptions nls_params_;
 
   // Anchor and measurement handling
   PositionBuffer p_UinG_buffer_;    //!< buffer of UWB module positions in global frame
@@ -131,10 +134,6 @@ private:
   // Solutions handling
   LSSolutions ls_sols_;
   NLSSolutions nls_sols_;
-
-  // Nonlinear Least Squares solver
-  bool solve_nls(const uint& anchor_id);
-
 };
 
 }  // namespace uwb_init
