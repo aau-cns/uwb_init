@@ -46,67 +46,11 @@ struct UwbInitOptions
     CONST_BIAS,  //!< only use constant bias and position in initialization
   };
 
-  // WRAPPER AND CALIBRATION ==================================================
-
-  /// translational offset of the UWB module w.r.t. the IMU (or body frame) in meter
-  Eigen::Vector3d p_ItoU{ Eigen::VectorXd::Zero(3) };
-
   /// determines the method to use for initialization \see UwbInit::UwbInitOptions::InitMethod
   InitMethod init_method{ InitMethod::DOUBLE };
 
   /// determines the variables to initialize in initialization routine \see UwbInit::UwbInitOptions::InitVariables
   InitVariables init_variables{ InitVariables::CONST_BIAS };
-
-  // GENERALIZED LEAST SQUARES ===============================================
-
-  /// position uncertainty
-  double sigma_pos{ 0.03 };
-
-  /// uwb uncertainty
-  double sigma_meas{ 0.1 };
-
-  // NONLINEAR OPTIMIZATION ==================================================
-
-  /// flag to determine if nonlinear optimization should be performed
-  bool b_nonlin_opt{ true };
-
-  /// norm of step ( theta(k+1) = theta(k) + zeta(i)*d_theta )
-  Eigen::VectorXd step_vec{ Eigen::VectorXd::LinSpaced(10, 1, 100) };
-
-  /// stopping condition for norm of step
-  double step_cond{ 1e-4 };
-
-  /// stopping condition for residual
-  double res_cond{ 1e-2 };
-
-  /// stopping condition for maximum number of iterations
-  uint max_iter{ 100000 };
-
-  // GET INFO ================================================================
-
-  /// get initialization method
-  inline std::string InitMethod()
-  {
-    switch (init_method)
-    {
-      case InitMethod::SINGLE:
-        return "InitMethod::SINGLE";
-      case InitMethod::DOUBLE:
-        return "InitMethod::DOUBLE";
-    }
-  }
-
-  /// get initialization variables
-  inline std::string InitVariables()
-  {
-    switch (init_variables)
-    {
-      case InitVariables::NO_BIAS:
-        return "InitVariables::NO_BIAS";
-      case InitVariables::CONST_BIAS:
-        return "InitVariables::CONST_BIAS";
-    }
-  }
 
 };  // struct UwbInitOptions
 }  // namespace uwb_init

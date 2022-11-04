@@ -27,8 +27,7 @@ using namespace uwb_init;
 int main()
 {
   // Test initialization
-  UwbInitOptions options;
-  UwbInitializer uwbInit(options);
+  UwbInitializer uwbInit;
 
   Eigen::Vector3d pos1(-0.693060316437549, 1.01533101774554, 5.18688703603644);
   Eigen::Vector3d pos2(1.45382231308303, -1.16674301765261, 4.76922688330564);
@@ -137,7 +136,7 @@ int main()
   /// Real values:
   /// Anchor[1]: p_AinG = 0, 0, 0
   /// Anchor[2]: p_AinG = -1, 3.50000000000000, 1.50000000000000
-  /// Beta = 1.002
+  /// Beta = 1.02
   /// Gamma = 0.5
   /// Measurement noise = 0.1
   /// Position noise = 0.03

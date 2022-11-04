@@ -22,14 +22,14 @@
 
 namespace uwb_init
 {
-UwbInitializer::UwbInitializer(UwbInitOptions& params, const LoggerLevel& level)
-  : logger_(std::make_shared<Logger>(level)), params_(params)
+UwbInitializer::UwbInitializer(const LoggerLevel& level)
+  : logger_(std::make_shared<Logger>(level))
 {
   // Bind LS-problem initialization function based on selected method and model variables
-  switch (params_.init_method)
+  switch (init_params_.init_method)
   {
     case UwbInitOptions::InitMethod::SINGLE:
-      switch (params_.init_variables)
+      switch (init_params_.init_variables)
       {
         case UwbInitOptions::InitVariables::NO_BIAS:
           ls_problem = std::bind(&UwbInitializer::ls_single_no_bias, this, std::placeholders::_1, std::placeholders::_2,
@@ -44,7 +44,7 @@ UwbInitializer::UwbInitializer(UwbInitOptions& params, const LoggerLevel& level)
       break;
 
     case UwbInitOptions::InitMethod::DOUBLE:
-      switch (params_.init_variables)
+      switch (init_params_.init_variables)
       {
         case UwbInitOptions::InitVariables::NO_BIAS:
           ls_problem = std::bind(&UwbInitializer::ls_double_no_bias, this, std::placeholders::_1, std::placeholders::_2,
@@ -60,8 +60,106 @@ UwbInitializer::UwbInitializer(UwbInitOptions& params, const LoggerLevel& level)
   }
 
   // Logging
-  logger_->info("UwbInitializer: " + params_.InitMethod());
-  logger_->info("UwbInitializer: " + params_.InitVariables());
+  logger_->info("UwbInitializer: " + get_init_method());
+  logger_->info("UwbInitializer: " + get_init_variables());
+}
+
+UwbInitializer::UwbInitializer(const UwbInitOptions init_params, const LoggerLevel& level)
+  : logger_(std::make_shared<Logger>(level)), init_params_(init_params)
+{
+  // Bind LS-problem initialization function based on selected method and model variables
+  switch (init_params_.init_method)
+  {
+    case UwbInitOptions::InitMethod::SINGLE:
+      switch (init_params_.init_variables)
+      {
+        case UwbInitOptions::InitVariables::NO_BIAS:
+          ls_problem = std::bind(&UwbInitializer::ls_single_no_bias, this, std::placeholders::_1, std::placeholders::_2,
+                                 std::placeholders::_3, std::placeholders::_4);
+          break;
+
+        case UwbInitOptions::InitVariables::CONST_BIAS:
+          ls_problem = std::bind(&UwbInitializer::ls_single_const_bias, this, std::placeholders::_1,
+                                 std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
+          break;
+      }
+      break;
+
+    case UwbInitOptions::InitMethod::DOUBLE:
+      switch (init_params_.init_variables)
+      {
+        case UwbInitOptions::InitVariables::NO_BIAS:
+          ls_problem = std::bind(&UwbInitializer::ls_double_no_bias, this, std::placeholders::_1, std::placeholders::_2,
+                                 std::placeholders::_3, std::placeholders::_4);
+          break;
+
+        case UwbInitOptions::InitVariables::CONST_BIAS:
+          ls_problem = std::bind(&UwbInitializer::ls_double_const_bias, this, std::placeholders::_1,
+                                 std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
+          break;
+      }
+      break;
+  }
+
+  // Logging
+  logger_->info("UwbInitializer: " + get_init_method());
+  logger_->info("UwbInitializer: " + get_init_variables());
+}
+
+void UwbInitializer::set_init_method_single()
+{
+  init_params_.init_method = UwbInitOptions::InitMethod::SINGLE;
+
+  // Logging
+  logger_->info("UwbInitializer: " + get_init_method());
+}
+
+void UwbInitializer::set_init_method_double()
+{
+  init_params_.init_method = UwbInitOptions::InitMethod::DOUBLE;
+
+  // Logging
+  logger_->info("UwbInitializer: " + get_init_method());
+}
+
+void UwbInitializer::set_init_unbiased()
+{
+  init_params_.init_variables = UwbInitOptions::InitVariables::NO_BIAS;
+
+  // Logging
+  logger_->info("UwbInitializer: " + get_init_variables());
+}
+
+void UwbInitializer::set_init_const_bias()
+{
+  init_params_.init_variables = UwbInitOptions::InitVariables::CONST_BIAS;
+
+  // Logging
+  logger_->info("UwbInitializer: " + get_init_variables());
+}
+
+std::string const UwbInitializer::get_init_method() const
+{
+  switch (init_params_.init_method)
+  {
+    case UwbInitOptions::InitMethod::SINGLE:
+      return "InitMethod::SINGLE";
+    case UwbInitOptions::InitMethod::DOUBLE:
+      return "InitMethod::DOUBLE";
+  }
+  return " ";
+}
+
+std::string const UwbInitializer::get_init_variables() const
+{
+  switch (init_params_.init_variables)
+  {
+    case UwbInitOptions::InitVariables::NO_BIAS:
+      return "InitVariables::NO_BIAS";
+    case UwbInitOptions::InitVariables::CONST_BIAS:
+      return "InitVariables::CONST_BIAS";
+  }
+  return " ";
 }
 
 void UwbInitializer::clear_buffers()
@@ -293,7 +391,7 @@ bool UwbInitializer::solve_ls(const uint& anchor_id)
   double const_bias = 0.0;
 
   // If constant bias was estimated assign the value
-  if (params_.init_variables == UwbInitOptions::InitVariables::CONST_BIAS)
+  if (init_params_.init_variables == UwbInitOptions::InitVariables::CONST_BIAS)
   {
     const_bias = lsSolution(3);
   }
@@ -302,6 +400,12 @@ bool UwbInitializer::solve_ls(const uint& anchor_id)
   // if A_ = U*S*V' then (A_'*A_)^-1 = V*S^-1*S^-1*V' (see properties of SVD)
   Eigen::MatrixXd cov = svd.matrixV() * svd.singularValues().asDiagonal().inverse() *
                          svd.singularValues().asDiagonal().inverse() * svd.matrixV().transpose();
+
+  // If covariance matrix is not semi-positive-definite return
+  if (!isSPD(cov))
+  {
+    return false;
+  }
 
   // Initialize anchor and solution
   UwbAnchor new_anchor(anchor_id, p_AinG);
@@ -320,7 +424,7 @@ bool UwbInitializer::solve_nls(const uint& anchor_id)
   theta << ls_sols_.at(anchor_id).anchor_.p_AinG_, 1.0, ls_sols_.at(anchor_id).gamma_;
 
   // Step norm vector
-  Eigen::VectorXd step_vec = params_.step_vec;
+  Eigen::VectorXd step_vec = nls_params_.step_vec;
 
   // Data vectors initialization
   Eigen::VectorXd uwb_vec = Eigen::VectorXd::Zero(uwb_data_buffer_.at(anchor_id).size());
@@ -344,7 +448,7 @@ bool UwbInitializer::solve_nls(const uint& anchor_id)
   }
 
   // Non-linear Least Squares
-  for (uint i = 0; i < params_.max_iter; ++i)
+  for (uint i = 0; i < nls_params_.max_iter; ++i)
   {
     // Jacobian and residual initialization
     Eigen::MatrixXd J = Eigen::MatrixXd::Zero(uwb_vec.size(), 5);
@@ -407,27 +511,33 @@ bool UwbInitializer::solve_nls(const uint& anchor_id)
     }
 
     // Norm of step stopping condition
-    if (step_vec(step_idx) < params_.step_cond)
+    if (step_vec(step_idx) < nls_params_.step_cond)
     {
       logger_->info("Anchor[" + std::to_string(anchor_id) + "]: Step norm is less than " +
-                    std::to_string(params_.step_cond));
+                    std::to_string(nls_params_.step_cond));
       break;
     }
 
     // Residual stopping condition
-    if (res_vec(step_idx) < params_.res_cond)
+    if (res_vec(step_idx) < nls_params_.res_cond)
     {
       logger_->info("Anchor[" + std::to_string(anchor_id) + "]: Residual is less than " +
-                    std::to_string(params_.res_cond));
+                    std::to_string(nls_params_.res_cond));
       break;
     }
 
     // Check if maximum number of iteration reached
-    if (i == (params_.max_iter - 1))
+    if (i == (nls_params_.max_iter - 1))
     {
       logger_->warn("Anchor[" + std::to_string(anchor_id) + "]: Maximum number of iterations reached (" +
-                    std::to_string(params_.max_iter) + ")");
+                    std::to_string(nls_params_.max_iter) + ")");
     }
+  }
+
+  // If covariance matrix is not semi-positive-definite return
+  if (!isSPD(cov))
+  {
+    return false;
   }
 
   // Initialize anchor and solution
@@ -503,14 +613,14 @@ bool UwbInitializer::ls_double_const_bias(const TimedBuffer<UwbData>& uwb_data, 
 
   // Find pivot index (minimize weight uwb_dist^2*sigma_d + p_UinG'*sigma_p*p_UinG)
   uint pivot_idx = 0;
-  double weight_pivot = (std::pow(uwb_data[pivot_idx].second.distance_, 2) * params_.sigma_meas +
+  double weight_pivot = (std::pow(uwb_data[pivot_idx].second.distance_, 2) * ls_params_.sigma_meas +
                     p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first).transpose() *
-                    Eigen::Matrix3d::Identity() * params_.sigma_pos * p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first));
+                    Eigen::Matrix3d::Identity() * ls_params_.sigma_pos * p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first));
   for (uint i = 1; i < uwb_data.size(); ++i)
   {
-    double weight_i = (std::pow(uwb_data[i].second.distance_, 2) * params_.sigma_meas +
+    double weight_i = (std::pow(uwb_data[i].second.distance_, 2) * ls_params_.sigma_meas +
                       p_UinG_buffer.get_at_timestamp(uwb_data[i].first).transpose() *
-                      Eigen::Matrix3d::Identity() * params_.sigma_pos * p_UinG_buffer.get_at_timestamp(uwb_data[i].first));
+                      Eigen::Matrix3d::Identity() * ls_params_.sigma_pos * p_UinG_buffer.get_at_timestamp(uwb_data[i].first));
     if (weight_i < weight_pivot)
     {
       pivot_idx = i;
@@ -542,8 +652,8 @@ bool UwbInitializer::ls_double_const_bias(const TimedBuffer<UwbData>& uwb_data, 
     b(j) = 0.5 * (std::pow(uwb_data[i].second.distance_, 2) - std::pow(uwb_pivot, 2) -
                               (std::pow(p_UinG.norm(), 2) - std::pow(p_UinG_pivot.norm(), 2)));
 
-    s(j) = std::pow(uwb_data[i].second.distance_, 2) * params_.sigma_meas +
-            p_UinG.transpose() * Eigen::Matrix3d::Identity() * params_.sigma_pos * p_UinG + weight_pivot;
+    s(j) = std::pow(uwb_data[i].second.distance_, 2) * ls_params_.sigma_meas +
+            p_UinG.transpose() * Eigen::Matrix3d::Identity() * ls_params_.sigma_pos * p_UinG + weight_pivot;
 
     // Increment row index
     j += 1;
@@ -565,14 +675,14 @@ bool UwbInitializer::ls_double_no_bias(const TimedBuffer<UwbData>& uwb_data, Eig
 
   // Find pivot index (minimize weight uwb_dist^2*sigma_d + p_UinG'*sigma_p*p_UinG)
   uint pivot_idx = 0;
-  double weight_pivot = (std::pow(uwb_data[pivot_idx].second.distance_, 2) * params_.sigma_meas +
+  double weight_pivot = (std::pow(uwb_data[pivot_idx].second.distance_, 2) * ls_params_.sigma_meas +
                     p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first).transpose() *
-                    Eigen::Matrix3d::Identity() * params_.sigma_pos * p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first));
+                    Eigen::Matrix3d::Identity() * ls_params_.sigma_pos * p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first));
   for (uint i = 1; i < uwb_data.size(); ++i)
   {
-    double weight_i = (std::pow(uwb_data[i].second.distance_, 2) * params_.sigma_meas +
+    double weight_i = (std::pow(uwb_data[i].second.distance_, 2) * ls_params_.sigma_meas +
                       p_UinG_buffer.get_at_timestamp(uwb_data[i].first).transpose() *
-                      Eigen::Matrix3d::Identity() * params_.sigma_pos * p_UinG_buffer.get_at_timestamp(uwb_data[i].first));
+                      Eigen::Matrix3d::Identity() * ls_params_.sigma_pos * p_UinG_buffer.get_at_timestamp(uwb_data[i].first));
     if (weight_i < weight_pivot)
     {
       pivot_idx = i;
@@ -602,8 +712,8 @@ bool UwbInitializer::ls_double_no_bias(const TimedBuffer<UwbData>& uwb_data, Eig
 
     b(j) = 0.5 * (std::pow(uwb_data[i].second.distance_, 2) - std::pow(uwb_pivot, 2) -
                               (std::pow(p_UinG.norm(), 2) - std::pow(p_UinG_pivot.norm(), 2)));
-    s(j) = std::pow(uwb_data[i].second.distance_, 2) * params_.sigma_meas +
-            p_UinG.transpose() * params_.sigma_pos * Eigen::Matrix3d::Identity() * p_UinG + weight_pivot;
+    s(j) = std::pow(uwb_data[i].second.distance_, 2) * ls_params_.sigma_meas +
+            p_UinG.transpose() * ls_params_.sigma_pos * Eigen::Matrix3d::Identity() * p_UinG + weight_pivot;
 
     // Increment row index
     j += 1;

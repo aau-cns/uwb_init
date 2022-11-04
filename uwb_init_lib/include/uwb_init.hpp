@@ -28,6 +28,8 @@
 
 #include "logger/logger.hpp"
 #include "options/uwb_init_options.hpp"
+#include "options/ls_solver_options.hpp"
+#include "options/nls_solver_options.hpp"
 #include "utils/data_structs.hpp"
 
 namespace uwb_init
@@ -43,7 +45,22 @@ public:
   /// \brief UwbInitializer default constructor
   /// \param params parameter/options used for UWB initialization
   ///
-  UwbInitializer(UwbInitOptions& params, const LoggerLevel& level = LoggerLevel::FULL);
+  UwbInitializer(const LoggerLevel& level = LoggerLevel::FULL);
+  UwbInitializer(const UwbInitOptions init_params_, const LoggerLevel& level = LoggerLevel::FULL);
+
+  ///
+  /// \brief set_option
+  ///
+  void set_init_method_single();
+  void set_init_method_double();
+  void set_init_unbiased();
+  void set_init_const_bias();
+
+  ///
+  /// \brief get_option
+  ///
+  std::string const get_init_method() const;
+  std::string const get_init_variables() const;
 
   ///
   /// \brief clear clears all the buffers
@@ -59,8 +76,6 @@ public:
   /// \brief feed_uwb stores incoming UWB (valid) readings
   /// \param uwb_measurements UwbData vector of measurements
   ///
-  /// \todo allow feeding of old(er) measurements
-  ///
   void feed_uwb(const double timestamp, const std::vector<UwbData> uwb_measurements);  
   void feed_uwb(const double timestamp, const UwbData uwb_measurement);
 
@@ -68,8 +83,6 @@ public:
   /// \brief feed_pose stores incoming positions of the UAV in the global frame
   /// \param timestamp timestamp of pose
   /// \param p_UinG position to add to buffer
-  ///
-  /// \todo allow feeding of old(er) measurements
   ///
   void feed_pose(const double timestamp, const Eigen::Vector3d p_UinG);
 
@@ -100,7 +113,9 @@ public:
 
 private:
   // Initializer parameters
-  UwbInitOptions params_;
+  UwbInitOptions init_params_;
+  LsSolverOptions ls_params_;
+  NlsSolverOptions nls_params_;
 
   // Anchor and measurement handling
   PositionBuffer p_UinG_buffer;    //!< buffer of UWB module positions in global frame
