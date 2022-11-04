@@ -70,13 +70,13 @@ bool NlsSolver::solve_nls(const TimedBuffer<UwbData>& uwb_data, const PositionBu
     for (uint j = 0; j < uwb_vec.size(); ++j)
     {
       // Jacobian [df/dp_AinG, df/dbeta, df/dgamma]
-      J.row(j) << theta(3) * (theta(0) - pose_vec(j, 0)) / (theta.head(3) - pose_vec.row(j).transpose()).norm(),
-              theta(3) * (theta(1) - pose_vec(j, 1)) / (theta.head(3) - pose_vec.row(j).transpose()).norm(),
-              theta(3) * (theta(2) - pose_vec(j, 2)) / (theta.head(3) - pose_vec.row(j).transpose()).norm(),
-              (theta.head(3) - pose_vec.row(j).transpose()).norm(),
+      J.row(j) << theta(3) * (theta(0) - pose_vec(j, 0)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
+              theta(3) * (theta(1) - pose_vec(j, 1)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
+              theta(3) * (theta(2) - pose_vec(j, 2)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
+              (theta.head(3).transpose() - pose_vec.row(j)).norm(),
               1;
       // Residual res = y - f(theta) =  uwb_meas - (beta * ||p_AinG - p_UinG|| + gamma)
-      res(j) = uwb_vec(j) - (theta(3) * (theta.head(3) - pose_vec.row(j).transpose()).norm() + theta(4));
+      res(j) = uwb_vec(j) - (theta(3) * (theta.head(3).transpose() - pose_vec.row(j)).norm() + theta(4));
     }
 
     // Calculate Moore-Penrose Pseudo-Inverse of matrix J
@@ -103,7 +103,7 @@ bool NlsSolver::solve_nls(const TimedBuffer<UwbData>& uwb_data, const PositionBu
       Eigen::VectorXd theta_new = theta + step_vec(j) * d_theta;
       for (uint k = 0; k < uwb_vec.size(); ++k)
       {
-        res_vec(j) += std::pow(uwb_vec(k) - (theta_new(3) * (theta_new.head(3) - pose_vec.row(j).transpose()).norm() + theta(4)), 2);
+        res_vec(j) += std::pow(uwb_vec(k) - (theta_new(3) * (theta_new.head(3).transpose() - pose_vec.row(j)).norm() + theta(4)), 2);
       }
       res_vec(j) /= uwb_vec.size();
     }
