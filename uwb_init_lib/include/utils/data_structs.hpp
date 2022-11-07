@@ -68,7 +68,7 @@ struct LSSolution
   LSSolution(const UwbAnchor& anchor, const double& gamma, const Eigen::MatrixXd& cov) : anchor_(anchor), gamma_(gamma)
   {
     // Check if cov is either 3x3 or 4x4 and if it is semi positive definite
-    if (!(((cov.rows() == 3 && cov.cols() == 3) || (cov.rows() == 4 && cov.cols() == 4)) && isSPD(cov)))
+    if (!(cov.rows() == cov.cols() && cov.rows() <= 5 && isSPD(cov)))
     {
       throw std::invalid_argument("LSSolution: Invalid covariance");
     }
