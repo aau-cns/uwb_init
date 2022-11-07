@@ -25,65 +25,73 @@ namespace uwb_init
 UwbInitializer::UwbInitializer(const LoggerLevel& level)
   : logger_(std::make_shared<Logger>(level))
 {
+  // Logging
+  logger_->info("UwbInitializer: " + get_init_method());
+  logger_->info("UwbInitializer: " + get_init_variables());
+
   // Initialize least squares solver
   ls_solver_ = std::make_shared<LsSolver>(logger_, init_params_);
 
   // Initialize nonlinear least squares solver
   nls_solver_ = std::make_shared<NlsSolver>(logger_);
-
-  // Logging
-  logger_->info("UwbInitializer: " + get_init_method());
-  logger_->info("UwbInitializer: " + get_init_variables());
 }
 
 UwbInitializer::UwbInitializer(const UwbInitOptions init_params, const LoggerLevel& level)
   : logger_(std::make_shared<Logger>(level)), init_params_(init_params)
 {
+  // Logging
+  logger_->info("UwbInitializer: " + get_init_method());
+  logger_->info("UwbInitializer: " + get_init_variables());
+
   // Initialize least squares solver
   ls_solver_ = std::make_shared<LsSolver>(logger_, init_params_);
 
   // Initialize nonlinear least squares solver
   nls_solver_ = std::make_shared<NlsSolver>(logger_);
-
-  // Logging
-  logger_->info("UwbInitializer: " + get_init_method());
-  logger_->info("UwbInitializer: " + get_init_variables());
 }
 
 void UwbInitializer::set_init_method_single()
 {
   init_params_.init_method = UwbInitOptions::InitMethod::SINGLE;
-  ls_solver_->configure(init_params_);
 
   // Logging
   logger_->info("UwbInitializer: " + get_init_method());
+
+  // Configure Least Squares Solver
+  ls_solver_->configure(init_params_);
 }
 
 void UwbInitializer::set_init_method_double()
 {
   init_params_.init_method = UwbInitOptions::InitMethod::DOUBLE;
-  ls_solver_->configure(init_params_);
 
   // Logging
   logger_->info("UwbInitializer: " + get_init_method());
+
+  // Configure Least Squares Solver
+  ls_solver_->configure(init_params_);
 }
 
 void UwbInitializer::set_init_unbiased()
 {
   init_params_.init_variables = UwbInitOptions::InitVariables::NO_BIAS;
-  ls_solver_->configure(init_params_);
 
   // Logging
   logger_->info("UwbInitializer: " + get_init_variables());
+
+  // Configure Least Squares Solver
+  ls_solver_->configure(init_params_);
 }
 
 void UwbInitializer::set_init_const_bias()
 {
   init_params_.init_variables = UwbInitOptions::InitVariables::CONST_BIAS;
-  ls_solver_->configure(init_params_);
 
   // Logging
   logger_->info("UwbInitializer: " + get_init_variables());
+
+  // Configure Least Squares Solver
+  ls_solver_->configure(init_params_);
 }
 
 std::string const UwbInitializer::get_init_method() const
@@ -108,6 +116,16 @@ std::string const UwbInitializer::get_init_variables() const
       return "InitVariables::CONST_BIAS";
   }
   return " ";
+}
+
+LSSolutions const UwbInitializer::get_ls_solutions() const
+{
+  return ls_sols_;
+}
+
+NLSSolutions const UwbInitializer::get_nls_solutions() const
+{
+  return nls_sols_;
 }
 
 void UwbInitializer::clear_buffers()
@@ -292,11 +310,14 @@ bool UwbInitializer::refine_anchors()
     }
 
     // Initialize solution and covariance
-    Eigen::VectorXd theta(5);
+    Eigen::VectorXd theta(5);    
     Eigen::MatrixXd cov;
 
+    // Theta0 (p_AinG, gamma, beta)
+    theta << ls_sol.second.anchor_.p_AinG_, 1.0, ls_sol.second.gamma_;
+
     // Perform nonlinear optimization
-    if (nls_solver_->solve_nls(uwb_data_buffer_.at(ls_sol.first), p_UinG_buffer_, ls_sol.second, theta, cov))
+    if (nls_solver_->solve_nls(uwb_data_buffer_.at(ls_sol.first), p_UinG_buffer_, theta, cov))
     {
       // Initialize anchor and solution
       UwbAnchor new_anchor(ls_sol.first, theta.head(3));

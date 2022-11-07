@@ -35,7 +35,7 @@ public:
 
     // Least Squares solver
     bool solve_nls(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer,
-                   const LSSolution& ls_sol, Eigen::VectorXd& nlsSolution, Eigen::MatrixXd& cov);
+                   Eigen::VectorXd& theta, Eigen::MatrixXd& cov);
 
 private:
     /// Shared pointer to logger

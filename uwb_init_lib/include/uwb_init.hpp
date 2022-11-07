@@ -64,6 +64,12 @@ public:
   std::string const get_init_variables() const;
 
   ///
+  /// \brief get_solutions
+  ///
+  LSSolutions const get_ls_solutions() const;
+  NLSSolutions const get_nls_solutions() const;
+
+  ///
   /// \brief clears all the data buffers
   ///
   void clear_buffers();

@@ -31,11 +31,8 @@ NlsSolver::NlsSolver(const std::shared_ptr<Logger> logger) : logger_(std::move(l
 
 
 bool NlsSolver::solve_nls(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer,
-                          const LSSolution& ls_sol, Eigen::VectorXd& theta, Eigen::MatrixXd& cov)
+                          Eigen::VectorXd& theta, Eigen::MatrixXd& cov)
 {
-  // Parameter vector (p_AinG, gamma, beta)
-  theta << ls_sol.anchor_.p_AinG_, 1.0, ls_sol.gamma_;
-
   // Step norm vector
   Eigen::VectorXd step_vec = nls_params_.step_vec;
 
@@ -103,7 +100,7 @@ bool NlsSolver::solve_nls(const TimedBuffer<UwbData>& uwb_data, const PositionBu
       Eigen::VectorXd theta_new = theta + step_vec(j) * d_theta;
       for (uint k = 0; k < uwb_vec.size(); ++k)
       {
-        res_vec(j) += std::pow(uwb_vec(k) - (theta_new(3) * (theta_new.head(3).transpose() - pose_vec.row(j)).norm() + theta(4)), 2);
+        res_vec(j) += std::pow(uwb_vec(k) - (theta_new(3) * (theta_new.head(3).transpose() - pose_vec.row(k)).norm() + theta_new(4)), 2);
       }
       res_vec(j) /= uwb_vec.size();
     }
