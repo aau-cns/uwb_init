@@ -69,8 +69,8 @@ list(
 list(
     APPEND lib_sources
     source/uwb_init.cpp
-    source/utils/ls_solver.cpp
-    source/utils/nls_solver.cpp
+    source/solvers/linear/ls_solver.cpp
+    source/solvers/nonlinear/nls_solver.cpp
 )
 
 ## Declare a C++ library

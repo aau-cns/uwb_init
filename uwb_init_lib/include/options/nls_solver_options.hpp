@@ -1,4 +1,5 @@
-// Copyright (C) 2021 Martin Scheiber, Control of Networked Systems, University of Klagenfurt, Austria.
+// Copyright (C) 2022 Giulio Delamar, Control of Networked Systems,
+// University of Klagenfurt, Austria.
 //
 // All rights reserved.
 //

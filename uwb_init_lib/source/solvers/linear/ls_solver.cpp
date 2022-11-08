@@ -1,75 +1,74 @@
-﻿// // Copyright (C) 2021 Giulio Delama, Alessandro Fornasier
-// // Control of Networked Systems, Universitaet Klagenfurt, Austria
-// //
-// // All rights reserved.
-// //
-// // This software is licensed under the terms of the BSD-2-Clause-License with
-// // no commercial use allowed, the full terms of which are made available
-// // in the LICENSE file. No license in patents is granted.
-// //
-// // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-// // THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-// // DEALINGS IN THE SOFTWARE.
-// //
-// // You can contact the authors at <alessandro.fornasier@aau.at> 
-// // and <giulio.delama@aau.at>
+﻿// Copyright (C) 2021 Giulio Delama, Alessandro Fornasier
+// Control of Networked Systems, Universitaet Klagenfurt, Austria
+//
+// All rights reserved.
+//
+// This software is licensed under the terms of the BSD-2-Clause-License with
+// no commercial use allowed, the full terms of which are made available
+// in the LICENSE file. No license in patents is granted.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+// THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+// DEALINGS IN THE SOFTWARE.
+//
+// You can contact the authors at <alessandro.fornasier@aau.at>
+// and <giulio.delama@aau.at>
 
-#include "utils/ls_solver.hpp"
+#include "solvers/linear/ls_solver.hpp"
 
 namespace uwb_init
 {
-
 LsSolver::LsSolver(const std::shared_ptr<Logger> logger, const UwbInitOptions& options) : logger_(std::move(logger))
 {
-    // Configure solver
-    LsSolver::configure(options);
+  // Configure solver
+  LsSolver::configure(options);
 
-    // Logging
-    logger_->info("LsSolver: Initialized");
+  // Logging
+  logger_->info("LsSolver: Initialized");
 }
 
-void LsSolver::configure(const UwbInitOptions &options)
+void LsSolver::configure(const UwbInitOptions& options)
 {
-    // Bind LS-problem initialization function based on selected method and model variables
-    switch (options.init_method)
-    {
-      case UwbInitOptions::InitMethod::SINGLE:
-        switch (options.init_variables)
-        {
-          case UwbInitOptions::InitVariables::NO_BIAS:
-            ls_problem = std::bind(&LsSolver::ls_single_no_bias, this, std::placeholders::_1, std::placeholders::_2,
-                                   std::placeholders::_3, std::placeholders::_4, std::placeholders::_5);
-            break;
+  // Bind LS-problem initialization function based on selected method and model variables
+  switch (options.init_method_)
+  {
+    case InitMethod::SINGLE:
+      switch (options.bias_type_)
+      {
+        case BiasType::NO_BIAS:
+          ls_problem = std::bind(&LsSolver::ls_single_no_bias, this, std::placeholders::_1, std::placeholders::_2,
+                                 std::placeholders::_3, std::placeholders::_4, std::placeholders::_5);
+          break;
 
-          case UwbInitOptions::InitVariables::CONST_BIAS:
-            ls_problem = std::bind(&LsSolver::ls_single_const_bias, this, std::placeholders::_1,
-                                   std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5);
-            break;
-        }
-        break;
+        case BiasType::CONST_BIAS:
+          ls_problem = std::bind(&LsSolver::ls_single_const_bias, this, std::placeholders::_1, std::placeholders::_2,
+                                 std::placeholders::_3, std::placeholders::_4, std::placeholders::_5);
+          break;
+      }
+      break;
 
-      case UwbInitOptions::InitMethod::DOUBLE:
-        switch (options.init_variables)
-        {
-          case UwbInitOptions::InitVariables::NO_BIAS:
-            ls_problem = std::bind(&LsSolver::ls_double_no_bias, this, std::placeholders::_1, std::placeholders::_2,
-                                   std::placeholders::_3, std::placeholders::_4, std::placeholders::_5);
-            break;
+    case InitMethod::DOUBLE:
+      switch (options.bias_type_)
+      {
+        case BiasType::NO_BIAS:
+          ls_problem = std::bind(&LsSolver::ls_double_no_bias, this, std::placeholders::_1, std::placeholders::_2,
+                                 std::placeholders::_3, std::placeholders::_4, std::placeholders::_5);
+          break;
 
-          case UwbInitOptions::InitVariables::CONST_BIAS:
-            ls_problem = std::bind(&LsSolver::ls_double_const_bias, this, std::placeholders::_1,
-                                   std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, std::placeholders::_5);
-            break;
-        }
-        break;
-    }
+        case BiasType::CONST_BIAS:
+          ls_problem = std::bind(&LsSolver::ls_double_const_bias, this, std::placeholders::_1, std::placeholders::_2,
+                                 std::placeholders::_3, std::placeholders::_4, std::placeholders::_5);
+          break;
+      }
+      break;
+  }
 
-    // Logging
-    logger_->info("LsSolver: Configured");
+  // Logging
+  logger_->info("LsSolver: Configured");
 }
 
 bool LsSolver::solve_ls(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer,
@@ -83,7 +82,7 @@ bool LsSolver::solve_ls(const TimedBuffer<UwbData>& uwb_data, const PositionBuff
   // Initialize least squares problem
   if (!(ls_problem(uwb_data, p_UinG_buffer, coeffs, meas, sigma)))
   {
-    logger_->err("LsSolver: Least Squares problem can not be initialized");
+    logger_->err("LsSolver: Cannot build Least Squares problem");
     return false;
   }
 
@@ -117,8 +116,8 @@ bool LsSolver::solve_ls(const TimedBuffer<UwbData>& uwb_data, const PositionBuff
 
   // Compute estimation Covariance (Var(X) = (A'*sigma^-1*A)^-1 = ((W*A)'*(W*A))^-1) = (A_'*A_)^-1)
   // if A_ = U*S*V' then (A_'*A_)^-1 = V*S^-1*S^-1*V' (see properties of SVD)
-  cov = svd.matrixV() * svd.singularValues().asDiagonal().inverse() *
-                         svd.singularValues().asDiagonal().inverse() * svd.matrixV().transpose();
+  cov = svd.matrixV() * svd.singularValues().asDiagonal().inverse() * svd.singularValues().asDiagonal().inverse() *
+        svd.matrixV().transpose();
 
   // If covariance matrix is not semi-positive-definite return
   if (!isSPD(cov))
@@ -129,7 +128,6 @@ bool LsSolver::solve_ls(const TimedBuffer<UwbData>& uwb_data, const PositionBuff
 
   return true;
 }
-
 
 bool LsSolver::ls_single_const_bias(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer,
                                     Eigen::MatrixXd& A, Eigen::VectorXd& b, Eigen::VectorXd& s)
@@ -191,20 +189,21 @@ bool LsSolver::ls_double_const_bias(const TimedBuffer<UwbData>& uwb_data, const 
   // [p_AinG_x, p_AinG_y, p_AinG_z,  k ]
 
   // Coefficient matrix and measurement vector initialization
-  A = Eigen::MatrixXd::Zero(uwb_data.size()-1, 4);
+  A = Eigen::MatrixXd::Zero(uwb_data.size() - 1, 4);
   b = Eigen::VectorXd::Zero(A.rows());
   s = Eigen::VectorXd::Zero(A.rows());
 
   // Find pivot index (minimize weight uwb_dist^2*sigma_d + p_UinG'*sigma_p*p_UinG)
   uint pivot_idx = 0;
-  double weight_pivot = (std::pow(uwb_data[pivot_idx].second.distance_, 2) * ls_params_.sigma_meas +
-                    p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first).transpose() *
-                    Eigen::Matrix3d::Identity() * ls_params_.sigma_pos * p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first));
+  double weight_pivot =
+      (std::pow(uwb_data[pivot_idx].second.distance_, 2) * ls_params_.sigma_meas +
+       p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first).transpose() * Eigen::Matrix3d::Identity() *
+           ls_params_.sigma_pos * p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first));
   for (uint i = 1; i < uwb_data.size(); ++i)
   {
     double weight_i = (std::pow(uwb_data[i].second.distance_, 2) * ls_params_.sigma_meas +
-                      p_UinG_buffer.get_at_timestamp(uwb_data[i].first).transpose() *
-                      Eigen::Matrix3d::Identity() * ls_params_.sigma_pos * p_UinG_buffer.get_at_timestamp(uwb_data[i].first));
+                       p_UinG_buffer.get_at_timestamp(uwb_data[i].first).transpose() * Eigen::Matrix3d::Identity() *
+                           ls_params_.sigma_pos * p_UinG_buffer.get_at_timestamp(uwb_data[i].first));
     if (weight_i < weight_pivot)
     {
       pivot_idx = i;
@@ -234,10 +233,10 @@ bool LsSolver::ls_double_const_bias(const TimedBuffer<UwbData>& uwb_data, const 
         (uwb_data[i].second.distance_ - uwb_pivot);
 
     b(j) = 0.5 * (std::pow(uwb_data[i].second.distance_, 2) - std::pow(uwb_pivot, 2) -
-                              (std::pow(p_UinG.norm(), 2) - std::pow(p_UinG_pivot.norm(), 2)));
+                  (std::pow(p_UinG.norm(), 2) - std::pow(p_UinG_pivot.norm(), 2)));
 
     s(j) = std::pow(uwb_data[i].second.distance_, 2) * ls_params_.sigma_meas +
-            p_UinG.transpose() * Eigen::Matrix3d::Identity() * ls_params_.sigma_pos * p_UinG + weight_pivot;
+           p_UinG.transpose() * Eigen::Matrix3d::Identity() * ls_params_.sigma_pos * p_UinG + weight_pivot;
 
     // Increment row index
     j += 1;
@@ -254,20 +253,21 @@ bool LsSolver::ls_double_no_bias(const TimedBuffer<UwbData>& uwb_data, const Pos
   // [p_AinG_x, p_AinG_y, p_AinG_z]
 
   // Coefficient matrix and measurement vector initialization
-  A = Eigen::MatrixXd::Zero(uwb_data.size()-1, 3);
+  A = Eigen::MatrixXd::Zero(uwb_data.size() - 1, 3);
   b = Eigen::VectorXd::Zero(A.rows());
   s = Eigen::VectorXd::Zero(A.rows());
 
   // Find pivot index (minimize weight uwb_dist^2*sigma_d + p_UinG'*sigma_p*p_UinG)
   uint pivot_idx = 0;
-  double weight_pivot = (std::pow(uwb_data[pivot_idx].second.distance_, 2) * ls_params_.sigma_meas +
-                    p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first).transpose() *
-                    Eigen::Matrix3d::Identity() * ls_params_.sigma_pos * p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first));
+  double weight_pivot =
+      (std::pow(uwb_data[pivot_idx].second.distance_, 2) * ls_params_.sigma_meas +
+       p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first).transpose() * Eigen::Matrix3d::Identity() *
+           ls_params_.sigma_pos * p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first));
   for (uint i = 1; i < uwb_data.size(); ++i)
   {
     double weight_i = (std::pow(uwb_data[i].second.distance_, 2) * ls_params_.sigma_meas +
-                      p_UinG_buffer.get_at_timestamp(uwb_data[i].first).transpose() *
-                      Eigen::Matrix3d::Identity() * ls_params_.sigma_pos * p_UinG_buffer.get_at_timestamp(uwb_data[i].first));
+                       p_UinG_buffer.get_at_timestamp(uwb_data[i].first).transpose() * Eigen::Matrix3d::Identity() *
+                           ls_params_.sigma_pos * p_UinG_buffer.get_at_timestamp(uwb_data[i].first));
     if (weight_i < weight_pivot)
     {
       pivot_idx = i;
@@ -296,9 +296,9 @@ bool LsSolver::ls_double_no_bias(const TimedBuffer<UwbData>& uwb_data, const Pos
     A.row(j) << -(p_UinG.x() - p_UinG_pivot.x()), -(p_UinG.y() - p_UinG_pivot.y()), -(p_UinG.z() - p_UinG_pivot.z());
 
     b(j) = 0.5 * (std::pow(uwb_data[i].second.distance_, 2) - std::pow(uwb_pivot, 2) -
-                              (std::pow(p_UinG.norm(), 2) - std::pow(p_UinG_pivot.norm(), 2)));
+                  (std::pow(p_UinG.norm(), 2) - std::pow(p_UinG_pivot.norm(), 2)));
     s(j) = std::pow(uwb_data[i].second.distance_, 2) * ls_params_.sigma_meas +
-            p_UinG.transpose() * ls_params_.sigma_pos * Eigen::Matrix3d::Identity() * p_UinG + weight_pivot;
+           p_UinG.transpose() * ls_params_.sigma_pos * Eigen::Matrix3d::Identity() * p_UinG + weight_pivot;
 
     // Increment row index
     j += 1;

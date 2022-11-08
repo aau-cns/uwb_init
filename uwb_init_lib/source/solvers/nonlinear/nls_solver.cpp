@@ -1,34 +1,31 @@
-﻿// // Copyright (C) 2021 Giulio Delama, Alessandro Fornasier
-// // Control of Networked Systems, Universitaet Klagenfurt, Austria
-// //
-// // All rights reserved.
-// //
-// // This software is licensed under the terms of the BSD-2-Clause-License with
-// // no commercial use allowed, the full terms of which are made available
-// // in the LICENSE file. No license in patents is granted.
-// //
-// // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-// // THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-// // DEALINGS IN THE SOFTWARE.
-// //
-// // You can contact the authors at <alessandro.fornasier@aau.at> 
-// // and <giulio.delama@aau.at>
+﻿// Copyright (C) 2021 Giulio Delama,
+// Control of Networked Systems, Universitaet Klagenfurt, Austria
+//
+// All rights reserved.
+//
+// This software is licensed under the terms of the BSD-2-Clause-License with
+// no commercial use allowed, the full terms of which are made available
+// in the LICENSE file. No license in patents is granted.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+// THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+// DEALINGS IN THE SOFTWARE.
+//
+// You can contact the authors at <giulio.delama@aau.at>
 
-#include "utils/nls_solver.hpp"
+#include "solvers/nonlinear/nls_solver.hpp"
 
 namespace uwb_init
 {
-
 NlsSolver::NlsSolver(const std::shared_ptr<Logger> logger) : logger_(std::move(logger))
 {
-    // Logging
-    logger_->info("NlsSolver: Initialized");
+  // Logging
+  logger_->info("NlsSolver: Initialized");
 }
-
 
 bool NlsSolver::solve_nls(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer,
                           Eigen::VectorXd& theta, Eigen::MatrixXd& cov)
@@ -68,10 +65,9 @@ bool NlsSolver::solve_nls(const TimedBuffer<UwbData>& uwb_data, const PositionBu
     {
       // Jacobian [df/dp_AinG, df/dbeta, df/dgamma]
       J.row(j) << theta(3) * (theta(0) - pose_vec(j, 0)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
-              theta(3) * (theta(1) - pose_vec(j, 1)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
-              theta(3) * (theta(2) - pose_vec(j, 2)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
-              (theta.head(3).transpose() - pose_vec.row(j)).norm(),
-              1;
+          theta(3) * (theta(1) - pose_vec(j, 1)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
+          theta(3) * (theta(2) - pose_vec(j, 2)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
+          (theta.head(3).transpose() - pose_vec.row(j)).norm(), 1;
       // Residual res = y - f(theta) =  uwb_meas - (beta * ||p_AinG - p_UinG|| + gamma)
       res(j) = uwb_vec(j) - (theta(3) * (theta.head(3).transpose() - pose_vec.row(j)).norm() + theta(4));
     }
@@ -88,8 +84,8 @@ bool NlsSolver::solve_nls(const TimedBuffer<UwbData>& uwb_data, const PositionBu
                              svd.matrixU().adjoint();
 
     // Compute estimation Covariance (Var(X) = (J'*J)^-1) = V*S^-1*S^-1*V' (see properties of SVD)
-    cov = svd.matrixV() * svd.singularValues().asDiagonal().inverse() *
-              svd.singularValues().asDiagonal().inverse() * svd.matrixV().transpose();
+    cov = svd.matrixV() * svd.singularValues().asDiagonal().inverse() * svd.singularValues().asDiagonal().inverse() *
+          svd.matrixV().transpose();
 
     // Compute norm of step
     Eigen::VectorXd d_theta = pinv_J * res;
@@ -100,7 +96,8 @@ bool NlsSolver::solve_nls(const TimedBuffer<UwbData>& uwb_data, const PositionBu
       Eigen::VectorXd theta_new = theta + step_vec(j) * d_theta;
       for (uint k = 0; k < uwb_vec.size(); ++k)
       {
-        res_vec(j) += std::pow(uwb_vec(k) - (theta_new(3) * (theta_new.head(3).transpose() - pose_vec.row(k)).norm() + theta_new(4)), 2);
+        res_vec(j) += std::pow(
+            uwb_vec(k) - (theta_new(3) * (theta_new.head(3).transpose() - pose_vec.row(k)).norm() + theta_new(4)), 2);
       }
       res_vec(j) /= uwb_vec.size();
     }
@@ -121,24 +118,21 @@ bool NlsSolver::solve_nls(const TimedBuffer<UwbData>& uwb_data, const PositionBu
     // Norm of step stopping condition
     if (step_vec(step_idx) < nls_params_.step_cond)
     {
-      logger_->info("NlsSolver: Step norm is less than " +
-                    std::to_string(nls_params_.step_cond));
+      logger_->info("NlsSolver: Step norm is less than " + std::to_string(nls_params_.step_cond));
       break;
     }
 
     // Residual stopping condition
     if (res_vec(step_idx) < nls_params_.res_cond)
     {
-      logger_->info("NlsSolver: Residual is less than " +
-                    std::to_string(nls_params_.res_cond));
+      logger_->info("NlsSolver: Residual is less than " + std::to_string(nls_params_.res_cond));
       break;
     }
 
     // Check if maximum number of iteration reached
     if (i == (nls_params_.max_iter - 1))
     {
-      logger_->warn("NlsSolver: Maximum number of iterations reached (" +
-                    std::to_string(nls_params_.max_iter) + ")");
+      logger_->warn("NlsSolver: Maximum number of iterations reached (" + std::to_string(nls_params_.max_iter) + ")");
     }
   }
 

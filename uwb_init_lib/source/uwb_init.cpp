@@ -1,129 +1,66 @@
-﻿// // Copyright (C) 2021 Martin Scheiber, Alessandro Fornasier
-// // Control of Networked Systems, Universitaet Klagenfurt, Austria
-// //
-// // All rights reserved.
-// //
-// // This software is licensed under the terms of the BSD-2-Clause-License with
-// // no commercial use allowed, the full terms of which are made available
-// // in the LICENSE file. No license in patents is granted.
-// //
-// // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-// // THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-// // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-// // DEALINGS IN THE SOFTWARE.
-// //
-// // You can contact the authors at <martin.scheiber@aau.at>,
-// // <alessandro.fornasier@aau.at> and <giulio.delama@aau.at>
+﻿// Copyright (C) 2021 Giulio Delama, Alessandro Fornasier, Martin Scheiber
+// Control of Networked Systems, Universitaet Klagenfurt, Austria
+//
+// All rights reserved.
+//
+// This software is licensed under the terms of the BSD-2-Clause-License with
+// no commercial use allowed, the full terms of which are made available
+// in the LICENSE file. No license in patents is granted.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+// THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+// DEALINGS IN THE SOFTWARE.
+//
+// You can contact the authors at <giulio.delama@aau.at>,
+// <alessandro.fornasier@aau.at>, and <martin.scheiber@aau.at>
 
 #include "uwb_init.hpp"
 
 namespace uwb_init
 {
-UwbInitializer::UwbInitializer(const LoggerLevel& level)
+UwbInitializer::UwbInitializer(const LoggerLevel& level, const UwbInitOptions& init_params)
   : logger_(std::make_shared<Logger>(level))
+  , init_params_(init_params)
+  , ls_solver_(std::make_shared<LsSolver>(logger_, init_params_))
+  , nls_solver_(std::make_shared<NlsSolver>(logger_))
 {
   // Logging
-  logger_->info("UwbInitializer: " + get_init_method());
-  logger_->info("UwbInitializer: " + get_init_variables());
-
-  // Initialize least squares solver
-  ls_solver_ = std::make_shared<LsSolver>(logger_, init_params_);
-
-  // Initialize nonlinear least squares solver
-  nls_solver_ = std::make_shared<NlsSolver>(logger_);
+  logger_->info("UwbInitializer: " + std::string(InitMethodString(init_params_.init_method_)));
+  logger_->info("UwbInitializer: " + std::string(BiasTypeString(init_params_.bias_type_)));
 }
 
-UwbInitializer::UwbInitializer(const UwbInitOptions init_params, const LoggerLevel& level)
-  : logger_(std::make_shared<Logger>(level)), init_params_(init_params)
+void UwbInitializer::set_init_method(const InitMethod& method)
 {
-  // Logging
-  logger_->info("UwbInitializer: " + get_init_method());
-  logger_->info("UwbInitializer: " + get_init_variables());
-
-  // Initialize least squares solver
-  ls_solver_ = std::make_shared<LsSolver>(logger_, init_params_);
-
-  // Initialize nonlinear least squares solver
-  nls_solver_ = std::make_shared<NlsSolver>(logger_);
-}
-
-void UwbInitializer::set_init_method_single()
-{
-  init_params_.init_method = UwbInitOptions::InitMethod::SINGLE;
+  init_params_.init_method_ = method;
 
   // Logging
-  logger_->info("UwbInitializer: " + get_init_method());
+  logger_->info("UwbInitializer: " + std::string(InitMethodString(init_params_.init_method_)));
 
   // Configure Least Squares Solver
   ls_solver_->configure(init_params_);
 }
 
-void UwbInitializer::set_init_method_double()
+void UwbInitializer::set_bias_type(const BiasType& type)
 {
-  init_params_.init_method = UwbInitOptions::InitMethod::DOUBLE;
+  init_params_.bias_type_ = type;
 
   // Logging
-  logger_->info("UwbInitializer: " + get_init_method());
+  logger_->info("UwbInitializer: " + std::string(BiasTypeString(init_params_.bias_type_)));
 
   // Configure Least Squares Solver
   ls_solver_->configure(init_params_);
 }
 
-void UwbInitializer::set_init_unbiased()
-{
-  init_params_.init_variables = UwbInitOptions::InitVariables::NO_BIAS;
-
-  // Logging
-  logger_->info("UwbInitializer: " + get_init_variables());
-
-  // Configure Least Squares Solver
-  ls_solver_->configure(init_params_);
-}
-
-void UwbInitializer::set_init_const_bias()
-{
-  init_params_.init_variables = UwbInitOptions::InitVariables::CONST_BIAS;
-
-  // Logging
-  logger_->info("UwbInitializer: " + get_init_variables());
-
-  // Configure Least Squares Solver
-  ls_solver_->configure(init_params_);
-}
-
-std::string const UwbInitializer::get_init_method() const
-{
-  switch (init_params_.init_method)
-  {
-    case UwbInitOptions::InitMethod::SINGLE:
-      return "InitMethod::SINGLE";
-    case UwbInitOptions::InitMethod::DOUBLE:
-      return "InitMethod::DOUBLE";
-  }
-  return " ";
-}
-
-std::string const UwbInitializer::get_init_variables() const
-{
-  switch (init_params_.init_variables)
-  {
-    case UwbInitOptions::InitVariables::NO_BIAS:
-      return "InitVariables::NO_BIAS";
-    case UwbInitOptions::InitVariables::CONST_BIAS:
-      return "InitVariables::CONST_BIAS";
-  }
-  return " ";
-}
-
-LSSolutions const UwbInitializer::get_ls_solutions() const
+const LSSolutions& UwbInitializer::get_ls_solutions() const
 {
   return ls_sols_;
 }
 
-NLSSolutions const UwbInitializer::get_nls_solutions() const
+const NLSSolutions& UwbInitializer::get_nls_solutions() const
 {
   return nls_sols_;
 }
@@ -171,14 +108,13 @@ void UwbInitializer::feed_uwb(const double timestamp, const UwbData uwb_measurem
   // Check validity and if measurement is actual bigger than 0.0
   if (uwb_measurement.valid_ && uwb_measurement.distance_ > 0.0)
   {
-      // Push back element to buffer
-      uwb_data_buffer_[uwb_measurement.id_].push_back(timestamp, uwb_measurement);
+    // Push back element to buffer
+    uwb_data_buffer_[uwb_measurement.id_].push_back(timestamp, uwb_measurement);
   }
   else
   {
-      logger_->warn("UwbInitializer::feed_uwb(): DISCARDING measurment " +
-                    std::to_string(uwb_measurement.distance_) + " from anchor " +
-                    std::to_string(uwb_measurement.id_));
+    logger_->warn("UwbInitializer::feed_uwb(): DISCARDING measurment " + std::to_string(uwb_measurement.distance_) +
+                  " from anchor " + std::to_string(uwb_measurement.id_));
   }
 }
 
@@ -217,9 +153,14 @@ bool UwbInitializer::init_anchors()
     if (ls_sols_.contains(uwb_data.first))
     {
       logger_->info("Anchor[" + std::to_string(uwb_data.first) + "]: Already initialized");
-      std::cout << "Anchor[" << uwb_data.first << "]: p_AinG = " << ls_sols_.at(uwb_data.first).p_AinG().transpose() << "\n" << std::endl;
-      std::cout << "Anchor[" << uwb_data.first << "]: covariance =\n" << ls_sols_.at(uwb_data.first).cov_ << "\n" << std::endl;
-      std::cout << "Anchor[" << uwb_data.first << "]: gamma = " << ls_sols_.at(uwb_data.first).gamma_ << "\n" << std::endl;
+      std::cout << "Anchor[" << uwb_data.first << "]: p_AinG = " << ls_sols_.at(uwb_data.first).p_AinG().transpose()
+                << "\n"
+                << std::endl;
+      std::cout << "Anchor[" << uwb_data.first << "]: covariance =\n"
+                << ls_sols_.at(uwb_data.first).cov_ << "\n"
+                << std::endl;
+      std::cout << "Anchor[" << uwb_data.first << "]: gamma = " << ls_sols_.at(uwb_data.first).gamma_ << "\n"
+                << std::endl;
       continue;
     }
 
@@ -235,7 +176,7 @@ bool UwbInitializer::init_anchors()
       double const_bias = 0.0;
 
       // If constant bias was estimated assign the value
-      if (init_params_.init_variables == UwbInitOptions::InitVariables::CONST_BIAS)
+      if (init_params_.bias_type_ == BiasType::CONST_BIAS)
       {
         const_bias = lsSolution(3);
       }
@@ -248,9 +189,14 @@ bool UwbInitializer::init_anchors()
       ls_sols_.emplace(std::make_pair(uwb_data.first, ls_sol));
 
       logger_->info("Anchor[" + std::to_string(uwb_data.first) + "]: Correctly initialized");
-      std::cout << "Anchor[" << uwb_data.first << "]: p_AinG = " << ls_sols_.at(uwb_data.first).p_AinG().transpose() << "\n" << std::endl;
-      std::cout << "Anchor[" << uwb_data.first << "]: covariance =\n" << ls_sols_.at(uwb_data.first).cov_ << "\n" << std::endl;
-      std::cout << "Anchor[" << uwb_data.first << "]: gamma = " << ls_sols_.at(uwb_data.first).gamma_ << "\n" << std::endl;
+      std::cout << "Anchor[" << uwb_data.first << "]: p_AinG = " << ls_sols_.at(uwb_data.first).p_AinG().transpose()
+                << "\n"
+                << std::endl;
+      std::cout << "Anchor[" << uwb_data.first << "]: covariance =\n"
+                << ls_sols_.at(uwb_data.first).cov_ << "\n"
+                << std::endl;
+      std::cout << "Anchor[" << uwb_data.first << "]: gamma = " << ls_sols_.at(uwb_data.first).gamma_ << "\n"
+                << std::endl;
     }
     // Can not initialize
     else
@@ -302,15 +248,19 @@ bool UwbInitializer::refine_anchors()
     if (nls_sols_.contains(ls_sol.first))
     {
       logger_->info("Anchor[" + std::to_string(ls_sol.first) + "]: Already refined");
-      std::cout << "Anchor[" << ls_sol.first << "]: p_AinG = " << nls_sols_.at(ls_sol.first).p_AinG().transpose() << "\n" << std::endl;
-      std::cout << "Anchor[" << ls_sol.first << "]: covariance =\n" << nls_sols_.at(ls_sol.first).cov_ << "\n" << std::endl;
+      std::cout << "Anchor[" << ls_sol.first << "]: p_AinG = " << nls_sols_.at(ls_sol.first).p_AinG().transpose()
+                << "\n"
+                << std::endl;
+      std::cout << "Anchor[" << ls_sol.first << "]: covariance =\n"
+                << nls_sols_.at(ls_sol.first).cov_ << "\n"
+                << std::endl;
       std::cout << "Anchor[" << ls_sol.first << "]: beta = " << nls_sols_.at(ls_sol.first).beta_ << "\n" << std::endl;
       std::cout << "Anchor[" << ls_sol.first << "]: gamma = " << nls_sols_.at(ls_sol.first).gamma_ << "\n" << std::endl;
       continue;
     }
 
     // Initialize solution and covariance
-    Eigen::VectorXd theta(5);    
+    Eigen::VectorXd theta(5);
     Eigen::MatrixXd cov;
 
     // Theta0 (p_AinG, gamma, beta)
@@ -328,8 +278,12 @@ bool UwbInitializer::refine_anchors()
 
       // Refine successful
       logger_->info("Anchor[" + std::to_string(ls_sol.first) + "]: Correctly refined");
-      std::cout << "Anchor[" << ls_sol.first << "]: p_AinG = " << nls_sols_.at(ls_sol.first).p_AinG().transpose() << "\n" << std::endl;
-      std::cout << "Anchor[" << ls_sol.first << "]: covariance =\n" << nls_sols_.at(ls_sol.first).cov_ << "\n" << std::endl;
+      std::cout << "Anchor[" << ls_sol.first << "]: p_AinG = " << nls_sols_.at(ls_sol.first).p_AinG().transpose()
+                << "\n"
+                << std::endl;
+      std::cout << "Anchor[" << ls_sol.first << "]: covariance =\n"
+                << nls_sols_.at(ls_sol.first).cov_ << "\n"
+                << std::endl;
       std::cout << "Anchor[" << ls_sol.first << "]: beta = " << nls_sols_.at(ls_sol.first).beta_ << "\n" << std::endl;
       std::cout << "Anchor[" << ls_sol.first << "]: gamma = " << nls_sols_.at(ls_sol.first).gamma_ << "\n" << std::endl;
     }

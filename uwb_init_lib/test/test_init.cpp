@@ -124,6 +124,12 @@ int main()
   /// Gamma[1] = 0.556469019410618
   /// Gamma[2] = 0.755554156299525
 
+  LSSolutions sol = uwbInit.get_ls_solutions();
+
+  //...
+
+  // sol
+
   uwbInit.refine_anchors();
   /// Matlab results for comparison:
   /// Anchor[1]: p_AinG = -0.0385000400434036, -0.00136077803215360, -0.0332151287418269

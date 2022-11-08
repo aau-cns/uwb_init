@@ -1,4 +1,4 @@
-// Copyright (C) 2021 Martin Scheiber, Alessandro Fornasier, Giulio Delama
+// Copyright (C) 2021 Giulio Delama, Alessandro Fornasier, Martin Scheiber
 // Control of Networked Systems, Universitaet Klagenfurt, Austria
 //
 // All rights reserved.
@@ -15,8 +15,8 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 //
-// You can contact the authors at <martin.scheiber@aau.at>,
-// <alessandro.fornasier@aau.at> and <giulio.delama@aau.at>
+// You can contact the authors at <giulio.delama@aau.at>,
+// <alessandro.fornasier@aau.at>, and <martin.scheiber@aau.at>
 
 #ifndef UWB_INIT_HPP_
 #define UWB_INIT_HPP_
@@ -27,11 +27,11 @@
 #include <map>
 
 #include "logger/logger.hpp"
-#include "options/uwb_init_options.hpp"
 #include "options/nls_solver_options.hpp"
+#include "options/uwb_init_options.hpp"
+#include "solvers/linear/ls_solver.hpp"
+#include "solvers/nonlinear/nls_solver.hpp"
 #include "utils/data_structs.hpp"
-#include "utils/ls_solver.hpp"
-#include "utils/nls_solver.hpp"
 
 namespace uwb_init
 {
@@ -44,30 +44,33 @@ class UwbInitializer
 public:
   ///
   /// \brief UwbInitializer default constructor
-  /// \param params parameter/options used for UWB initialization
+  /// \param level logging level
+  /// \param init_params Initializer options
   ///
-  UwbInitializer(const LoggerLevel& level = LoggerLevel::FULL);
-  UwbInitializer(const UwbInitOptions init_params_, const LoggerLevel& level = LoggerLevel::FULL);
+  UwbInitializer(const LoggerLevel& level = LoggerLevel::FULL, const UwbInitOptions& init_params_ = UwbInitOptions());
 
   ///
-  /// \brief set_option
+  /// \brief Set option
   ///
-  void set_init_method_single();
-  void set_init_method_double();
-  void set_init_unbiased();
-  void set_init_const_bias();
+  void set_bias_type(const BiasType& type);
+  void set_init_method(const InitMethod& method);
 
   ///
-  /// \brief get_option
+  /// \brief Get solution of the leas square formulation of the initialization problem
   ///
-  std::string const get_init_method() const;
-  std::string const get_init_variables() const;
+  /// \return the actual solution of the least square problem as a constant reference
+  /// to LSSOlution.
+  ///
+  const LSSolutions& get_ls_solutions() const;
 
   ///
-  /// \brief get_solutions
+  /// \brief Get solution of the nonlinear least square formulation of the
+  /// initialization problem
   ///
-  LSSolutions const get_ls_solutions() const;
-  NLSSolutions const get_nls_solutions() const;
+  /// \return the actual solution of the least square problem as a constant reference
+  /// to NLSSOlution.
+  ///
+  const NLSSolutions& get_nls_solutions() const;
 
   ///
   /// \brief clears all the data buffers
@@ -80,7 +83,7 @@ public:
   void clear_solutions();
 
   ///
-  /// \brief reset resets the initializer and all its buffers
+  /// \brief reset resets the initializer and clean all its buffers
   ///
   void reset();
 
@@ -88,7 +91,7 @@ public:
   /// \brief feed_uwb stores incoming UWB (valid) readings
   /// \param uwb_measurements UwbData vector of measurements
   ///
-  void feed_uwb(const double timestamp, const std::vector<UwbData> uwb_measurements);  
+  void feed_uwb(const double timestamp, const std::vector<UwbData> uwb_measurements);
   void feed_uwb(const double timestamp, const UwbData uwb_measurement);
 
   ///
@@ -109,6 +112,7 @@ public:
   /// measurements are present were successfully initialized at some point.
   ///
   bool init_anchors();
+  // TODO(alf) no discard ?
 
   ///
   /// \todo TODO (gid) planner for waypoint generation to refine anchors
@@ -120,24 +124,26 @@ public:
   ///
   bool refine_anchors();
 
+private:
   // Shared pointer to logger
   std::shared_ptr<Logger> logger_ = nullptr;
 
+  // Initializer parameters
+  UwbInitOptions init_params_;
+
+  // TODO(alf) why shared ptr? --> not need of it
   // Shared pointer to least squares solver
   std::shared_ptr<LsSolver> ls_solver_ = nullptr;
 
   // Shared pointer to nonlinear least squares solver
   std::shared_ptr<NlsSolver> nls_solver_ = nullptr;
 
-private:
-  // Initializer parameters
-  UwbInitOptions init_params_;
-
   // Anchor and measurement handling
-  PositionBuffer p_UinG_buffer_;    //!< buffer of UWB module positions in global frame
+  PositionBuffer p_UinG_buffer_;   //!< buffer of UWB module positions in global frame
   UwbDataBuffer uwb_data_buffer_;  //!< history of uwb readings in DataBuffer
 
   // Solutions handling
+  // TODO(alf) check value of uninitialized map
   LSSolutions ls_sols_;
   NLSSolutions nls_sols_;
 };

@@ -1,4 +1,4 @@
-// Copyright (C) 2022 Alessandro Fornasier, Control of Networked Systems, University of Klagenfurt, Austria.
+// Copyright (C) 2022 Alessandro Fornasier.
 //
 // All rights reserved.
 //

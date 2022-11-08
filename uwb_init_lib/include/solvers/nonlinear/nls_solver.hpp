@@ -27,22 +27,21 @@
 
 namespace uwb_init
 {
-
 class NlsSolver
 {
 public:
-    NlsSolver(const std::shared_ptr<Logger> logger);
+  NlsSolver(const std::shared_ptr<Logger> logger);
 
-    // Least Squares solver
-    bool solve_nls(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer,
-                   Eigen::VectorXd& theta, Eigen::MatrixXd& cov);
+  // Least Squares solver
+  bool solve_nls(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer, Eigen::VectorXd& theta,
+                 Eigen::MatrixXd& cov);
 
 private:
-    /// Shared pointer to logger
-    std::shared_ptr<Logger> logger_;
+  /// Shared pointer to logger
+  std::shared_ptr<Logger> logger_;
 
-    // LsSolver parameters
-    NlsSolverOptions nls_params_;
+  // LsSolver parameters
+  NlsSolverOptions nls_params_;
 };
 
 }  // namespace uwb_init
