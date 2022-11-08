@@ -1,5 +1,5 @@
-// Copyright (C) 2022 Martin Scheiber, Alessandro Fornasier,
-// Control of Networked Systems, University of Klagenfurt, Austria.
+// Copyright (C) 2022 Giulio Delama, Alessandro Fornasier, Martin Scheiber
+// Control of Networked Systems, Universitaet Klagenfurt, Austria
 //
 // All rights reserved.
 //
@@ -15,140 +15,126 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 //
-// You can contact the author at <martin.scheiber@aau.at>
-// <alessandro.fornasier@aau.at>
+// You can contact the authors at <giulio.delama@aau.at>,
+// <alessandro.fornasier@aau.at>, and <martin.scheiber@aau.at>
 
-#ifndef UAV_INIT_UWB_WRAPPER_HPP_
-#define UAV_INIT_UWB_WRAPPER_HPP_
-
-#define MDEK_DRIVER 1
-#define EVB_DRIVER 2
-
-#define UWB_DRIVER EVB_DRIVER
-
-#ifndef UWB_DRIVER
-  #define UWB_DRIVER MDEK_DRIVER
-#endif
+#ifndef UWB_INIT_ROS_WRAPPER_HPP_
+#define UWB_INIT_ROS_WRAPPER_HPP_
 
 #include <dynamic_reconfigure/server.h>
 #include <geometry_msgs/PoseStamped.h>
-#include <mission_sequencer/GetStartPose.h>
-#include <mission_sequencer/MissionWaypointArray.h>
+// #include <mission_sequencer/GetStartPose.h>
+// #include <mission_sequencer/MissionWaypointArray.h>
 #include <ros/ros.h>
 #include <std_srvs/Empty.h>
 #include <Eigen/Eigen>
-
-#if UWB_DRIVER == EVB_DRIVER
-  #include <evb1000_driver/TagDistance.h>
-#else
-  #include <mdek_uwb_driver/Uwb.h>
-#endif
+// #include <mdek_uwb_driver/Uwb.h>
+// #include <uwb_init_lib>
 
 #include "options/uwb_init_options.hpp"
-#include "types/types.hpp"
-#include "uav_init/uwb_init.hpp"
-#include "utils/colors.hpp"
 #include "uwb_init_cpp/UwbAnchorArrayStamped.h"
 #include "uwb_init_cpp/UwbInitConfig.h"
 
-namespace uav_init
+namespace uwb_init_ros
 {
-///
-/// \brief The UwbInitWrapper class is a ROS wrapper for the UwbInitializer
-///
-class UwbInitWrapper
-{
+// ///
+// /// \brief The UwbInitWrapper class is a ROS wrapper for the UwbInitializer
+// ///
+// class UwbInitWrapper
+// {
 
-public:
+// public:
 
-  /// dynamic reconfigure config typedef
-  typedef uwb_init_cpp::UwbInitConfig UwbInitConfig_t;
+//   /// dynamic reconfigure config typedef
+//   typedef uwb_init_cpp::UwbInitConfig UwbInitConfig_t;
 
-  /// dynamic recofnigure server typedef
-  typedef dynamic_reconfigure::Server<UwbInitConfig_t> ReconfServer_t;
+//   /// dynamic recofnigure server typedef
+//   typedef dynamic_reconfigure::Server<UwbInitConfig_t> ReconfServer_t;
 
-  ///
-  /// \brief UwbInitWrapper default constructor for UwbInitWrapper
-  /// \param nh ros nodehandle
-  /// \param params node parameters set by the launchfile
-  ///
-  UwbInitWrapper(ros::NodeHandle& nh, UwbInitOptions& params);
+//   ///
+//   /// \brief UwbInitWrapper default constructor for UwbInitWrapper
+//   /// \param nh ros nodehandle
+//   /// \param params node parameters set by the launchfile
+//   ///
+//   UwbInitWrapper(ros::NodeHandle& nh, UwbInitOptions& params);
 
-  void cbTimerInit(const ros::TimerEvent&);
+//   void cbTimerInit(const ros::TimerEvent&);
 
-private:
+// private:
 
-  void cbPoseStamped(const geometry_msgs::PoseStamped::ConstPtr& msg);
+//   void cbPoseStamped(const geometry_msgs::PoseStamped::ConstPtr& msg);
 
-  #if UWB_DRIVER == EVB_DRIVER
-    void cbUwbStamped(const evb1000_driver::TagDistanceConstPtr& msg);
-  #else
-    void cbUwbStamped(const mdek_uwb_driver::UwbConstPtr& msg);
-  #endif
+//   #if UWB_DRIVER == EVB_DRIVER
+//     void cbUwbStamped(const evb1000_driver::TagDistanceConstPtr& msg);
+//   #else
+//     void cbUwbStamped(const mdek_uwb_driver::UwbConstPtr& msg);
+//   #endif
 
-  void cbDynamicConfig(UwbInitConfig_t& config, uint32_t level);
+//   void cbDynamicConfig(UwbInitConfig_t& config, uint32_t level);
 
-  bool cbSrvInit(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
+//   bool cbSrvInit(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
 
-  ///
-  /// \brief perform_initialization tries to initialize all anchors, for which messages were received
-  ///
-  void perform_initialization();
+//   ///
+//   /// \brief perform_initialization tries to initialize all anchors, for which messages were received
+//   ///
+//   void perform_initialization();
 
-  ///
-  /// \brief calculate_waypoints calculates a list of waypoints to fly to such that the anchors are initialized better
-  ///
-  void calculate_waypoints();
+//   ///
+//   /// \brief calculate_waypoints calculates a list of waypoints to fly to such that the anchors are initialized
+//   better
+//   ///
+//   void calculate_waypoints();
 
-  ///
-  /// \brief resetWrapper method to reset all buffers of the wrapper and init
-  ///
-  void resetWrapper();
+//   ///
+//   /// \brief resetWrapper method to reset all buffers of the wrapper and init
+//   ///
+//   void resetWrapper();
 
-  // Ros node handler
-  ros::NodeHandle nh_;  //!< ROS nodehandle given through constructor
+//   // Ros node handler
+//   ros::NodeHandle nh_;  //!< ROS nodehandle given through constructor
 
-  // UwbInit parameters
-  UwbInitOptions params_;  //!< launched parameter options
+//   // UwbInit parameters
+//   UwbInitOptions params_;  //!< launched parameter options
 
-  // Subscribers
-  ros::Subscriber sub_posestamped;  //!< ROS subscriber for poses of IMU (or body) in global frame
-  ros::Subscriber sub_uwbstamped;   //!< ROS subscirber for UWB distance measurements
+//   // Subscribers
+//   ros::Subscriber sub_posestamped;  //!< ROS subscriber for poses of IMU (or body) in global frame
+//   ros::Subscriber sub_uwbstamped;   //!< ROS subscirber for UWB distance measurements
 
-  // Publishers
-  ros::Publisher pub_anchor;  //!< ROS publisher for anchor position and biases
-  ros::Publisher pub_wplist;  //!< ROS publisher for wp list
+//   // Publishers
+//   ros::Publisher pub_anchor;  //!< ROS publisher for anchor position and biases
+//   ros::Publisher pub_wplist;  //!< ROS publisher for wp list
 
-  // Service Clients
-  ros::ServiceClient srvc_sequencer_get_start_pose_;  //!< ROS service client to get the start pose for navigation
+//   // Service Clients
+//   ros::ServiceClient srvc_sequencer_get_start_pose_;  //!< ROS service client to get the start pose for navigation
 
-  // Service Servers
-  ros::ServiceServer srvs_start_init_;  //!< ROS service server to start the initialization phase
+//   // Service Servers
+//   ros::ServiceServer srvs_start_init_;  //!< ROS service server to start the initialization phase
 
-  // publishing variables
-  uint pub_anchor_seq_{ 0 };                 //!< sequence number of published anchor msgs
-  uint pub_waypoint_seq_{ 0 };               //!< sequence number of published waypoint list msgs
-  ros::Time pub_stamp_{ ros::Time::now() };  //!< timestamp used when publishing
-  bool anchor_publisher_switch_{false};      //!< switch to allow publication of initialized anchors
+//   // publishing variables
+//   uint pub_anchor_seq_{ 0 };                 //!< sequence number of published anchor msgs
+//   uint pub_waypoint_seq_{ 0 };               //!< sequence number of published waypoint list msgs
+//   ros::Time pub_stamp_{ ros::Time::now() };  //!< timestamp used when publishing
+//   bool anchor_publisher_switch_{false};      //!< switch to allow publication of initialized anchors
 
-  // dynamic reconfigure
-  ReconfServer_t reconf_server_;  //!< dynamic reconfigure server for ROS dynamic reconfigure
+//   // dynamic reconfigure
+//   ReconfServer_t reconf_server_;  //!< dynamic reconfigure server for ROS dynamic reconfigure
 
-  // Initializer
-  UwbInitializer uwb_initializer_;                 //!< initializer class for UWB modules
-  UwbAnchorBuffer anchor_buffer_;                  //!< buffer containing the anchor calculated positions
-  bool f_all_known_anchors_initialized_{ false };  //!< flag determining if all currently known anchors are initialized
-  bool f_in_initialization_phase_{ false };  //!< flag determinig if initialization is currently allowed to be performed
+//   // Initializer
+//   UwbInitializer uwb_initializer_;                 //!< initializer class for UWB modules
+//   UwbAnchorBuffer anchor_buffer_;                  //!< buffer containing the anchor calculated positions
+//   bool f_all_known_anchors_initialized_{ false };  //!< flag determining if all currently known anchors are
+//   initialized bool f_in_initialization_phase_{ false };  //!< flag determinig if initialization is currently allowed
+//   to be performed
 
-  // waypoint publisher
-  Eigen::Vector3d cur_p_IinG_;                             //!< current position of the vehicle in the global frame
-  mission_sequencer::MissionWaypointArray cur_waypoints_;  //!< current/next waypoints for the mission_sequencer
-  Randomizer randomizer_{ 0, 10 };                         //!< struct used to get random numbers
+//   // waypoint publisher
+//   Eigen::Vector3d cur_p_IinG_;                             //!< current position of the vehicle in the global frame
+//   mission_sequencer::MissionWaypointArray cur_waypoints_;  //!< current/next waypoints for the mission_sequencer
+//   Randomizer randomizer_{ 0, 10 };                         //!< struct used to get random numbers
 
-  // timer variables
-  ros::Timer init_check_timer_;  //!< timer used to check and perform initialization
-};
+//   // timer variables
+//   ros::Timer init_check_timer_;  //!< timer used to check and perform initialization
+};  // namespace uwb_init_ros
 
-}  // namespace uav_init
+}  // namespace uwb_init_ros
 
-#endif  // UAV_INIT_UWB_WRAPPER_HPP_
+#endif  // UWB_INIT_ROS_WRAPPER_HPP_
