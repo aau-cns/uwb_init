@@ -1,5 +1,5 @@
-// Copyright (C) 2022 Giulio Delamar, Control of Networked Systems,
-// University of Klagenfurt, Austria.
+// Copyright (C) 2021 Giulio Delama
+// Control of Networked Systems, Universitaet Klagenfurt, Austria
 //
 // All rights reserved.
 //
@@ -17,27 +17,33 @@
 //
 // You can contact the author at <giulio.delama@aau.at>
 
-#ifndef UWB_INIT_LS_OPTIONS_HPP_
-#define UWB_INIT_LS_OPTIONS_HPP_
+#ifndef NLS_SOLVER_HPP_
+#define NLS_SOLVER_HPP_
+
+#include "logger/logger.hpp"
+#include "options/nls_solver_options.hpp"
+#include "utils/data_structs.hpp"
+#include "utils/utils.hpp"
 
 namespace uwb_init
 {
-///
-/// \brief The LsSolverOptions struct is an object containing all 'static' parameters used
-/// for the linear least squares problem solver.
-///
-struct LsSolverOptions
+class NlsSolver
 {
-  /// position uncertainty
-  double sigma_pos{ 0.03 };
+public:
+  NlsSolver(const std::shared_ptr<Logger> logger);
 
-  /// uwb uncertainty
-  double sigma_meas{ 0.1 };
+  // Least Squares solver
+  bool solve_nls(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer, Eigen::VectorXd& theta,
+                 Eigen::MatrixXd& cov);
 
-  /// const bias flag
-  bool const_bias_flag{ false };
+private:
+  /// Shared pointer to logger
+  std::shared_ptr<Logger> logger_;
 
-};  // struct LsSolverOptions
+  // LsSolver parameters
+  NlsSolverOptions nls_params_;
+};
+
 }  // namespace uwb_init
 
-#endif  // UWB_INIT_LS_OPTIONS_HPP_
+#endif  // NLS_SOLVER_HPP_

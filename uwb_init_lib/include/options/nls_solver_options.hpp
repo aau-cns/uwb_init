@@ -1,4 +1,5 @@
-// Copyright (C) 2021 Martin Scheiber, Control of Networked Systems, University of Klagenfurt, Austria.
+// Copyright (C) 2022 Giulio Delamar, Control of Networked Systems,
+// University of Klagenfurt, Austria.
 //
 // All rights reserved.
 //
@@ -30,7 +31,7 @@ namespace uwb_init
 struct NlsSolverOptions
 {
   /// norm of step ( theta(k+1) = theta(k) + zeta(i)*d_theta )
-  Eigen::VectorXd step_vec{ Eigen::VectorXd::LinSpaced(10, 1, 100) };
+  Eigen::VectorXd step_vec{ Eigen::VectorXd::LinSpaced(10, 0.1, 10) };
 
   /// stopping condition for norm of step
   double step_cond{ 1e-4 };
