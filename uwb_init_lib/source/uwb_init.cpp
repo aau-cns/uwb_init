@@ -57,11 +57,19 @@ void UwbInitializer::set_bias_type(const BiasType& type)
 
 const LSSolutions& UwbInitializer::get_ls_solutions() const
 {
+  if (ls_sols_.empty())
+  {
+    throw std::runtime_error("UwbInitializer::get_ls_solutions() Required empty solutions");
+  }
   return ls_sols_;
 }
 
 const NLSSolutions& UwbInitializer::get_nls_solutions() const
 {
+  if (ls_sols_.empty())
+  {
+    throw std::runtime_error("UwbInitializer::get_nls_solutions() Required empty solutions");
+  }
   return nls_sols_;
 }
 
@@ -153,14 +161,13 @@ bool UwbInitializer::init_anchors()
     if (ls_sols_.contains(uwb_data.first))
     {
       logger_->info("Anchor[" + std::to_string(uwb_data.first) + "]: Already initialized");
-      std::cout << "Anchor[" << uwb_data.first << "]: p_AinG = " << ls_sols_.at(uwb_data.first).p_AinG().transpose()
-                << "\n"
-                << std::endl;
-      std::cout << "Anchor[" << uwb_data.first << "]: covariance =\n"
-                << ls_sols_.at(uwb_data.first).cov_ << "\n"
-                << std::endl;
-      std::cout << "Anchor[" << uwb_data.first << "]: gamma = " << ls_sols_.at(uwb_data.first).gamma_ << "\n"
-                << std::endl;
+      std::stringstream ss;
+      ss << "Anchor[" << uwb_data.first << "]\n"
+         << "p_AinG = " << ls_sols_.at(uwb_data.first).anchor_.p_AinG_.transpose() << '\n'
+         << "Covariance = \n"
+         << ls_sols_.at(uwb_data.first).cov_ << '\n'
+         << "gamma = " << ls_sols_.at(uwb_data.first).gamma_ << '\n';
+      logger_->debug(ss.str());
       continue;
     }
 
@@ -189,14 +196,13 @@ bool UwbInitializer::init_anchors()
       ls_sols_.emplace(std::make_pair(uwb_data.first, ls_sol));
 
       logger_->info("Anchor[" + std::to_string(uwb_data.first) + "]: Correctly initialized");
-      std::cout << "Anchor[" << uwb_data.first << "]: p_AinG = " << ls_sols_.at(uwb_data.first).p_AinG().transpose()
-                << "\n"
-                << std::endl;
-      std::cout << "Anchor[" << uwb_data.first << "]: covariance =\n"
-                << ls_sols_.at(uwb_data.first).cov_ << "\n"
-                << std::endl;
-      std::cout << "Anchor[" << uwb_data.first << "]: gamma = " << ls_sols_.at(uwb_data.first).gamma_ << "\n"
-                << std::endl;
+      std::stringstream ss;
+      ss << "Anchor[" << uwb_data.first << "]\n"
+         << "p_AinG = " << ls_sols_.at(uwb_data.first).anchor_.p_AinG_.transpose() << '\n'
+         << "Covariance = \n"
+         << ls_sols_.at(uwb_data.first).cov_ << '\n'
+         << "gamma = " << ls_sols_.at(uwb_data.first).gamma_ << '\n';
+      logger_->debug(ss.str());
     }
     // Can not initialize
     else
@@ -248,14 +254,14 @@ bool UwbInitializer::refine_anchors()
     if (nls_sols_.contains(ls_sol.first))
     {
       logger_->info("Anchor[" + std::to_string(ls_sol.first) + "]: Already refined");
-      std::cout << "Anchor[" << ls_sol.first << "]: p_AinG = " << nls_sols_.at(ls_sol.first).p_AinG().transpose()
-                << "\n"
-                << std::endl;
-      std::cout << "Anchor[" << ls_sol.first << "]: covariance =\n"
-                << nls_sols_.at(ls_sol.first).cov_ << "\n"
-                << std::endl;
-      std::cout << "Anchor[" << ls_sol.first << "]: beta = " << nls_sols_.at(ls_sol.first).beta_ << "\n" << std::endl;
-      std::cout << "Anchor[" << ls_sol.first << "]: gamma = " << nls_sols_.at(ls_sol.first).gamma_ << "\n" << std::endl;
+      std::stringstream ss;
+      ss << "Anchor[" << ls_sol.first << "]\n"
+         << "p_AinG = " << nls_sols_.at(ls_sol.first).anchor_.p_AinG_.transpose() << '\n'
+         << "Covariance = \n"
+         << nls_sols_.at(ls_sol.first).cov_ << '\n'
+         << "gamma = " << nls_sols_.at(ls_sol.first).gamma_ << '\n'
+         << "beta = " << nls_sols_.at(ls_sol.first).beta_ << '\n';
+      logger_->debug(ss.str());
       continue;
     }
 
@@ -278,14 +284,14 @@ bool UwbInitializer::refine_anchors()
 
       // Refine successful
       logger_->info("Anchor[" + std::to_string(ls_sol.first) + "]: Correctly refined");
-      std::cout << "Anchor[" << ls_sol.first << "]: p_AinG = " << nls_sols_.at(ls_sol.first).p_AinG().transpose()
-                << "\n"
-                << std::endl;
-      std::cout << "Anchor[" << ls_sol.first << "]: covariance =\n"
-                << nls_sols_.at(ls_sol.first).cov_ << "\n"
-                << std::endl;
-      std::cout << "Anchor[" << ls_sol.first << "]: beta = " << nls_sols_.at(ls_sol.first).beta_ << "\n" << std::endl;
-      std::cout << "Anchor[" << ls_sol.first << "]: gamma = " << nls_sols_.at(ls_sol.first).gamma_ << "\n" << std::endl;
+      std::stringstream ss;
+      ss << "Anchor[" << ls_sol.first << "]\n"
+         << "p_AinG = " << nls_sols_.at(ls_sol.first).anchor_.p_AinG_.transpose() << '\n'
+         << "Covariance = \n"
+         << nls_sols_.at(ls_sol.first).cov_ << '\n'
+         << "gamma = " << nls_sols_.at(ls_sol.first).gamma_ << '\n'
+         << "beta = " << nls_sols_.at(ls_sol.first).beta_ << '\n';
+      logger_->debug(ss.str());
     }
     // Can not refine
     else

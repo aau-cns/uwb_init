@@ -112,7 +112,7 @@ public:
   /// measurements are present were successfully initialized at some point.
   ///
   bool init_anchors();
-  // TODO(alf) no discard ?
+  // TODO(alf) no discard ! change the return to false only if there are no solutions
 
   ///
   /// \todo TODO (gid) planner for waypoint generation to refine anchors
@@ -123,6 +123,7 @@ public:
   /// linear least squares optimization
   ///
   bool refine_anchors();
+  // TODO(alf) no discard ! change the return to false only if there are no solutions
 
 private:
   // Shared pointer to logger

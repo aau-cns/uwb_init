@@ -1,4 +1,4 @@
-﻿// Copyright (C) 202w Giulio Delama, Alessandro Fornasier
+﻿// Copyright (C) 2022 Giulio Delama, Alessandro Fornasier
 // Control of Networked Systems, Universitaet Klagenfurt, Austria
 //
 // All rights reserved.
@@ -26,7 +26,5 @@ using namespace Eigen;
 
 int main()
 {
-
-
   return 0;
 }

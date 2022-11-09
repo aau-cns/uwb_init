@@ -26,12 +26,11 @@ namespace uwb_init
 {
 enum LoggerLevel
 {
-  INACTIVE,
+  FULL,
   INFO,
   WARN,
   ERR,
-  FULL,
-  DEBUG
+  INACTIVE,
 };
 
 class Logger
@@ -80,7 +79,8 @@ public:
    */
   inline void err(const std::string& msg)
   {
-    if (level_ == LoggerLevel::ERR || level_ == LoggerLevel::FULL)
+    if (level_ == LoggerLevel::INFO || level_ == LoggerLevel::WARN || level_ == LoggerLevel::ERR ||
+        level_ == LoggerLevel::FULL)
     {
       log("\033[31m[ERROR] " + msg + ".\033[0m");
     }
@@ -92,7 +92,7 @@ public:
    */
   inline void warn(const std::string& msg)
   {
-    if (level_ == LoggerLevel::WARN || level_ == LoggerLevel::FULL)
+    if (level_ == LoggerLevel::INFO || level_ == LoggerLevel::WARN || level_ == LoggerLevel::FULL)
     {
       log("\033[33m[WARNING] " + msg + ".\033[0m");
     }
@@ -104,7 +104,7 @@ public:
    */
   inline void debug(const std::string& msg)
   {
-    if (level_ == LoggerLevel::DEBUG || level_ == LoggerLevel::FULL)
+    if (level_ == LoggerLevel::FULL)
     {
       log("\033[33m[DEBUG] " + msg + ".\033[0m");
     }
