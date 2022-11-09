@@ -38,8 +38,8 @@ public:
                  Eigen::MatrixXd& cov);
 
   // Output Error Algorithm solver
-  bool solve_oea(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer,
-                 Eigen::VectorXd& theta, Eigen::MatrixXd& cov);
+  bool solve_oea(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer, Eigen::VectorXd& theta,
+                 Eigen::MatrixXd& cov);
 
 private:
   /// Shared pointer to logger

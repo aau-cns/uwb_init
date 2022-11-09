@@ -66,10 +66,9 @@ bool NlsSolver::solve_nls(const TimedBuffer<UwbData>& uwb_data, const PositionBu
     {
       // Jacobian [df/dp_AinG, df/dbeta, df/dgamma]
       J.row(j) << theta(3) * (theta(0) - pose_vec(j, 0)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
-              theta(3) * (theta(1) - pose_vec(j, 1)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
-              theta(3) * (theta(2) - pose_vec(j, 2)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
-              (theta.head(3).transpose() - pose_vec.row(j)).norm(),
-              1;
+          theta(3) * (theta(1) - pose_vec(j, 1)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
+          theta(3) * (theta(2) - pose_vec(j, 2)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
+          (theta.head(3).transpose() - pose_vec.row(j)).norm(), 1;
       // Residual res = y - f(theta) =  uwb_meas - (beta * ||p_AinG - p_UinG|| + gamma)
       res(j) = uwb_vec(j) - (theta(3) * (theta.head(3).transpose() - pose_vec.row(j)).norm() + theta(4));
     }
@@ -95,7 +94,8 @@ bool NlsSolver::solve_nls(const TimedBuffer<UwbData>& uwb_data, const PositionBu
       for (uint k = 0; k < uwb_vec.size(); ++k)
       {
         // MSE(k) = r(k)^2 = (uwb(k) - f(theta))^2
-        mse_vec(j) += std::pow(uwb_vec(k) - (theta_new(3) * (theta_new.head(3).transpose() - pose_vec.row(k)).norm() + theta_new(4)), 2);
+        mse_vec(j) += std::pow(
+            uwb_vec(k) - (theta_new(3) * (theta_new.head(3).transpose() - pose_vec.row(k)).norm() + theta_new(4)), 2);
       }
 
       // MSE = r'*r/(m-p) where m is the number of data points and p is the number of parameters
@@ -111,7 +111,7 @@ bool NlsSolver::solve_nls(const TimedBuffer<UwbData>& uwb_data, const PositionBu
 
     // Compute estimation Covariance (Var(X) = MSE*(J'*J)^-1) = MSE*V*S^-1*S^-1*V' (see properties of SVD)
     cov = mse_vec(step_idx) * svd.matrixV() * svd.singularValues().asDiagonal().inverse() *
-              svd.singularValues().asDiagonal().inverse() * svd.matrixV().transpose();
+          svd.singularValues().asDiagonal().inverse() * svd.matrixV().transpose();
 
     // If step norm is minimum reduce the step for next iteration
     if (step_idx == 0)
@@ -131,8 +131,7 @@ bool NlsSolver::solve_nls(const TimedBuffer<UwbData>& uwb_data, const PositionBu
     // Residual stopping condition
     if (mse_vec(step_idx) < nls_params_.res_cond)
     {
-      logger_->info("NlsSolver::solve_nls(): Mean squared error is less than " +
-                    std::to_string(nls_params_.res_cond));
+      logger_->info("NlsSolver::solve_nls(): Mean squared error is less than " + std::to_string(nls_params_.res_cond));
       break;
     }
 
@@ -183,7 +182,7 @@ bool NlsSolver::solve_oea(const TimedBuffer<UwbData>& uwb_data, const PositionBu
     Eigen::VectorXd y_hat(uwb_vec.size());
     for (uint j = 0; j < y_hat.size(); ++j)
     {
-        y_hat(j) = theta(3) * (theta.head(3).transpose() - pose_vec.row(j)).norm() + theta(4);
+      y_hat(j) = theta(3) * (theta.head(3).transpose() - pose_vec.row(j)).norm() + theta(4);
     }
 
     // Compute matrix e (error)
@@ -199,17 +198,16 @@ bool NlsSolver::solve_oea(const TimedBuffer<UwbData>& uwb_data, const PositionBu
     {
       // S(j, :) = [df/dp_AinG, df/dbeta, df/dgamma]
       J.row(j) << theta(3) * (theta(0) - pose_vec(j, 0)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
-              theta(3) * (theta(1) - pose_vec(j, 1)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
-              theta(3) * (theta(2) - pose_vec(j, 2)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
-              (theta.head(3).transpose() - pose_vec.row(j)).norm(),
-              1;
+          theta(3) * (theta(1) - pose_vec(j, 1)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
+          theta(3) * (theta(2) - pose_vec(j, 2)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
+          (theta.head(3).transpose() - pose_vec.row(j)).norm(), 1;
     }
 
     // Compute approximated Hessian M and the Jacobian g
     Eigen::MatrixXd M = Eigen::MatrixXd::Zero(5, 5);
     Eigen::VectorXd g = Eigen::VectorXd::Zero(5);
-    M = 1/R_hat * J.transpose() * J;
-    g = 1/R_hat * J.transpose() * e;
+    M = 1 / R_hat * J.transpose() * J;
+    g = 1 / R_hat * J.transpose() * e;
 
     // Update estimate theta
     Eigen::VectorXd d_theta(5);
@@ -229,13 +227,13 @@ bool NlsSolver::solve_oea(const TimedBuffer<UwbData>& uwb_data, const PositionBu
 
     // Compute estimation Covariance (Var(X) = MSE*(J'*J)^-1) = MSE*V*S^-1*S^-1*V' (see properties of SVD)
     cov = R_hat * svd.matrixV() * svd.singularValues().asDiagonal().inverse() *
-              svd.singularValues().asDiagonal().inverse() * svd.matrixV().transpose();
+          svd.singularValues().asDiagonal().inverse() * svd.matrixV().transpose();
 
     // Check if norm of step is small
     if (d_theta.norm() / theta.norm() < nls_params_.step_cond)
     {
       logger_->info("NlsSolver::solve_oea(): Realtive norm of step is less than " +
-                      std::to_string(nls_params_.step_cond));
+                    std::to_string(nls_params_.step_cond));
       break;
     }
 
@@ -243,7 +241,7 @@ bool NlsSolver::solve_oea(const TimedBuffer<UwbData>& uwb_data, const PositionBu
     if (g.norm() < nls_params_.res_cond)
     {
       logger_->info("NlsSolver::solve_oea(): Absolute norm of gradient is less than " +
-                      std::to_string(nls_params_.res_cond));
+                    std::to_string(nls_params_.res_cond));
       break;
     }
 

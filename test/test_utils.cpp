@@ -42,9 +42,12 @@ TEST(utils, lerp)
   EXPECT_NEAR(lerp(49.0, 50.0, 1.0), 50.0, eps);
 
   // Test utils::lerp() with Eigen::vectorXd values
-  EXPECT_EIGEN_EQ(lerp(Eigen::Vector3d(49, 49, 49), Eigen::Vector3d(50, 50, 50), 0.0), Eigen::Vector3d(49, 49, 49), eps);
-  EXPECT_EIGEN_EQ(lerp(Eigen::Vector3d(49, 49, 49), Eigen::Vector3d(50, 50, 50), 0.63), Eigen::Vector3d(49.63, 49.63, 49.63), eps);
-  EXPECT_EIGEN_EQ(lerp(Eigen::Vector3d(49, 49, 49), Eigen::Vector3d(50, 50, 50), 1.0), Eigen::Vector3d(50, 50, 50), eps);
+  EXPECT_EIGEN_EQ(lerp(Eigen::Vector3d(49, 49, 49), Eigen::Vector3d(50, 50, 50), 0.0), Eigen::Vector3d(49, 49, 49),
+                  eps);
+  EXPECT_EIGEN_EQ(lerp(Eigen::Vector3d(49, 49, 49), Eigen::Vector3d(50, 50, 50), 0.63),
+                  Eigen::Vector3d(49.63, 49.63, 49.63), eps);
+  EXPECT_EIGEN_EQ(lerp(Eigen::Vector3d(49, 49, 49), Eigen::Vector3d(50, 50, 50), 1.0), Eigen::Vector3d(50, 50, 50),
+                  eps);
 }
 
 TEST(utils, isxpd)

@@ -104,14 +104,14 @@ public:
   ///
   /// \brief init_anchors tries to initialize all anchors for which readings exist
   /// \param anchor_buffer
-  /// \return true if all anchors were successfully initialized
+  /// \return true if at least one anchor is successfully initialized, false otherwise
   ///
   /// This function performs a least-squares initialization using the per anchor measurments given the measurement model
   /// from \cite Blueml2021. It will try to initialize each anchor (validated per ID) individually. If an anchor was
   /// already successfully initialized in the past it is skipped. It will also return 'true' if all anchors, for which
   /// measurements are present were successfully initialized at some point.
   ///
-  bool init_anchors();
+  [[nodiscard]] bool init_anchors();
 
   ///
   /// \todo planner for waypoint generation to refine anchors
@@ -120,8 +120,10 @@ public:
   ///
   /// \brief refine_anchors refines the already initialized anchors via optimal waypoints for non-
   /// linear least squares optimization
+  /// \return true if at least one anchor is successfully refined,
+  /// false if there are no solutions of the nonlinear initialization problem
   ///
-  bool refine_anchors();
+  [[nodiscard]] bool refine_anchors();
 
 private:
   // Shared pointer to logger

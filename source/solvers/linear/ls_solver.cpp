@@ -194,7 +194,7 @@ bool LsSolver::ls_double_const_bias(const TimedBuffer<UwbData>& uwb_data, const 
   // Number of data points must be at least 2
   if (uwb_data.size() < 2)
   {
-      return false;
+    return false;
   }
 
   // Coefficient matrix and measurement vector initialization
@@ -264,7 +264,7 @@ bool LsSolver::ls_double_no_bias(const TimedBuffer<UwbData>& uwb_data, const Pos
   // Number of data points must be at least 2
   if (uwb_data.size() < 2)
   {
-      return false;
+    return false;
   }
 
   // Coefficient matrix and measurement vector initialization

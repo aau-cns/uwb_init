@@ -143,57 +143,57 @@ int main()
   uwb_init.feed_uwb(t9, uwb9);
   uwb_init.feed_uwb(t10, uwb10);
 
-//  /// Test without noise, anchor in [0, 0, 0], no bias
-//
-//  Eigen::Vector3d pos1(1, 0, 1);
-//  Eigen::Vector3d pos2(std::sqrt(2)/2, std::sqrt(2)/2, 1);
-//  Eigen::Vector3d pos3(0, 1, 1);
-//  Eigen::Vector3d pos4(-std::sqrt(2)/2, std::sqrt(2)/2, 1);
-//  Eigen::Vector3d pos5(-1, 0, 1);
-//  Eigen::Vector3d pos6(-std::sqrt(2)/2, -std::sqrt(2)/2, 1);
-//  Eigen::Vector3d pos7(0, -1, 1);
-//  Eigen::Vector3d pos8(std::sqrt(2)/2, -std::sqrt(2)/2, 1);
-//  Eigen::Vector3d pos9(0, 0, 0.5);
-//  Eigen::Vector3d pos10(0, 0, 1);
-//  uwb_init.feed_pose(t1, pos1);
-//  uwb_init.feed_pose(t2, pos2);
-//  uwb_init.feed_pose(t3, pos3);
-//  uwb_init.feed_pose(t4, pos4);
-//  uwb_init.feed_pose(t5, pos5);
-//  uwb_init.feed_pose(t6, pos6);
-//  uwb_init.feed_pose(t7, pos7);
-//  uwb_init.feed_pose(t8, pos8);
-//  uwb_init.feed_pose(t9, pos9);
-//  uwb_init.feed_pose(t10, pos10);
-//  uwb_init::UwbData uwb1(1, std::sqrt(2), 1);
-//  uwb_init::UwbData uwb2(1, std::sqrt(2), 1);
-//  uwb_init::UwbData uwb3(1, std::sqrt(2), 1);
-//  uwb_init::UwbData uwb4(1, std::sqrt(2), 1);
-//  uwb_init::UwbData uwb5(1, std::sqrt(2), 1);
-//  uwb_init::UwbData uwb6(1, std::sqrt(2), 1);
-//  uwb_init::UwbData uwb7(1, std::sqrt(2), 1);
-//  uwb_init::UwbData uwb8(1, std::sqrt(2), 1);
-//  uwb_init::UwbData uwb9(1, 0.5, 1);
-//  uwb_init::UwbData uwb10(1, 1, 1);
-//  uwb_init.feed_uwb(t1, uwb1);
-//  uwb_init.feed_uwb(t2, uwb2);
-//  uwb_init.feed_uwb(t3, uwb3);
-//  uwb_init.feed_uwb(t4, uwb4);
-//  uwb_init.feed_uwb(t5, uwb5);
-//  uwb_init.feed_uwb(t6, uwb6);
-//  uwb_init.feed_uwb(t7, uwb7);
-//  uwb_init.feed_uwb(t8, uwb8);
-//  uwb_init.feed_uwb(t9, uwb9);
-//  uwb_init.feed_uwb(t10, uwb10);
+  //  /// Test without noise, anchor in [0, 0, 0], no bias
+  //
+  //  Eigen::Vector3d pos1(1, 0, 1);
+  //  Eigen::Vector3d pos2(std::sqrt(2)/2, std::sqrt(2)/2, 1);
+  //  Eigen::Vector3d pos3(0, 1, 1);
+  //  Eigen::Vector3d pos4(-std::sqrt(2)/2, std::sqrt(2)/2, 1);
+  //  Eigen::Vector3d pos5(-1, 0, 1);
+  //  Eigen::Vector3d pos6(-std::sqrt(2)/2, -std::sqrt(2)/2, 1);
+  //  Eigen::Vector3d pos7(0, -1, 1);
+  //  Eigen::Vector3d pos8(std::sqrt(2)/2, -std::sqrt(2)/2, 1);
+  //  Eigen::Vector3d pos9(0, 0, 0.5);
+  //  Eigen::Vector3d pos10(0, 0, 1);
+  //  uwb_init.feed_pose(t1, pos1);
+  //  uwb_init.feed_pose(t2, pos2);
+  //  uwb_init.feed_pose(t3, pos3);
+  //  uwb_init.feed_pose(t4, pos4);
+  //  uwb_init.feed_pose(t5, pos5);
+  //  uwb_init.feed_pose(t6, pos6);
+  //  uwb_init.feed_pose(t7, pos7);
+  //  uwb_init.feed_pose(t8, pos8);
+  //  uwb_init.feed_pose(t9, pos9);
+  //  uwb_init.feed_pose(t10, pos10);
+  //  uwb_init::UwbData uwb1(1, std::sqrt(2), 1);
+  //  uwb_init::UwbData uwb2(1, std::sqrt(2), 1);
+  //  uwb_init::UwbData uwb3(1, std::sqrt(2), 1);
+  //  uwb_init::UwbData uwb4(1, std::sqrt(2), 1);
+  //  uwb_init::UwbData uwb5(1, std::sqrt(2), 1);
+  //  uwb_init::UwbData uwb6(1, std::sqrt(2), 1);
+  //  uwb_init::UwbData uwb7(1, std::sqrt(2), 1);
+  //  uwb_init::UwbData uwb8(1, std::sqrt(2), 1);
+  //  uwb_init::UwbData uwb9(1, 0.5, 1);
+  //  uwb_init::UwbData uwb10(1, 1, 1);
+  //  uwb_init.feed_uwb(t1, uwb1);
+  //  uwb_init.feed_uwb(t2, uwb2);
+  //  uwb_init.feed_uwb(t3, uwb3);
+  //  uwb_init.feed_uwb(t4, uwb4);
+  //  uwb_init.feed_uwb(t5, uwb5);
+  //  uwb_init.feed_uwb(t6, uwb6);
+  //  uwb_init.feed_uwb(t7, uwb7);
+  //  uwb_init.feed_uwb(t8, uwb8);
+  //  uwb_init.feed_uwb(t9, uwb9);
+  //  uwb_init.feed_uwb(t10, uwb10);
 
   if (uwb_init.init_anchors())
   {
-      LSSolutions ls_sols = uwb_init.get_ls_solutions();
+    LSSolutions ls_sols = uwb_init.get_ls_solutions();
   }
 
   if (uwb_init.refine_anchors())
   {
-      NLSSolutions nls_sols = uwb_init.get_nls_solutions();
+    NLSSolutions nls_sols = uwb_init.get_nls_solutions();
   }
 
   return 0;
