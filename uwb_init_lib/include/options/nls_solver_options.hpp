@@ -31,12 +31,12 @@ namespace uwb_init
 struct NlsSolverOptions
 {
   /// norm of step ( theta(k+1) = theta(k) + zeta(i)*d_theta )
-  Eigen::VectorXd step_vec{ Eigen::VectorXd::LinSpaced(10, 0.1, 10) };
+  Eigen::VectorXd step_vec{ Eigen::VectorXd::LinSpaced(10, 0.1, 1) };
 
-  /// stopping condition for norm of step
+  /// stopping condition for the relative norm of step
   double step_cond{ 1e-4 };
 
-  /// stopping condition for residual
+  /// stopping condition for residual (mean squared error r'*r/(m-p))
   double res_cond{ 1e-2 };
 
   /// stopping condition for maximum number of iterations

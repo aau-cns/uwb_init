@@ -48,26 +48,27 @@ bool NlsSolver::solve_nls(const TimedBuffer<UwbData>& uwb_data, const PositionBu
   if (uwb_vec.size() != pose_vec.rows())
   {
     // Refine unsuccessful
-    logger_->err("NlsSolver: Can not perform optimization (data vectors have different dimensions)");
+    logger_->err("NlsSolver::solve_nls(): Can not perform optimization (data vectors have different dimensions)");
     return false;
   }
 
   // Non-linear Least Squares
   for (uint i = 0; i < nls_params_.max_iter; ++i)
   {
-    // Jacobian and residual initialization
+    // Jacobian matrix, residual and mean squared error vectors initialization
     Eigen::MatrixXd J = Eigen::MatrixXd::Zero(uwb_vec.size(), 5);
     Eigen::VectorXd res = Eigen::VectorXd::Zero(uwb_vec.size());
-    Eigen::VectorXd res_vec = Eigen::VectorXd::Zero(step_vec.size());
+    Eigen::VectorXd mse_vec = Eigen::VectorXd::Zero(step_vec.size());
 
     // Compute Jacobian and residual
     for (uint j = 0; j < uwb_vec.size(); ++j)
     {
       // Jacobian [df/dp_AinG, df/dbeta, df/dgamma]
       J.row(j) << theta(3) * (theta(0) - pose_vec(j, 0)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
-          theta(3) * (theta(1) - pose_vec(j, 1)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
-          theta(3) * (theta(2) - pose_vec(j, 2)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
-          (theta.head(3).transpose() - pose_vec.row(j)).norm(), 1;
+              theta(3) * (theta(1) - pose_vec(j, 1)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
+              theta(3) * (theta(2) - pose_vec(j, 2)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
+              (theta.head(3).transpose() - pose_vec.row(j)).norm(),
+              1;
       // Residual res = y - f(theta) =  uwb_meas - (beta * ||p_AinG - p_UinG|| + gamma)
       res(j) = uwb_vec(j) - (theta(3) * (theta.head(3).transpose() - pose_vec.row(j)).norm() + theta(4));
     }
@@ -83,63 +84,180 @@ bool NlsSolver::solve_nls(const TimedBuffer<UwbData>& uwb_data, const PositionBu
                                  .asDiagonal() *
                              svd.matrixU().adjoint();
 
-    // Compute estimation Covariance (Var(X) = (J'*J)^-1) = V*S^-1*S^-1*V' (see properties of SVD)
-    cov = svd.matrixV() * svd.singularValues().asDiagonal().inverse() * svd.singularValues().asDiagonal().inverse() *
-          svd.matrixV().transpose();
-
     // Compute norm of step
     Eigen::VectorXd d_theta = pinv_J * res;
 
-    // Calculate residual for each step
+    // Calculate mean squared error for each step
     for (uint j = 0; j < step_vec.size(); ++j)
     {
       Eigen::VectorXd theta_new = theta + step_vec(j) * d_theta;
       for (uint k = 0; k < uwb_vec.size(); ++k)
       {
-        res_vec(j) += std::pow(
-            uwb_vec(k) - (theta_new(3) * (theta_new.head(3).transpose() - pose_vec.row(k)).norm() + theta_new(4)), 2);
+        // MSE(k) = r(k)^2 = (uwb(k) - f(theta))^2
+        mse_vec(j) += std::pow(uwb_vec(k) - (theta_new(3) * (theta_new.head(3).transpose() - pose_vec.row(k)).norm() + theta_new(4)), 2);
       }
-      res_vec(j) /= uwb_vec.size();
+
+      // MSE = r'*r/(m-p) where m is the number of data points and p is the number of parameters
+      mse_vec(j) /= uwb_vec.size() - 5;
     }
 
-    // Choose minimum residual index
+    // Choose index that minimizes MSE
     Eigen::Index step_idx;
-    res_vec.minCoeff(&step_idx);
+    mse_vec.minCoeff(&step_idx);
 
     // Perform parameters update theta(k+1) = theta(k) + step_norm * d_theta
     theta += step_vec(step_idx) * d_theta;
 
-    // If step norm is minimum reduce the step
+    // Compute estimation Covariance (Var(X) = MSE*(J'*J)^-1) = MSE*V*S^-1*S^-1*V' (see properties of SVD)
+    cov = mse_vec(step_idx) * svd.matrixV() * svd.singularValues().asDiagonal().inverse() *
+              svd.singularValues().asDiagonal().inverse() * svd.matrixV().transpose();
+
+    // If step norm is minimum reduce the step for next iteration
     if (step_idx == 0)
     {
+      logger_->info("NlsSolver::solve_nls(): Reducing step norm");
       step_vec /= 2;
     }
 
     // Norm of step stopping condition
-    if (step_vec(step_idx) < nls_params_.step_cond)
+    if (step_vec(step_idx) * d_theta.norm() / theta.norm() < nls_params_.step_cond)
     {
-      logger_->info("NlsSolver: Step norm is less than " + std::to_string(nls_params_.step_cond));
+      logger_->info("NlsSolver::solve_nls(): Relative norm of step is less than " +
+                    std::to_string(nls_params_.step_cond));
       break;
     }
 
     // Residual stopping condition
-    if (res_vec(step_idx) < nls_params_.res_cond)
+    if (mse_vec(step_idx) < nls_params_.res_cond)
     {
-      logger_->info("NlsSolver: Residual is less than " + std::to_string(nls_params_.res_cond));
+      logger_->info("NlsSolver::solve_nls(): Mean squared error is less than " +
+                    std::to_string(nls_params_.res_cond));
       break;
     }
 
     // Check if maximum number of iteration reached
     if (i == (nls_params_.max_iter - 1))
     {
-      logger_->warn("NlsSolver: Maximum number of iterations reached (" + std::to_string(nls_params_.max_iter) + ")");
+      logger_->warn("NlsSolver::solve_nls(): Maximum number of iterations reached (" +
+                    std::to_string(nls_params_.max_iter) + ")");
     }
   }
 
   // If covariance matrix is not semi-positive-definite return
   if (!isSPD(cov))
   {
-    logger_->err("NlsSolver: Covariance matrix is not SPD");
+    logger_->err("NlsSolver::solve_nls(): Covariance matrix is not SPD");
+    return false;
+  }
+
+  return true;
+}
+
+bool NlsSolver::solve_oea(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer,
+                          Eigen::VectorXd& theta, Eigen::MatrixXd& cov)
+{
+  // Data vectors initialization
+  Eigen::VectorXd uwb_vec = Eigen::VectorXd::Zero(uwb_data.size());
+  Eigen::MatrixXd pose_vec = Eigen::MatrixXd::Zero(uwb_vec.size(), 3);
+
+  // Create consistent data vectors
+  for (uint i = 0; i < uwb_vec.size(); ++i)
+  {
+    uwb_vec(i) = uwb_data[i].second.distance_;
+    pose_vec.row(i) = p_UinG_buffer.get_at_timestamp(uwb_data[i].first);
+  }
+
+  // Check for consistency
+  if (uwb_vec.size() != pose_vec.rows())
+  {
+    // Refine unsuccessful
+    logger_->err("NlsSolver::solve_oea(): Can not perform optimization (data vectors have different dimensions)");
+    return false;
+  }
+
+  // Output Error Algorithm
+  for (uint i = 0; i < nls_params_.max_iter; ++i)
+  {
+    // Simulate the system with current theta
+    Eigen::VectorXd y_hat(uwb_vec.size());
+    for (uint j = 0; j < y_hat.size(); ++j)
+    {
+        y_hat(j) = theta(3) * (theta.head(3).transpose() - pose_vec.row(j)).norm() + theta(4);
+    }
+
+    // Compute matrix e (error)
+    Eigen::VectorXd e(uwb_vec.size());
+    e = uwb_vec - y_hat;
+
+    // Compute estimated covariance R_hat = 1/(N - p) * sum_i( e(i)*e(i)' )
+    double R_hat = 1 / double(e.size() - 5) * e.transpose() * e;
+
+    // Compute output sensitivities J
+    Eigen::MatrixXd J = Eigen::MatrixXd::Zero(uwb_vec.size(), 5);
+    for (uint j = 0; j < uwb_vec.size(); ++j)
+    {
+      // S(j, :) = [df/dp_AinG, df/dbeta, df/dgamma]
+      J.row(j) << theta(3) * (theta(0) - pose_vec(j, 0)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
+              theta(3) * (theta(1) - pose_vec(j, 1)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
+              theta(3) * (theta(2) - pose_vec(j, 2)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
+              (theta.head(3).transpose() - pose_vec.row(j)).norm(),
+              1;
+    }
+
+    // Compute approximated Hessian M and the Jacobian g
+    Eigen::MatrixXd M = Eigen::MatrixXd::Zero(5, 5);
+    Eigen::VectorXd g = Eigen::VectorXd::Zero(5);
+    M = 1/R_hat * J.transpose() * J;
+    g = 1/R_hat * J.transpose() * e;
+
+    // Update estimate theta
+    Eigen::VectorXd d_theta(5);
+    d_theta = M.inverse() * g;
+    theta += d_theta;
+
+    // Update covariance
+    Eigen::BDCSVD<Eigen::MatrixXd> svd(J, Eigen::ComputeThinU | Eigen::ComputeThinV);
+    double tolerance =
+        std::numeric_limits<double>::epsilon() * std::max(J.cols(), J.rows()) * svd.singularValues().array().abs()(0);
+    Eigen::MatrixXd pinv_J = svd.matrixV() *
+                             (svd.singularValues().array().abs() > tolerance)
+                                 .select(svd.singularValues().array().inverse(), 0)
+                                 .matrix()
+                                 .asDiagonal() *
+                             svd.matrixU().adjoint();
+
+    // Compute estimation Covariance (Var(X) = MSE*(J'*J)^-1) = MSE*V*S^-1*S^-1*V' (see properties of SVD)
+    cov = R_hat * svd.matrixV() * svd.singularValues().asDiagonal().inverse() *
+              svd.singularValues().asDiagonal().inverse() * svd.matrixV().transpose();
+
+    // Check if norm of step is small
+    if (d_theta.norm() / theta.norm() < nls_params_.step_cond)
+    {
+      logger_->info("NlsSolver::solve_oea(): Realtive norm of step is less than " +
+                      std::to_string(nls_params_.step_cond));
+      break;
+    }
+
+    // Check if norm of gradient is small
+    if (g.norm() < nls_params_.res_cond)
+    {
+      logger_->info("NlsSolver::solve_oea(): Absolute norm of gradient is less than " +
+                      std::to_string(nls_params_.res_cond));
+      break;
+    }
+
+    // Check if maximum number of iteration reached
+    if (i == (nls_params_.max_iter - 1))
+    {
+      logger_->warn("NlsSolver::solve_oea(): Maximum number of iterations reached (" +
+                    std::to_string(nls_params_.max_iter) + ")");
+    }
+  }
+
+  // If covariance matrix is not semi-positive-definite return
+  if (!isSPD(cov))
+  {
+    logger_->err("NlsSolver::solve_oea(): Covariance matrix is not SPD");
     return false;
   }
 
