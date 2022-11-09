@@ -1,5 +1,5 @@
-﻿// Copyright (C) 2021 Giulio Delama, Alessandro Fornasier, Martin Scheiber
-// Control of Networked Systems, Universitaet Klagenfurt, Austria
+﻿// Copyright (C) 2022 Alessandro Fornasier, Giulio Delama and Martin Scheiber.
+// Control of Networked Systems, University of Klagenfurt, Austria.
 //
 // All rights reserved.
 //
@@ -15,8 +15,8 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 //
-// You can contact the authors at <giulio.delama@aau.at>,
-// <alessandro.fornasier@aau.at>, and <martin.scheiber@aau.at>
+// You can contact the authors at <alessandro.fornasier@aau.at>,
+// <giulio.delama@aau.at> and <martin.scheiber@aau.at>
 
 #include "uwb_init.hpp"
 
@@ -25,8 +25,8 @@ namespace uwb_init
 UwbInitializer::UwbInitializer(const LoggerLevel& level, const UwbInitOptions& init_params)
   : logger_(std::make_shared<Logger>(level))
   , init_params_(init_params)
-  , ls_solver_(std::make_shared<LsSolver>(logger_, init_params_))
-  , nls_solver_(std::make_shared<NlsSolver>(logger_))
+  , ls_solver_(logger_, init_params_)
+  , nls_solver_(logger_)
 {
   // Logging
   logger_->info("UwbInitializer: " + std::string(InitMethodString(init_params_.init_method_)));
@@ -41,7 +41,7 @@ void UwbInitializer::set_init_method(const InitMethod& method)
   logger_->info("UwbInitializer: " + std::string(InitMethodString(init_params_.init_method_)));
 
   // Configure Least Squares Solver
-  ls_solver_->configure(init_params_);
+  ls_solver_.configure(init_params_);
 }
 
 void UwbInitializer::set_bias_type(const BiasType& type)
@@ -52,7 +52,7 @@ void UwbInitializer::set_bias_type(const BiasType& type)
   logger_->info("UwbInitializer: " + std::string(BiasTypeString(init_params_.bias_type_)));
 
   // Configure Least Squares Solver
-  ls_solver_->configure(init_params_);
+  ls_solver_.configure(init_params_);
 }
 
 const LSSolutions& UwbInitializer::get_ls_solutions() const
@@ -143,8 +143,8 @@ bool UwbInitializer::init_anchors()
     return false;
   }
 
-  // Variable for keeping track if all anchors have been correctly initialized
-  bool init_successful = true;
+  // Variable for keeping track if at least one anchor has been correctly initialized
+  bool init_successful = false;
 
   // For each uwb ID extract uwb buffer
   for (const auto& uwb_data : uwb_data_buffer_)
@@ -153,7 +153,6 @@ bool UwbInitializer::init_anchors()
     if (uwb_data.second.empty())
     {
       logger_->err("Anchor[" + std::to_string(uwb_data.first) + "]: Initialization FAILED (uwb buffer is empty)");
-      init_successful = false;
       continue;
     }
 
@@ -168,6 +167,7 @@ bool UwbInitializer::init_anchors()
          << ls_sols_.at(uwb_data.first).cov_ << '\n'
          << "gamma = " << ls_sols_.at(uwb_data.first).gamma_ << '\n';
       logger_->debug(ss.str());
+      init_successful = true;
       continue;
     }
 
@@ -176,7 +176,7 @@ bool UwbInitializer::init_anchors()
     Eigen::MatrixXd cov;
 
     // Solve ls problem and initialize anchor
-    if (ls_solver_->solve_ls(uwb_data.second, p_UinG_buffer_, lsSolution, cov))
+    if (ls_solver_.solve_ls(uwb_data.second, p_UinG_buffer_, lsSolution, cov))
     {
       // Assign values to parameters
       Eigen::Vector3d p_AinG = lsSolution.head(3);
@@ -203,25 +203,18 @@ bool UwbInitializer::init_anchors()
          << ls_sols_.at(uwb_data.first).cov_ << '\n'
          << "gamma = " << ls_sols_.at(uwb_data.first).gamma_ << '\n';
       logger_->debug(ss.str());
+      init_successful = true;
     }
     // Can not initialize
     else
     {
-      logger_->err("Anchor[" + std::to_string(uwb_data.first) + "]: Not initialized correctly");
-      init_successful = false;
+      logger_->err("Anchor[" + std::to_string(uwb_data.first) + "]: Can not be initialized");
     }
   }
 
-  // If initialization is not successful return false
-  if (!(init_successful))
-  {
-    logger_->err("UwbInitializer: Initialization FAILED");
-    return false;
-  }
-
-  // Else all anchors have been initialized correctly
+  // Initialization finished
   logger_->info("UwbInitializer: Initialization complete");
-  return true;
+  return init_successful;
 }
 
 bool UwbInitializer::refine_anchors()
@@ -236,8 +229,8 @@ bool UwbInitializer::refine_anchors()
     return false;
   }
 
-  // Variable for keeping track if all anchors have been correctly refined
-  bool refine_successful = true;
+  // Variable for keeping track if at least one anchor has been correctly refined
+  bool refine_successful = false;
 
   // For each uwb ID extract LS solution
   for (const auto& ls_sol : ls_sols_)
@@ -246,7 +239,6 @@ bool UwbInitializer::refine_anchors()
     if (uwb_data_buffer_.at(ls_sol.first).empty())
     {
       logger_->err("Anchor[" + std::to_string(ls_sol.first) + "]: Refinement FAILED (uwb buffer is empty)");
-      refine_successful = false;
       continue;
     }
 
@@ -262,6 +254,7 @@ bool UwbInitializer::refine_anchors()
          << "gamma = " << nls_sols_.at(ls_sol.first).gamma_ << '\n'
          << "beta = " << nls_sols_.at(ls_sol.first).beta_ << '\n';
       logger_->debug(ss.str());
+      refine_successful = true;
       continue;
     }
 
@@ -273,7 +266,7 @@ bool UwbInitializer::refine_anchors()
     theta << ls_sol.second.anchor_.p_AinG_, 1.0, ls_sol.second.gamma_;
 
     // Perform nonlinear optimization
-    if (nls_solver_->solve_nls(uwb_data_buffer_.at(ls_sol.first), p_UinG_buffer_, theta, cov))
+    if (nls_solver_.solve_nls(uwb_data_buffer_.at(ls_sol.first), p_UinG_buffer_, theta, cov))
     {
       // Initialize anchor and solution
       UwbAnchor new_anchor(ls_sol.first, theta.head(3));
@@ -292,25 +285,18 @@ bool UwbInitializer::refine_anchors()
          << "gamma = " << nls_sols_.at(ls_sol.first).gamma_ << '\n'
          << "beta = " << nls_sols_.at(ls_sol.first).beta_ << '\n';
       logger_->debug(ss.str());
+      refine_successful = true;
     }
     // Can not refine
     else
     {
-      logger_->err("Anchor[" + std::to_string(ls_sol.first) + "]: Not refined correctly");
-      refine_successful = false;
+      logger_->err("Anchor[" + std::to_string(ls_sol.first) + "]: Can not be refined");
     }
   }
 
-  // If refinement is not successful return false
-  if (!(refine_successful))
-  {
-    logger_->err("UwbInitializer: Refinement FAILED");
-    return false;
-  }
-
-  // Else all anchors have been initialized correctly
+  // Refinement complete
   logger_->info("UwbInitializer: Refinement complete");
-  return true;
+  return refine_successful;
 }
 
 }  // namespace uwb_init

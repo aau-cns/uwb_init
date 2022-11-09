@@ -1,4 +1,4 @@
-// Copyright (C) 2022 Alessandro Fornasier, Giulio Delama, and Martin Scheiber,
+// Copyright (C) 2022 Alessandro Fornasier, Giulio Delama and Martin Scheiber.
 // Control of Networked Systems, University of Klagenfurt, Austria.
 //
 // All rights reserved.
@@ -15,9 +15,8 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 //
-// You can contact the authors at
-// <alessandro.fornasier@aau.at>, <giulio.delama@aau.at>, and
-// <martin.scheiber@aau.at>
+// You can contact the authors at <alessandro.fornasier@aau.at>,
+// <giulio.delama@aau.at> and <martin.scheiber@aau.at>
 
 #ifndef UTILS_HPP_
 #define UTILS_HPP_

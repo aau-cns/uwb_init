@@ -1,5 +1,5 @@
-// Copyright (C) 2021 Giulio Delama
-// Control of Networked Systems, Universitaet Klagenfurt, Austria
+// Copyright (C) 2022 Alessandro Fornasier, Giulio Delama.
+// Control of Networked Systems, University of Klagenfurt, Austria.
 //
 // All rights reserved.
 //
@@ -15,7 +15,8 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 //
-// You can contact the author at <giulio.delama@aau.at>
+// You can contact the authors at <alessandro.fornasier@aau.at> and
+// <giulio.delama@aau.at>
 
 #ifndef NLS_SOLVER_HPP_
 #define NLS_SOLVER_HPP_
@@ -35,6 +36,10 @@ public:
   // Least Squares solver
   bool solve_nls(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer, Eigen::VectorXd& theta,
                  Eigen::MatrixXd& cov);
+
+  // Output Error Algorithm solver
+  bool solve_oea(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer,
+                 Eigen::VectorXd& theta, Eigen::MatrixXd& cov);
 
 private:
   /// Shared pointer to logger

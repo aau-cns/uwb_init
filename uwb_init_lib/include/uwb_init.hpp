@@ -1,5 +1,5 @@
-// Copyright (C) 2021 Giulio Delama, Alessandro Fornasier, Martin Scheiber
-// Control of Networked Systems, Universitaet Klagenfurt, Austria
+// Copyright (C) 2022 Alessandro Fornasier, Giulio Delama and Martin Scheiber.
+// Control of Networked Systems, University of Klagenfurt, Austria.
 //
 // All rights reserved.
 //
@@ -15,8 +15,8 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 //
-// You can contact the authors at <giulio.delama@aau.at>,
-// <alessandro.fornasier@aau.at>, and <martin.scheiber@aau.at>
+// You can contact the authors at <alessandro.fornasier@aau.at>,
+// <giulio.delama@aau.at> and <martin.scheiber@aau.at>
 
 #ifndef UWB_INIT_HPP_
 #define UWB_INIT_HPP_
@@ -112,10 +112,9 @@ public:
   /// measurements are present were successfully initialized at some point.
   ///
   bool init_anchors();
-  // TODO(alf) no discard ! change the return to false only if there are no solutions
 
   ///
-  /// \todo TODO (gid) planner for waypoint generation to refine anchors
+  /// \todo planner for waypoint generation to refine anchors
   ///
 
   ///
@@ -123,7 +122,6 @@ public:
   /// linear least squares optimization
   ///
   bool refine_anchors();
-  // TODO(alf) no discard ! change the return to false only if there are no solutions
 
 private:
   // Shared pointer to logger
@@ -132,19 +130,17 @@ private:
   // Initializer parameters
   UwbInitOptions init_params_;
 
-  // TODO(alf) why shared ptr? --> not need of it
-  // Shared pointer to least squares solver
-  std::shared_ptr<LsSolver> ls_solver_ = nullptr;
+  // Least squares solver
+  LsSolver ls_solver_;
 
-  // Shared pointer to nonlinear least squares solver
-  std::shared_ptr<NlsSolver> nls_solver_ = nullptr;
+  // Nonlinear least squares solver
+  NlsSolver nls_solver_;
 
   // Anchor and measurement handling
   PositionBuffer p_UinG_buffer_;   //!< buffer of UWB module positions in global frame
   UwbDataBuffer uwb_data_buffer_;  //!< history of uwb readings in DataBuffer
 
   // Solutions handling
-  // TODO(alf) check value of uninitialized map
   LSSolutions ls_sols_;
   NLSSolutions nls_sols_;
 };
