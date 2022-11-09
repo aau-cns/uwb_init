@@ -1,5 +1,5 @@
-// Copyright (C) 2022 Giulio Delamar, Control of Networked Systems,
-// University of Klagenfurt, Austria.
+// Copyright (C) 2022 Giulio Delama.
+// Control of Networked Systems, University of Klagenfurt, Austria.
 //
 // All rights reserved.
 //

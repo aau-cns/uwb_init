@@ -1,5 +1,5 @@
-﻿// Copyright (C) 2021 Giulio Delama, Alessandro Fornasier, Martin Scheiber
-// Control of Networked Systems, Universitaet Klagenfurt, Austria
+﻿// Copyright (C) 2022 Alessandro Fornasier, Giulio Delama and Martin Scheiber.
+// Control of Networked Systems, University of Klagenfurt, Austria.
 //
 // All rights reserved.
 //
@@ -15,8 +15,8 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 //
-// You can contact the authors at <giulio.delama@aau.at>,
-// <alessandro.fornasier@aau.at>, and <martin.scheiber@aau.at>
+// You can contact the authors at <alessandro.fornasier@aau.at>,
+// <giulio.delama@aau.at> and <martin.scheiber@aau.at>
 
 #include "uwb_init.hpp"
 

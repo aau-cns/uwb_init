@@ -1,5 +1,5 @@
-﻿// Copyright (C) 2021 Giulio Delama,
-// Control of Networked Systems, Universitaet Klagenfurt, Austria
+﻿// Copyright (C) 2022 Alessandro Fornasier, Giulio Delama.
+// Control of Networked Systems, University of Klagenfurt, Austria.
 //
 // All rights reserved.
 //
@@ -15,7 +15,8 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 //
-// You can contact the authors at <giulio.delama@aau.at>
+// You can contact the authors at <alessandro.fornasier@aau.at> and
+// <giulio.delama@aau.at>
 
 #include "solvers/nonlinear/nls_solver.hpp"
 
@@ -115,7 +116,7 @@ bool NlsSolver::solve_nls(const TimedBuffer<UwbData>& uwb_data, const PositionBu
     // If step norm is minimum reduce the step for next iteration
     if (step_idx == 0)
     {
-      logger_->info("NlsSolver::solve_nls(): Reducing step norm");
+      logger_->debug("NlsSolver::solve_nls(): Reducing step norm");
       step_vec /= 2;
     }
 

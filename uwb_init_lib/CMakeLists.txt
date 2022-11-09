@@ -82,8 +82,6 @@ add_executable(test_utils test/test_utils.cpp)
 target_link_libraries(test_utils ${thirdparty_libraries} uwb_init GTest::gtest_main)
 add_executable(test_init test/test_init.cpp)
 target_link_libraries(test_init ${thirdparty_libraries} uwb_init)
-add_executable(test_eigen test/test_eigen.cpp)
-target_link_libraries(test_eigen ${thirdparty_libraries} uwb_init)
 
 include(GoogleTest)
 gtest_discover_tests(test_utils)

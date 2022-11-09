@@ -1,5 +1,5 @@
-﻿// Copyright (C) 2021 Giulio Delama, Alessandro Fornasier
-// Control of Networked Systems, Universitaet Klagenfurt, Austria
+﻿// Copyright (C) 2021 Alessandro Fornasier, Giulio Delama.
+// Control of Networked Systems, University of Klagenfurt, Austria.
 //
 // All rights reserved.
 //
@@ -15,8 +15,8 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 //
-// You can contact the authors at <alessandro.fornasier@aau.at>
-// and <giulio.delama@aau.at>
+// You can contact the authors at <alessandro.fornasier@aau.at> and
+// <giulio.delama@aau.at>
 
 #include "solvers/linear/ls_solver.hpp"
 
@@ -36,29 +36,32 @@ void LsSolver::configure(const UwbInitOptions& options)
   // Bind LS-problem initialization function based on selected method and model variables
   switch (options.init_method_)
   {
+    // Single measurement initialization method
     case InitMethod::SINGLE:
       switch (options.bias_type_)
       {
+        // Unbiased measurement model (only distance between tag and uwb anchor)
         case BiasType::NO_BIAS:
           ls_problem = std::bind(&LsSolver::ls_single_no_bias, this, std::placeholders::_1, std::placeholders::_2,
                                  std::placeholders::_3, std::placeholders::_4, std::placeholders::_5);
           break;
-
+        // Constant bias measurement model (distance and constant bias)
         case BiasType::CONST_BIAS:
           ls_problem = std::bind(&LsSolver::ls_single_const_bias, this, std::placeholders::_1, std::placeholders::_2,
                                  std::placeholders::_3, std::placeholders::_4, std::placeholders::_5);
           break;
       }
       break;
-
+    // Double measurements initialization method
     case InitMethod::DOUBLE:
       switch (options.bias_type_)
       {
+        // Unbiased measurement model (only distance between tag and uwb anchor)
         case BiasType::NO_BIAS:
           ls_problem = std::bind(&LsSolver::ls_double_no_bias, this, std::placeholders::_1, std::placeholders::_2,
                                  std::placeholders::_3, std::placeholders::_4, std::placeholders::_5);
           break;
-
+        // Constant bias measurement model (distance and constant bias)
         case BiasType::CONST_BIAS:
           ls_problem = std::bind(&LsSolver::ls_double_const_bias, this, std::placeholders::_1, std::placeholders::_2,
                                  std::placeholders::_3, std::placeholders::_4, std::placeholders::_5);
@@ -188,6 +191,12 @@ bool LsSolver::ls_double_const_bias(const TimedBuffer<UwbData>& uwb_data, const 
   // [    0   ,     1   ,    2    ,  3 ]
   // [p_AinG_x, p_AinG_y, p_AinG_z,  k ]
 
+  // Number of data points must be at least 2
+  if (uwb_data.size() < 2)
+  {
+      return false;
+  }
+
   // Coefficient matrix and measurement vector initialization
   A = Eigen::MatrixXd::Zero(uwb_data.size() - 1, 4);
   b = Eigen::VectorXd::Zero(A.rows());
@@ -251,6 +260,12 @@ bool LsSolver::ls_double_no_bias(const TimedBuffer<UwbData>& uwb_data, const Pos
   // Unbiased double:
   // [    0    ,    1   ,    2    ]
   // [p_AinG_x, p_AinG_y, p_AinG_z]
+
+  // Number of data points must be at least 2
+  if (uwb_data.size() < 2)
+  {
+      return false;
+  }
 
   // Coefficient matrix and measurement vector initialization
   A = Eigen::MatrixXd::Zero(uwb_data.size() - 1, 3);
