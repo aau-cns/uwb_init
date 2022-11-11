@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.13)
 project(
     uwb_init_lib
     VERSION 1.0
@@ -6,25 +6,31 @@ project(
     LANGUAGES CXX
 )
 
-# Include libraries
-find_package(Boost REQUIRED)
+## Check variables
+if(NOT BUILD_TESTS)
+    set(BUILD_TESTS false)
+endif()
+message(STATUS "BUILD TESTS = ${BUILD_TESTS}")
+
+## Include libraries
+include(CMakeFindDependencyMacro)
 find_package(Eigen3 3.4 REQUIRED)
-
-# Include and set up googletest
-include(FetchContent)
-FetchContent_Declare(
-  googletest
-  URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
-)
-# For Windows: Prevent overriding the parent project's compiler/linker settings
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(googletest)
-
-## Display packages version
+find_dependency(Eigen3 3.4)
 message(STATUS "EIGEN VERSION: " ${Eigen3_VERSION})
-message(STATUS "BOOST VERSION: " ${Boost_VERSION})
 
-# Try to compile with newer versions of C++
+## Include and set up googletest
+if(${BUILD_TESTS})
+    include(FetchContent)
+    FetchContent_Declare(
+    googletest
+    URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
+    )
+    # For Windows: Prevent overriding the parent project's compiler/linker settings
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(googletest)
+endif()
+
+## Try to compile with newer versions of C++
 include(CheckCXXCompilerFlag)
 CHECK_CXX_COMPILER_FLAG("-std=c++20" COMPILER_SUPPORTS_CXX20)
 if(COMPILER_SUPPORTS_CXX20)
@@ -36,7 +42,7 @@ endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 message(STATUS "Set compiler ${CMAKE_CXX_COMPILER}.")
 
-# Define build type
+## Define build type
 #set(CMAKE_BUILD_TYPE "Release")
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
@@ -49,23 +55,7 @@ elseif (CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif ()
 message(STATUS "CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS}.")
 
-# Include header files
-include_directories(
-    ${Boost_INCLUDE_DIR}
-    ${EIGEN3_INCLUDE_DIR}
-    ${OpenCV_INCLUDE_DIR}
-    include
-)
-
-# List third party libraries used by all binaries
-list(
-    APPEND thirdparty_libraries
-    ${Boost_LIBRARIES}
-    ${EIGEN3_LIBRARIES}
-    ${OpenCV_LIBRARIES}
-)
-
-# List library source files
+## List library source files
 list(
     APPEND lib_sources
     source/uwb_init.cpp
@@ -74,15 +64,74 @@ list(
 )
 
 ## Declare a C++ library
-add_library(uwb_init SHARED ${lib_sources})
-target_link_libraries(uwb_init ${thirdparty_libraries})
+add_library(${PROJECT_NAME} STATIC ${lib_sources})
+
+## Include GNU dirs
+include(GNUInstallDirs)
+
+## Define includes
+list(APPEND include_dirs
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${EIGEN3_INCLUDE_DIR}
+)
+
+## include directories
+## Specify generator expression to indicate build path and install path
+## to allow easy re-location
+target_include_directories(${PROJECT_NAME}
+    PUBLIC
+        "$<BUILD_INTERFACE:${include_dirs}>"
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+)
 
 ## Declare C++ tests
-add_executable(test_utils test/test_utils.cpp)
-target_link_libraries(test_utils ${thirdparty_libraries} uwb_init GTest::gtest_main)
-add_executable(test_init test/test_init.cpp)
-target_link_libraries(test_init ${thirdparty_libraries} uwb_init)
+if(${BUILD_TESTS})
+    add_executable(test_utils test/test_utils.cpp)
+    target_include_directories(test_utils PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include ${EIGEN3_INCLUDE_DIR})
+    target_link_libraries(test_utils ${PROJECT_NAME} GTest::gtest_main)
+    add_executable(test_init test/test_init.cpp)
+    target_include_directories(test_init PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include ${EIGEN3_INCLUDE_DIR})
+    target_link_libraries(test_init ${PROJECT_NAME})
+    include(GoogleTest)
+    gtest_discover_tests(test_utils)
+endif()
 
-include(GoogleTest)
-gtest_discover_tests(test_utils)
+## Install
+set(PROJECT_TARGET ${PROJECT_NAME}_targets)
+install(TARGETS ${PROJECT_NAME}
+        EXPORT ${PROJECT_TARGET}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+install(EXPORT ${PROJECT_TARGET}
+        FILE ${PROJECT_TARGET}.cmake
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
+)
+install(DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+        FILES_MATCHING
+        PATTERN *.h
+        PATTERN *.hpp
+)
 
+## Package
+include(CMakePackageConfigHelpers)
+set(PROJECT_CONFIG ${PROJECT_NAME}Config)
+configure_package_config_file(
+    "${PROJECT_SOURCE_DIR}/cmake/${PROJECT_NAME}_config.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_CONFIG}.cmake"
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
+)
+write_basic_package_version_file(
+    "${PROJECT_CONFIG}Version.cmake"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion
+)
+
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_CONFIG}.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_CONFIG}Version.cmake"
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
+)

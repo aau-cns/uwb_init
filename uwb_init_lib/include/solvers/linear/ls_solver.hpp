@@ -32,16 +32,41 @@ namespace uwb_init
 class LsSolver
 {
 public:
-  LsSolver(const std::shared_ptr<Logger> logger, const UwbInitOptions& options);
+  /**
+   * @brief Construct a new Ls Solver object
+   *
+   * @param logger
+   * @param options initialization options specifying the type of model, and the method used for building the least
+   * square problem
+   * @param ls_solver_options configuration of the least square solver
+   */
+  LsSolver(const std::shared_ptr<Logger> logger, const UwbInitOptions& init_options,
+           const LsSolverOptions& ls_solver_options);
 
-  // Update configuration
-  void configure(const UwbInitOptions& options);
+  /**
+   * @brief Configure LS solver problem type (unbiased or const bias), and method (single or double)
+   *
+   * @param init_options initialization options specifying the type of model, and the method used for building the least
+   * square problem
+   */
+  void configure(const UwbInitOptions& init_options);
 
-  // Least Squares solver
-  bool solve_ls(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer, Eigen::VectorXd& lsSolution,
-                Eigen::MatrixXd& cov);
+  /**
+   * @brief Function to be called to solve the least square problem
+   *
+   * @param uwb_data
+   * @param p_UinG_buffer
+   * @param lsSolution
+   * @param cov
+   * @return true if a solution is found, false otherwise
+   */
+  [[nodiscard]] bool solve_ls(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer,
+                              Eigen::VectorXd& lsSolution, Eigen::MatrixXd& cov);
 
-  // Least squares initialization handling
+  /**
+   * @brief The least square problem
+   *
+   */
   std::function<bool(const TimedBuffer<UwbData>&, const PositionBuffer&, Eigen::MatrixXd&, Eigen::VectorXd&,
                      Eigen::VectorXd&)>
       ls_problem;
@@ -51,7 +76,7 @@ private:
   std::shared_ptr<Logger> logger_;
 
   // LsSolver parameters
-  LsSolverOptions ls_params_;
+  LsSolverOptions solver_options_;
 
   ///
   /// \brief functions for least squares problem formulation depending on selected method and variables

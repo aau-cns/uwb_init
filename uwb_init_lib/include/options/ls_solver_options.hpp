@@ -29,13 +29,10 @@ namespace uwb_init
 struct LsSolverOptions
 {
   /// position uncertainty
-  double sigma_pos{ 0.03 };
+  double sigma_pos_{ 0.03 };
 
   /// uwb uncertainty
-  double sigma_meas{ 0.1 };
-
-  /// const bias flag
-  bool const_bias_flag{ false };
+  double sigma_meas_{ 0.1 };
 
 };  // struct LsSolverOptions
 }  // namespace uwb_init

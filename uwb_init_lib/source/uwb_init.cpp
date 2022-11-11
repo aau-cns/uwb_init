@@ -22,37 +22,38 @@
 
 namespace uwb_init
 {
-UwbInitializer::UwbInitializer(const LoggerLevel& level, const UwbInitOptions& init_params)
+UwbInitializer::UwbInitializer(const LoggerLevel& level, const UwbInitOptions& init_options,
+                               const LsSolverOptions& ls_solver_options, const NlsSolverOptions& nls_solver_options)
   : logger_(std::make_shared<Logger>(level))
-  , init_params_(init_params)
-  , ls_solver_(logger_, init_params_)
-  , nls_solver_(logger_)
+  , init_options_(init_options)
+  , ls_solver_(logger_, init_options, ls_solver_options)
+  , nls_solver_(logger_, nls_solver_options)
 {
   // Logging
-  logger_->info("UwbInitializer: " + std::string(InitMethodString(init_params_.init_method_)));
-  logger_->info("UwbInitializer: " + std::string(BiasTypeString(init_params_.bias_type_)));
+  logger_->info("UwbInitializer: " + std::string(InitMethodString(init_options_.init_method_)));
+  logger_->info("UwbInitializer: " + std::string(BiasTypeString(init_options_.bias_type_)));
 }
 
 void UwbInitializer::set_init_method(const InitMethod& method)
 {
-  init_params_.init_method_ = method;
+  init_options_.init_method_ = method;
 
   // Logging
-  logger_->info("UwbInitializer: " + std::string(InitMethodString(init_params_.init_method_)));
+  logger_->info("UwbInitializer: " + std::string(InitMethodString(init_options_.init_method_)));
 
   // Configure Least Squares Solver
-  ls_solver_.configure(init_params_);
+  ls_solver_.configure(init_options_);
 }
 
 void UwbInitializer::set_bias_type(const BiasType& type)
 {
-  init_params_.bias_type_ = type;
+  init_options_.bias_type_ = type;
 
   // Logging
-  logger_->info("UwbInitializer: " + std::string(BiasTypeString(init_params_.bias_type_)));
+  logger_->info("UwbInitializer: " + std::string(BiasTypeString(init_options_.bias_type_)));
 
   // Configure Least Squares Solver
-  ls_solver_.configure(init_params_);
+  ls_solver_.configure(init_options_);
 }
 
 const LSSolutions& UwbInitializer::get_ls_solutions() const
@@ -126,7 +127,7 @@ void UwbInitializer::feed_uwb(const double timestamp, const UwbData uwb_measurem
   }
 }
 
-void UwbInitializer::feed_pose(const double timestamp, const Eigen::Vector3d p_UinG)
+void UwbInitializer::feed_position(const double timestamp, const Eigen::Vector3d p_UinG)
 {
   p_UinG_buffer_.push_back(timestamp, p_UinG);
 }
@@ -136,10 +137,10 @@ bool UwbInitializer::init_anchors()
   // Logging
   logger_->info("UwbInitializer: Performing uwb anchors initialization");
 
-  // Check if pose buffer is empty
+  // Check if position buffer is empty
   if (p_UinG_buffer_.empty())
   {
-    logger_->err("UwbInitializer: Initialization FAILED (pose buffer is empty)");
+    logger_->err("UwbInitializer: Initialization FAILED (position buffer is empty)");
     return false;
   }
 
@@ -183,7 +184,7 @@ bool UwbInitializer::init_anchors()
       double const_bias = 0.0;
 
       // If constant bias was estimated assign the value
-      if (init_params_.bias_type_ == BiasType::CONST_BIAS)
+      if (init_options_.bias_type_ == BiasType::CONST_BIAS)
       {
         const_bias = lsSolution(3);
       }
@@ -225,7 +226,7 @@ bool UwbInitializer::refine_anchors()
   // Check if pose buffer is empty
   if (p_UinG_buffer_.empty())
   {
-    logger_->err("UwbInitializer: Refinement FAILED (pose buffer is empty)");
+    logger_->err("UwbInitializer: Refinement FAILED (position buffer is empty)");
     return false;
   }
 

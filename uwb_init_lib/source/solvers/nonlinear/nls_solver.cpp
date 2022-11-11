@@ -22,8 +22,12 @@
 
 namespace uwb_init
 {
-NlsSolver::NlsSolver(const std::shared_ptr<Logger> logger) : logger_(std::move(logger))
+NlsSolver::NlsSolver(const std::shared_ptr<Logger> logger, const NlsSolverOptions& nls_solver_options)
+  : logger_(std::move(logger))
 {
+  // Set solver options
+  solver_options_ = nls_solver_options;
+
   // Logging
   logger_->info("NlsSolver: Initialized");
 }
@@ -32,7 +36,7 @@ bool NlsSolver::solve_nls(const TimedBuffer<UwbData>& uwb_data, const PositionBu
                           Eigen::VectorXd& theta, Eigen::MatrixXd& cov)
 {
   // Step norm vector
-  Eigen::VectorXd step_vec = nls_params_.step_vec;
+  Eigen::VectorXd step_vec_ = solver_options_.step_vec_;
 
   // Data vectors initialization
   Eigen::VectorXd uwb_vec = Eigen::VectorXd::Zero(uwb_data.size());
@@ -54,12 +58,12 @@ bool NlsSolver::solve_nls(const TimedBuffer<UwbData>& uwb_data, const PositionBu
   }
 
   // Non-linear Least Squares
-  for (uint i = 0; i < nls_params_.max_iter; ++i)
+  for (uint i = 0; i < solver_options_.max_iter_; ++i)
   {
     // Jacobian matrix, residual and mean squared error vectors initialization
     Eigen::MatrixXd J = Eigen::MatrixXd::Zero(uwb_vec.size(), 5);
     Eigen::VectorXd res = Eigen::VectorXd::Zero(uwb_vec.size());
-    Eigen::VectorXd mse_vec = Eigen::VectorXd::Zero(step_vec.size());
+    Eigen::VectorXd mse_vec = Eigen::VectorXd::Zero(step_vec_.size());
 
     // Compute Jacobian and residual
     for (uint j = 0; j < uwb_vec.size(); ++j)
@@ -88,9 +92,9 @@ bool NlsSolver::solve_nls(const TimedBuffer<UwbData>& uwb_data, const PositionBu
     Eigen::VectorXd d_theta = pinv_J * res;
 
     // Calculate mean squared error for each step
-    for (uint j = 0; j < step_vec.size(); ++j)
+    for (uint j = 0; j < step_vec_.size(); ++j)
     {
-      Eigen::VectorXd theta_new = theta + step_vec(j) * d_theta;
+      Eigen::VectorXd theta_new = theta + step_vec_(j) * d_theta;
       for (uint k = 0; k < uwb_vec.size(); ++k)
       {
         // MSE(k) = r(k)^2 = (uwb(k) - f(theta))^2
@@ -107,7 +111,7 @@ bool NlsSolver::solve_nls(const TimedBuffer<UwbData>& uwb_data, const PositionBu
     mse_vec.minCoeff(&step_idx);
 
     // Perform parameters update theta(k+1) = theta(k) + step_norm * d_theta
-    theta += step_vec(step_idx) * d_theta;
+    theta += step_vec_(step_idx) * d_theta;
 
     // Compute estimation Covariance (Var(X) = MSE*(J'*J)^-1) = MSE*V*S^-1*S^-1*V' (see properties of SVD)
     cov = mse_vec(step_idx) * svd.matrixV() * svd.singularValues().asDiagonal().inverse() *
@@ -117,29 +121,30 @@ bool NlsSolver::solve_nls(const TimedBuffer<UwbData>& uwb_data, const PositionBu
     if (step_idx == 0)
     {
       logger_->debug("NlsSolver::solve_nls(): Reducing step norm");
-      step_vec /= 2;
+      step_vec_ /= 2;
     }
 
     // Norm of step stopping condition
-    if (step_vec(step_idx) * d_theta.norm() / theta.norm() < nls_params_.step_cond)
+    if (step_vec_(step_idx) * d_theta.norm() / theta.norm() < solver_options_.step_cond_)
     {
       logger_->info("NlsSolver::solve_nls(): Relative norm of step is less than " +
-                    std::to_string(nls_params_.step_cond));
+                    std::to_string(solver_options_.step_cond_));
       break;
     }
 
     // Residual stopping condition
-    if (mse_vec(step_idx) < nls_params_.res_cond)
+    if (mse_vec(step_idx) < solver_options_.res_cond_)
     {
-      logger_->info("NlsSolver::solve_nls(): Mean squared error is less than " + std::to_string(nls_params_.res_cond));
+      logger_->info("NlsSolver::solve_nls(): Mean squared error is less than " +
+                    std::to_string(solver_options_.res_cond_));
       break;
     }
 
     // Check if maximum number of iteration reached
-    if (i == (nls_params_.max_iter - 1))
+    if (i == (solver_options_.max_iter_ - 1))
     {
       logger_->warn("NlsSolver::solve_nls(): Maximum number of iterations reached (" +
-                    std::to_string(nls_params_.max_iter) + ")");
+                    std::to_string(solver_options_.max_iter_) + ")");
     }
   }
 
@@ -176,7 +181,7 @@ bool NlsSolver::solve_oea(const TimedBuffer<UwbData>& uwb_data, const PositionBu
   }
 
   // Output Error Algorithm
-  for (uint i = 0; i < nls_params_.max_iter; ++i)
+  for (uint i = 0; i < solver_options_.max_iter_; ++i)
   {
     // Simulate the system with current theta
     Eigen::VectorXd y_hat(uwb_vec.size());
@@ -230,26 +235,26 @@ bool NlsSolver::solve_oea(const TimedBuffer<UwbData>& uwb_data, const PositionBu
           svd.singularValues().asDiagonal().inverse() * svd.matrixV().transpose();
 
     // Check if norm of step is small
-    if (d_theta.norm() / theta.norm() < nls_params_.step_cond)
+    if (d_theta.norm() / theta.norm() < solver_options_.step_cond_)
     {
       logger_->info("NlsSolver::solve_oea(): Realtive norm of step is less than " +
-                    std::to_string(nls_params_.step_cond));
+                    std::to_string(solver_options_.step_cond_));
       break;
     }
 
     // Check if norm of gradient is small
-    if (g.norm() < nls_params_.res_cond)
+    if (g.norm() < solver_options_.res_cond_)
     {
       logger_->info("NlsSolver::solve_oea(): Absolute norm of gradient is less than " +
-                    std::to_string(nls_params_.res_cond));
+                    std::to_string(solver_options_.res_cond_));
       break;
     }
 
     // Check if maximum number of iteration reached
-    if (i == (nls_params_.max_iter - 1))
+    if (i == (solver_options_.max_iter_ - 1))
     {
       logger_->warn("NlsSolver::solve_oea(): Maximum number of iterations reached (" +
-                    std::to_string(nls_params_.max_iter) + ")");
+                    std::to_string(solver_options_.max_iter_) + ")");
     }
   }
 

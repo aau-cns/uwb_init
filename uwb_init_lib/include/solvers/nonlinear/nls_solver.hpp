@@ -31,22 +31,44 @@ namespace uwb_init
 class NlsSolver
 {
 public:
-  NlsSolver(const std::shared_ptr<Logger> logger);
+  /**
+   * @brief Construct a new Nonlinear Least Square Solver object
+   *
+   * @param logger
+   * @param nls_solver_options
+   */
+  NlsSolver(const std::shared_ptr<Logger> logger, const NlsSolverOptions& nls_solver_options);
 
-  // Least Squares solver
-  bool solve_nls(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer, Eigen::VectorXd& theta,
-                 Eigen::MatrixXd& cov);
+  /**
+   * @brief Function to be called to solve the nonlinear least square problem
+   *
+   * @param uwb_data
+   * @param p_UinG_buffer
+   * @param theta
+   * @param cov
+   * @return true if one solution is found, false otherwise
+   */
+  [[nodiscard]] bool solve_nls(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer,
+                               Eigen::VectorXd& theta, Eigen::MatrixXd& cov);
 
-  // Output Error Algorithm solver
-  bool solve_oea(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer, Eigen::VectorXd& theta,
-                 Eigen::MatrixXd& cov);
+  /**
+   * @brief Function to be called to solve the nonlinear least square problem via output error algorithm
+   *
+   * @param uwb_data
+   * @param p_UinG_buffer
+   * @param theta
+   * @param cov
+   * @return true if one solution is found, false otherwise
+   */
+  [[nodiscard]] bool solve_oea(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer,
+                               Eigen::VectorXd& theta, Eigen::MatrixXd& cov);
 
 private:
   /// Shared pointer to logger
   std::shared_ptr<Logger> logger_;
 
   // LsSolver parameters
-  NlsSolverOptions nls_params_;
+  NlsSolverOptions solver_options_;
 };
 
 }  // namespace uwb_init

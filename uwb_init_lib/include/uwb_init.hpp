@@ -47,7 +47,9 @@ public:
   /// \param level logging level
   /// \param init_params Initializer options
   ///
-  UwbInitializer(const LoggerLevel& level = LoggerLevel::FULL, const UwbInitOptions& init_params_ = UwbInitOptions());
+  UwbInitializer(const LoggerLevel& level = LoggerLevel::FULL, const UwbInitOptions& init_options = UwbInitOptions(),
+                 const LsSolverOptions& ls_solver_options = LsSolverOptions(),
+                 const NlsSolverOptions& nls_solver_options = NlsSolverOptions());
 
   ///
   /// \brief Set option
@@ -95,11 +97,11 @@ public:
   void feed_uwb(const double timestamp, const UwbData uwb_measurement);
 
   ///
-  /// \brief feed_pose stores incoming positions of the UAV in the global frame
+  /// \brief feed_position stores incoming positions of the UAV in the global frame
   /// \param timestamp timestamp of pose
   /// \param p_UinG position to add to buffer
   ///
-  void feed_pose(const double timestamp, const Eigen::Vector3d p_UinG);
+  void feed_position(const double timestamp, const Eigen::Vector3d p_UinG);
 
   ///
   /// \brief init_anchors tries to initialize all anchors for which readings exist
@@ -130,7 +132,7 @@ private:
   std::shared_ptr<Logger> logger_ = nullptr;
 
   // Initializer parameters
-  UwbInitOptions init_params_;
+  UwbInitOptions init_options_;
 
   // Least squares solver
   LsSolver ls_solver_;
