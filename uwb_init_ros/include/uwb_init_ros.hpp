@@ -13,13 +13,18 @@
 //
 // You can contact the author at <alessandro.fornasier@aau.at>
 
-#ifndef uwb_init_ros_H
-#define uwb_init_ros_H
+#ifndef UWB_INIT_ROS_H
+#define UWB_INIT_ROS_H
 
+#include <geometry_msgs/PoseStamped.h>
 #include <ros/ros.h>
 #include <Eigen/Eigen>
-#include <uwb_init>
+#include <uwb_init_lib/include/uwb_init.hpp>
 
+#include "utils/options.hpp"
+
+namespace uwb_init_ros
+{
 class UwbInitRos
 {
 public:
@@ -28,14 +33,15 @@ public:
    *
    * @param Ros NodeHandle
    */
-  UwbInitRos(ros::NodeHandle& nh);
+  UwbInitRos(const ros::NodeHandle& nh, const UwbInitRosOptions& options);
 
 private:
   /**
-   * @brief Callbacks
+   * @brief Pose callback
    *
-   * @param Message const pointer
+   * @param Message
    */
+  void callback_pose(const geometry_msgs::PoseStamped::ConstPtr& msg);
 
   /// Ros node handler
   ros::NodeHandle nh_;
@@ -44,9 +50,16 @@ private:
   ros::Subscriber uwb_range_sub_;
   ros::Subscriber estimated_pose_sub_;
 
+  /// Options
+  UwbInitRosOptions options_;
+
   /// Publishers
 
   /// Messages
-};
 
-#endif  // uwb_init_ros_H
+  /// UWB initializer
+  uwb_init::UwbInitializer uwb_init_;
+};
+}  // namespace uwb_init_ros
+
+#endif  // UWB_INIT_ROS_H

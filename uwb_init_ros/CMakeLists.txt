@@ -25,13 +25,15 @@ message(STATUS "CMAKE_CXX_FLAGES: ${CMAKE_CXX_FLAGS}")
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp dynamic_reconfigure message_generation std_msgs nav_msgs sensor_msgs geometry_msgs uwb_init)
+find_package(catkin REQUIRED COMPONENTS roscpp dynamic_reconfigure message_generation std_msgs nav_msgs sensor_msgs geometry_msgs)
 
 ## System dependencies are found with CMake's conventions
 find_package(Eigen3 3.4 REQUIRED)
+find_package(uwb_init_lib REQUIRED)
 
 ## Display packages version
-message(STATUS "EIGEN VERSION: " ${Eigen3_VERSIONs})
+message(STATUS "EIGEN VERSION: " ${Eigen3_VERSION})
+message(STATUS "uwb_init_lib VERSION: " ${uwb_init_lib_VERSION})
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -86,8 +88,8 @@ message(STATUS "EIGEN VERSION: " ${Eigen3_VERSIONs})
 catkin_package(
   INCLUDE_DIRS include
   CATKIN_DEPENDS std_msgs nav_msgs sensor_msgs geometry_msgs #message_runtime
-  # LIBRARIES uwb_init_lib
-  # DEPENDS system_lib
+  LIBRARIES custom_libraries
+  DEPENDS uwb_init_lib
 )
 
 ###########
@@ -97,48 +99,44 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-  include ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIR} ${uwb_init_INCLUDE}
+  include 
+  ${catkin_INCLUDE_DIRS} 
+  ${EIGEN3_INCLUDE_DIRS} 
+  /usr/local/include/uwb_init_lib/include/
 )
 
 ## List third party libraries used by all binaries
 list(
-  APPEND thirdparty_libraries ${catkin_LIBRARIES} ${EIGEN3_LIBRARIES} ${uwb_init_LIBRARIES}
+  APPEND thirdparty_libraries 
+  ${catkin_LIBRARIES}
 )
 
 ## List custom libraries inside lib folder
-# list(
-#   APPEND custom_libraries_sources lib/library_name/src/library_source.cpp
-# )
+list(
+  APPEND custom_libraries_sources 
+  src/uwb_init_ros.cpp
+)
 
 ## Declare a C++ library
-# add_library(custom_libraries SHARED ${custom_libraries_sources})
-
-## Specify libraries to link a library or executable target against
-# target_link_libraries(custom_libraries ${thirdparty_libraries})
-
-## Add cmake target dependencies of the library
-## as an example, code may need to be generated before libraries
-## either from message generation or dynamic reconfigure
-# add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_library(custom_libraries SHARED ${custom_libraries_sources})
 
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(${PROJECT_NAME}_uwb_init src/uwb_init_ros.cpp src/uwb_init_ros_node.cpp)
+add_executable(${PROJECT_NAME} src/uwb_init_ros_node.cpp ${custom_libraries_sources})
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
 ## e.g. "rosrun someones_pkg node" instead of "rosrun someones_pkg someones_pkg_node"
-set_target_properties(${PROJECT_NAME}_uwb_init PROPERTIES OUTPUT_NAME uwb_init PREFIX "")
+set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME uwb_init PREFIX "")
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-add_dependencies(${PROJECT_NAME}_uwb_init ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(${PROJECT_NAME}_uwb_init ${thirdparty_libraries})
-# target_link_libraries(${PROJECT_NAME}_camera_downsample custom_libraries)
+target_link_libraries(${PROJECT_NAME} ${thirdparty_libraries} ${custom_libraries} uwb_init_lib)
 
 #############
 ## Install ##
