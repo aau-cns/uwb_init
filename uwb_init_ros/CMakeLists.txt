@@ -25,7 +25,7 @@ message(STATUS "CMAKE_CXX_FLAGES: ${CMAKE_CXX_FLAGS}")
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp dynamic_reconfigure message_generation std_msgs nav_msgs sensor_msgs geometry_msgs)
+find_package(catkin REQUIRED COMPONENTS roscpp dynamic_reconfigure message_generation std_msgs nav_msgs sensor_msgs geometry_msgs mdek_uwb_driver)
 
 ## System dependencies are found with CMake's conventions
 find_package(Eigen3 3.4 REQUIRED)
@@ -87,7 +87,7 @@ message(STATUS "uwb_init_lib VERSION: " ${uwb_init_lib_VERSION})
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-  CATKIN_DEPENDS std_msgs nav_msgs sensor_msgs geometry_msgs #message_runtime
+  CATKIN_DEPENDS std_msgs nav_msgs sensor_msgs geometry_msgs mdek_uwb_driver #message_runtime
   LIBRARIES custom_libraries
   DEPENDS uwb_init_lib
 )

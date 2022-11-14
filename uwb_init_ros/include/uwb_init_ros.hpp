@@ -16,12 +16,16 @@
 #ifndef UWB_INIT_ROS_H
 #define UWB_INIT_ROS_H
 
-#include <geometry_msgs/PoseStamped.h>
 #include <ros/ros.h>
 #include <Eigen/Eigen>
+
+#include <geometry_msgs/PoseStamped.h>
+#include <mdek_uwb_driver/Uwb.h>
+#include <std_srvs/Empty.h>
 #include <uwb_init_lib/include/uwb_init.hpp>
 
-#include "utils/options.hpp"
+#include "options.hpp"
+#include "utilities.hpp"
 
 namespace uwb_init_ros
 {
@@ -31,7 +35,7 @@ public:
   /**
    * @brief Constructor
    *
-   * @param Ros NodeHandle
+   * @param nh ROS NodeHandle
    */
   UwbInitRos(const ros::NodeHandle& nh, const UwbInitRosOptions& options);
 
@@ -39,9 +43,32 @@ private:
   /**
    * @brief Pose callback
    *
-   * @param Message
+   * @param msg
    */
-  void callback_pose(const geometry_msgs::PoseStamped::ConstPtr& msg);
+  void callbackPose(const geometry_msgs::PoseStamped::ConstPtr& msg);
+
+  /**
+   * @brief uwb ranges callback
+   *
+   * @param msg
+   */
+  void callbackUwbRanges(const mdek_uwb_driver::UwbConstPtr& msg);
+
+  /**
+   * @brief Initialization service callback
+   *
+   * @param req request
+   * @param res response
+   * @return true if at least one anchor has been correctly initialized and refined
+   */
+  bool callbackServiceInit(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
+
+  /**
+   * @brief Initialize anchors with data collected so far
+   *
+   * @return true if at least one anchor has been correctly initialized and refined
+   */
+  [[nodiscard]] bool initializeAnchors();
 
   /// Ros node handler
   ros::NodeHandle nh_;
@@ -56,6 +83,9 @@ private:
   /// Publishers
 
   /// Messages
+
+  /// Service Servers
+  ros::ServiceServer init_srv_;
 
   /// UWB initializer
   uwb_init::UwbInitializer uwb_init_;

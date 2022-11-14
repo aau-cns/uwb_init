@@ -39,6 +39,13 @@ int main(int argc, char** argv)
     EXIT_FAILURE;
   }
 
+  // Get services names
+  if (!nh.getParam("initialization_service", opts.service_init_))
+  {
+    ROS_ERROR("Missing initialization_service parameter");
+    EXIT_FAILURE;
+  }
+
   // Get init options from parameter server
   std::string method, bias_type;
   nh.param<std::string>("method", method, "double");

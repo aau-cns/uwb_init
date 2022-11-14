@@ -13,9 +13,10 @@
 //
 // You can contact the author at <alessandro.fornasier@aau.at>
 
-#include "uwb_init_ros.hpp"
 #include <ros/ros.h>
 #include <Eigen/Eigen>
+
+#include "uwb_init_ros.hpp"
 
 namespace uwb_init_ros
 {
@@ -25,8 +26,8 @@ UwbInitRos::UwbInitRos(const ros::NodeHandle& nh, const UwbInitRosOptions& optio
   , uwb_init_(options.level_, options.init_options_, options.ls_solver_options_, options.nls_solver_options_)
 {
   // Subscribers
-  estimated_pose_sub_ = nh_.subscribe(options_.estimated_pose_topic_, 1, &UwbInitRos::callback_pose, this);
-  //   uwb_range_sub_ = nh_.subscribe(options_.uwb_range_topic_, 1, &UwbInitRos::callback_uwb, this);
+  estimated_pose_sub_ = nh_.subscribe(options_.estimated_pose_topic_, 1, &UwbInitRos::callbackPose, this);
+  uwb_range_sub_ = nh_.subscribe(options_.uwb_range_topic_, 1, &UwbInitRos::callbackUwbRanges, this);
 
   // Print topics where we are subscribing to
   ROS_INFO("Subsribing to %s", estimated_pose_sub_.getTopic().c_str());
@@ -35,9 +36,12 @@ UwbInitRos::UwbInitRos(const ros::NodeHandle& nh, const UwbInitRosOptions& optio
 
   // Print topics where we are publishing on
   // ROS_INFO("Publishing in %s");
+
+  // Services
+  init_srv_ = nh_.advertiseService(options_.service_init_, &UwbInitRos::callbackServiceInit, this);
 }
 
-void UwbInitRos::callback_pose(const geometry_msgs::PoseStamped::ConstPtr& msg)
+void UwbInitRos::callbackPose(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
   // Get pose
   Eigen::Vector3d p_IinG(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z);
@@ -50,4 +54,75 @@ void UwbInitRos::callback_pose(const geometry_msgs::PoseStamped::ConstPtr& msg)
   // Feed p_UinG
   uwb_init_.feed_position(msg->header.stamp.toSec(), p_UinG);
 }
+
+void UwbInitRos::callbackUwbRanges(const mdek_uwb_driver::UwbConstPtr& msg)
+{
+  // Parse message into correct data structure
+  std::vector<uwb_init::UwbData> data;
+
+  // Fill data
+  for (const auto& it : msg->ranges)
+  {
+    // Check if the id is valid (contains only numbers)
+    if (!containsChar(it.id))
+    {
+      // Convert id
+      std::stringstream sstream(it.id);
+      uint id;
+      sstream >> id;
+
+      // Fill vector
+      data.emplace_back(uwb_init::UwbData(true, it.distance, id));
+    }
+    else
+    {
+      ROS_WARN("Received UWB message containing characters in the id field. Measurement discarded");
+    }
+  }
+
+  // Feed measurements
+  uwb_init_.feed_uwb(msg->header.stamp.toSec(), data);
+}
+
+bool UwbInitRos::callbackServiceInit(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
+{
+  ROS_INFO("Inizialization service called.");
+  return initializeAnchors();
+}
+
+bool UwbInitRos::initializeAnchors()
+{
+  ROS_INFO("Performing anchor inizalization...");
+
+  // Initialize anchor
+  if (!uwb_init_.init_anchors())
+  {
+    ROS_WARN("Initialization of anchor failed. Please collect additional data and repeat.");
+    return false;
+  }
+
+  // Check what anchors have been sucessufully initialized
+  for (const auto& it : uwb_init_.get_ls_solutions())
+  {
+    ROS_INFO("Anchor [%d] succesfully initialized at [%f, %f, %f]", it.first, it.second.anchor_.p_AinG_.x(),
+             it.second.anchor_.p_AinG_.x(), it.second.anchor_.p_AinG_.z());
+  }
+
+  // Refine anchors
+  if (!uwb_init_.init_anchors())
+  {
+    ROS_WARN("Refinement of anchor failed. Please collect additional data and repeat.");
+    return false;
+  }
+
+  // Check what anchors have been sucessufully refined
+  for (const auto& it : uwb_init_.get_nls_solutions())
+  {
+    ROS_INFO("Anchor [%d] succesfully initialized at [%f, %f, %f]", it.first, it.second.anchor_.p_AinG_.x(),
+             it.second.anchor_.p_AinG_.x(), it.second.anchor_.p_AinG_.z());
+  }
+
+  return true;
+}
+
 }  // namespace uwb_init_ros
