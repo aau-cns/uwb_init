@@ -24,7 +24,7 @@
   <arg name="max_iterations"            		default="10000" />
   <arg name="step_vector"   default="[0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0]" />
 
-  <node name="uwb_init_cpp" pkg="uwb_init_cpp" type="uwb_init_cpp" args="" output="screen" respawn="false">
+  <node name="uwb_init" pkg="uwb_init_ros" type="uwb_init" args="" output="screen" respawn="false">
     <!-- topics remaps -->
     <param name="estimated_pose_topic"      type="str"  value="$(arg uwb_range_topic)" />
     <param name="uwb_range_topic"           type="str"  value="$(arg uwb_range_topic)" />
