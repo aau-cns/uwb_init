@@ -26,7 +26,7 @@
 
   <node name="uwb_init" pkg="uwb_init_ros" type="uwb_init" args="" output="screen" respawn="false">
     <!-- topics remaps -->
-    <param name="estimated_pose_topic"      type="str"  value="$(arg uwb_range_topic)" />
+    <param name="estimated_pose_topic"      type="str"  value="$(arg estimated_pose_topic)" />
     <param name="uwb_range_topic"           type="str"  value="$(arg uwb_range_topic)" />
     <param name="initialization_service"    type="str"  value="$(arg initialization_service)" />
     <param name="logger_level"              type="str"  value="$(arg logger_level)" />
