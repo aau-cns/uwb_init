@@ -67,7 +67,7 @@ const LSSolutions& UwbInitializer::get_ls_solutions() const
 
 const NLSSolutions& UwbInitializer::get_nls_solutions() const
 {
-  if (ls_sols_.empty())
+  if (nls_sols_.empty())
   {
     throw std::runtime_error("UwbInitializer::get_nls_solutions() Required empty solutions");
   }
