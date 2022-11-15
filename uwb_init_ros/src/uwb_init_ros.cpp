@@ -49,7 +49,7 @@ void UwbInitRos::callbackPose(const geometry_msgs::PoseStamped::ConstPtr& msg)
                           msg->pose.orientation.z);
 
   // Compute position of UWB module in Global frame
-  Eigen::Vector3d p_UinG = p_IinG + q_GI.toRotationMatrix() * p_IinG;
+  Eigen::Vector3d p_UinG = p_IinG + q_GI.toRotationMatrix() * options_.p_UinI_;
 
   // Feed p_UinG
   uwb_init_.feed_position(msg->header.stamp.toSec(), p_UinG);

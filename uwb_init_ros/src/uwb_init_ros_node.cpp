@@ -49,7 +49,7 @@ int main(int argc, char** argv)
   // Get init options from parameter server
   std::string method, bias_type;
   nh.param<std::string>("method", method, "double");
-  nh.param<std::string>("method", bias_type, "constant");
+  nh.param<std::string>("bias_type", bias_type, "constant");
 
   if (method == "single")
   {
@@ -92,11 +92,11 @@ int main(int argc, char** argv)
   nh.param<int>("max_iterations", max_iter, static_cast<int>(opts.nls_solver_options_.max_iter_));
   opts.nls_solver_options_.max_iter_ = static_cast<uint>(max_iter);
 
-  // std::vector<double> step_vector;
-  // std::vector<double> step_vector_default = { 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0
-  // }; nh.param<std::vector<double>>("step_vector", step_vector, step_vector_default);
-  // opts.nls_solver_options_.step_vec_ =
-  //     Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(step_vector.data(), step_vector.size());
+   std::vector<double> step_vec;
+   std::vector<double> step_vec_default = { 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0 };
+   nh.param<std::vector<double>>("step_vec", step_vec, step_vec_default);
+   opts.nls_solver_options_.step_vec_ =
+       Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(step_vec.data(), step_vec.size());
 
   // Get logger level from parameter server
   std::string logger_level;
@@ -128,7 +128,12 @@ int main(int argc, char** argv)
     EXIT_FAILURE;
   }
 
-  // TODO(alf): get p_UinI
+  std::vector<double> p_ItoU;
+  std::vector<double> p_ItoU_default = { 0.0, 0.0, 0.0 };
+  nh.param<std::vector<double>>("p_ItoU", p_ItoU, p_ItoU_default);
+  Eigen::Vector3d p_UinI(p_ItoU.data());
+  opts.p_UinI_ = p_UinI;
+
 
   // Instanciate UwbInitRos
   uwb_init_ros::UwbInitRos UwbInitRos(nh, opts);
