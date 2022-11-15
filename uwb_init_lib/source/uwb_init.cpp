@@ -158,7 +158,7 @@ bool UwbInitializer::init_anchors()
     }
 
     // Check if a solution is already present
-    if (ls_sols_.contains(uwb_data.first))
+    if (ls_sols_.find(uwb_data.first) != ls_sols_.end())
     {
       logger_->info("Anchor[" + std::to_string(uwb_data.first) + "]: Already initialized");
       std::stringstream ss;
@@ -244,7 +244,7 @@ bool UwbInitializer::refine_anchors()
     }
 
     // Check if a solution is already present
-    if (nls_sols_.contains(ls_sol.first))
+    if (nls_sols_.find(ls_sol.first) != nls_sols_.end())
     {
       logger_->info("Anchor[" + std::to_string(ls_sol.first) + "]: Already refined");
       std::stringstream ss;

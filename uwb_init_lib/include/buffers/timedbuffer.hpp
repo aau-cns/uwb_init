@@ -22,7 +22,6 @@
 #define TIMED_BUFFER_HPP_
 
 #include <algorithm>
-#include <concepts>
 #include <vector>
 
 #include "utils/utils.hpp"
@@ -180,7 +179,8 @@ private:
    * @param timestamp
    * @return const iterator (std::vector<std::pair<double, BufferType>>::const_iterator)
    */
-  inline std::vector<std::pair<double, BufferType>>::const_iterator get_closest_cit(const double& timestamp) const
+  inline typename std::vector<std::pair<double, BufferType>>::const_iterator
+  get_closest_cit(const double& timestamp) const
   {
     // Check that buffer is not empty
     if (buffer_.empty())

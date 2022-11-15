@@ -23,7 +23,8 @@
 
 #include <Eigen/Eigen>
 #include <array>
-#include <concepts>
+#include <iterator>
+#include <type_traits>
 #include <vector>
 
 namespace uwb_init
@@ -36,12 +37,14 @@ namespace uwb_init
  * @param x1 second data point
  * @param alpha interpolation parameter [0,1]
  */
-template <typename T>
-requires(std::floating_point<T> || std::derived_from<T, Eigen::MatrixBase<T>>) T
-    lerp(const T& x0, const T& x1, const double& alpha)
+template <typename T, typename std::enable_if<std::is_floating_point_v<T> || std::is_base_of_v<Eigen::MatrixBase<T>, T>,
+                                              T>::type* = nullptr>
+T lerp(const T& x0, const T& x1, const double& alpha)
 {
   return (1 - alpha) * x0 + alpha * x1;
 }
+
+// typename std::enable_if<, T>::type* = nullptr
 
 /**
  * @brief Check if a matrix is positive definite via Cholesky decomposition (LLT)
@@ -83,10 +86,11 @@ inline bool isSPD(const Eigen::MatrixXd& A)
  * @param stream (reference to std::ostream)
  * @param x data to be streamed (const reference to T)
  */
-template <typename T>
-requires(std::same_as<T, std::vector<typename T::value_type>> ||
-         std::same_as<T, std::array<typename T::value_type, std::tuple_size<T>::value>>) std::ostream&
-operator<<(std::ostream& stream, const T& v)
+template <typename T,
+          typename std::enable_if<std::is_same_v<T, std::vector<typename T::value_type>> ||
+                                      std::is_same_v<T, std::array<typename T::value_type, std::tuple_size<T>::value>>,
+                                  T>::type* = nullptr>
+std::ostream& operator<<(std::ostream& stream, const T& v)
 {
   // Beginning bracket
   stream << "[";
