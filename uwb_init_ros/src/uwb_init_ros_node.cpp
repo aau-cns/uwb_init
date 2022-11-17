@@ -46,14 +46,22 @@ int main(int argc, char** argv)
     ROS_ERROR("Missing start_service parameter");
     EXIT_FAILURE;
   }
+
   if (!nh.getParam("reset_service", opts.service_reset_))
   {
     ROS_ERROR("Missing reset_service parameter");
     EXIT_FAILURE;
   }
+
   if (!nh.getParam("initialization_service", opts.service_init_))
   {
     ROS_ERROR("Missing initialization_service parameter");
+    EXIT_FAILURE;
+  }
+
+  if (!nh.getParam("refine_service", opts.service_refine_))
+  {
+    ROS_ERROR("Missing refine_service parameter");
     EXIT_FAILURE;
   }
 

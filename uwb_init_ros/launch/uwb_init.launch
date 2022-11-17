@@ -7,6 +7,7 @@
   <arg name="start_service"             default="/uwb_init/start" />
   <arg name="reset_service"             default="/uwb_init/reset" />
   <arg name="initialization_service"    default="/uwb_init/initialize" />
+  <arg name="refine_service"            default="/uwb_init/refine" />
   <arg name="logger_level"              default="info" />
 
   <!-- calibration -->
@@ -34,6 +35,7 @@
     <param name="start_service"             type="str"  value="$(arg start_service)" />
     <param name="reset_service"             type="str"  value="$(arg reset_service)" />
     <param name="initialization_service"    type="str"  value="$(arg initialization_service)" />
+    <param name="refine_service"            type="str"  value="$(arg refine_service)" />
     <param name="logger_level"              type="str"  value="$(arg logger_level)" />
 
     <!-- calibration -->

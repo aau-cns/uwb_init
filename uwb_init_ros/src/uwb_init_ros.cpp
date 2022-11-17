@@ -41,7 +41,8 @@ UwbInitRos::UwbInitRos(const ros::NodeHandle& nh, const UwbInitRosOptions& optio
   // Services
   start_srv_ = nh_.advertiseService(options_.service_start_, &UwbInitRos::callbackServiceStart, this);
   reset_srv_ = nh_.advertiseService(options_.service_reset_, &UwbInitRos::callbackServiceReset, this);
-  init_srv_ = nh_.advertiseService(options_.service_init_, &UwbInitRos::callbackServiceInit, this);
+  init_srv_ = nh_.advertiseService(options_.service_init_, &UwbInitRos::callbackServiceInit, this);  
+  refine_srv_ = nh_.advertiseService(options_.service_refine_, &UwbInitRos::callbackServiceRefine, this);
 }
 
 void UwbInitRos::callbackPose(const geometry_msgs::PoseStamped::ConstPtr& msg)
@@ -114,6 +115,12 @@ bool UwbInitRos::callbackServiceInit(std_srvs::Empty::Request& req, std_srvs::Em
   return initializeAnchors();
 }
 
+bool UwbInitRos::callbackServiceRefine(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
+{
+  ROS_INFO("Refinement service called.");
+  return refineAnchors();
+}
+
 bool UwbInitRos::initializeAnchors()
 {
   ROS_INFO("Performing anchor inizalization...");
@@ -137,6 +144,13 @@ bool UwbInitRos::initializeAnchors()
              it.second.anchor_.p_AinG_.x(), it.second.anchor_.p_AinG_.z());
   }
 
+  return true;
+}
+
+bool UwbInitRos::refineAnchors()
+{
+  ROS_INFO("Performing anchor refinement...");
+
   // Refine anchors
   if (!uwb_init_.refine_anchors())
   {
@@ -147,7 +161,7 @@ bool UwbInitRos::initializeAnchors()
   // Check what anchors have been sucessufully refined
   for (const auto& it : uwb_init_.get_nls_solutions())
   {
-    ROS_INFO("Anchor [%d] succesfully initialized at [%f, %f, %f]", it.first, it.second.anchor_.p_AinG_.x(),
+    ROS_INFO("Anchor [%d] succesfully refined at [%f, %f, %f]", it.first, it.second.anchor_.p_AinG_.x(),
              it.second.anchor_.p_AinG_.x(), it.second.anchor_.p_AinG_.z());
   }
 

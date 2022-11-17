@@ -76,14 +76,30 @@ private:
    *
    * @param req request
    * @param res response
-   * @return true if at least one anchor has been correctly initialized and refined
+   * @return true if at least one anchor has been correctly initialized
    */
   bool callbackServiceInit(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
+
+  /**
+   * @brief Refine service callback
+   *
+   * @param req request
+   * @param res response
+   * @return true if at least one anchor has been correctly refined
+   */
+  bool callbackServiceRefine(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
 
   /**
    * @brief Initialize anchors with data collected so far
    *
    * @return true if at least one anchor has been correctly initialized and refined
+   */
+  [[nodiscard]] bool refineAnchors();
+
+  /**
+   * @brief Refine anchors with data collected so far
+   *
+   * @return true if at least one anchor has been correctly refined
    */
   [[nodiscard]] bool initializeAnchors();
 
@@ -108,6 +124,7 @@ private:
   ros::ServiceServer start_srv_;
   ros::ServiceServer reset_srv_;
   ros::ServiceServer init_srv_;
+  ros::ServiceServer refine_srv_;
 
   /// UWB initializer
   uwb_init::UwbInitializer uwb_init_;

@@ -35,6 +35,7 @@ struct UwbInitRosOptions
   std::string service_start_;
   std::string service_reset_;
   std::string service_init_;
+  std::string service_refine_;
 
   /// Position of the UWB module expressed in IMU frame
   Eigen::Vector3d p_UinI_;
