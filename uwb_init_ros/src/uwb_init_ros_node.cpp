@@ -41,6 +41,16 @@ int main(int argc, char** argv)
   }
 
   // Get services names
+  if (!nh.getParam("start_service", opts.service_start_))
+  {
+    ROS_ERROR("Missing start_service parameter");
+    EXIT_FAILURE;
+  }
+  if (!nh.getParam("reset_service", opts.service_reset_))
+  {
+    ROS_ERROR("Missing reset_service parameter");
+    EXIT_FAILURE;
+  }
   if (!nh.getParam("initialization_service", opts.service_init_))
   {
     ROS_ERROR("Missing initialization_service parameter");

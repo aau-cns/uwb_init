@@ -39,6 +39,8 @@ UwbInitRos::UwbInitRos(const ros::NodeHandle& nh, const UwbInitRosOptions& optio
   // ROS_INFO("Publishing in %s");
 
   // Services
+  start_srv_ = nh_.advertiseService(options_.service_start_, &UwbInitRos::callbackServiceStart, this);
+  reset_srv_ = nh_.advertiseService(options_.service_reset_, &UwbInitRos::callbackServiceReset, this);
   init_srv_ = nh_.advertiseService(options_.service_init_, &UwbInitRos::callbackServiceInit, this);
 }
 
@@ -53,7 +55,10 @@ void UwbInitRos::callbackPose(const geometry_msgs::PoseStamped::ConstPtr& msg)
   Eigen::Vector3d p_UinG = p_IinG + q_GI.toRotationMatrix() * options_.p_UinI_;
 
   // Feed p_UinG
-  uwb_init_.feed_position(msg->header.stamp.toSec(), p_UinG);
+  if (fstart_collect_measurements_)
+  {
+    uwb_init_.feed_position(msg->header.stamp.toSec(), p_UinG);
+  }
 }
 
 void UwbInitRos::callbackUwbRanges(const mdek_uwb_driver::UwbConstPtr& msg)
@@ -82,7 +87,25 @@ void UwbInitRos::callbackUwbRanges(const mdek_uwb_driver::UwbConstPtr& msg)
   }
 
   // Feed measurements
-  uwb_init_.feed_uwb(msg->header.stamp.toSec(), data);
+  if (fstart_collect_measurements_)
+  {
+    uwb_init_.feed_uwb(msg->header.stamp.toSec(), data);
+  }
+}
+
+bool UwbInitRos::callbackServiceStart(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
+{
+  ROS_INFO("Start service called.");
+  fstart_collect_measurements_ = true;
+  return true;
+}
+
+bool UwbInitRos::callbackServiceReset(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
+{
+  ROS_INFO("Reset service called.");
+  uwb_init_.reset();
+  fstart_collect_measurements_ = false;
+  return true;
 }
 
 bool UwbInitRos::callbackServiceInit(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
@@ -99,6 +122,11 @@ bool UwbInitRos::initializeAnchors()
   if (!uwb_init_.init_anchors())
   {
     ROS_WARN("Initialization of anchor failed. Please collect additional data and repeat.");
+
+    if (!fstart_collect_measurements_)
+    {
+      ROS_WARN_STREAM("Call " << options_.service_start_ << " to start collecting measurements.");
+    }
     return false;
   }
 

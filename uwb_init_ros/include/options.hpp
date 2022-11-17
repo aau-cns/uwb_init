@@ -32,6 +32,8 @@ struct UwbInitRosOptions
   /// ROS options
   std::string estimated_pose_topic_;
   std::string uwb_range_topic_;
+  std::string service_start_;
+  std::string service_reset_;
   std::string service_init_;
 
   /// Position of the UWB module expressed in IMU frame

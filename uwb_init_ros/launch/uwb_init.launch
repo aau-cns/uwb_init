@@ -4,11 +4,13 @@
   <!-- topic parameters -->
   <arg name="estimated_pose_topic"      default="/mavros/vision_pose/pose" />
   <arg name="uwb_range_topic"           default="/uwb_driver_node/uwb" />
-  <arg name="initialization_service"    default="/uwb_init/start" />
+  <arg name="start_service"             default="/uwb_init/start" />
+  <arg name="reset_service"             default="/uwb_init/reset" />
+  <arg name="initialization_service"    default="/uwb_init/initialize" />
   <arg name="logger_level"              default="info" />
 
   <!-- calibration -->
-  <arg name="calib_p_UinI"              default="[3.0, -4.0, -3.0]" />
+  <arg name="calib_p_UinI"              default="[0.03, -0.04, -0.03]" />
 
   <!-- node parameters -->
   <arg name="method"                    default="double" />
@@ -29,6 +31,8 @@
     <!-- topics remaps -->
     <param name="estimated_pose_topic"      type="str"  value="$(arg estimated_pose_topic)" />
     <param name="uwb_range_topic"           type="str"  value="$(arg uwb_range_topic)" />
+    <param name="start_service"             type="str"  value="$(arg start_service)" />
+    <param name="reset_service"             type="str"  value="$(arg reset_service)" />
     <param name="initialization_service"    type="str"  value="$(arg initialization_service)" />
     <param name="logger_level"              type="str"  value="$(arg logger_level)" />
 

@@ -56,6 +56,22 @@ private:
   void callbackUwbRanges(const mdek_uwb_driver::UwbConstPtr& msg);
 
   /**
+   * @brief Starting service callback
+   *
+   * @param req request
+   * @param res response
+   */
+  bool callbackServiceStart(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
+
+  /**
+   * @brief Reset service callback
+   *
+   * @param req request
+   * @param res response
+   */
+  bool callbackServiceReset(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
+
+  /**
    * @brief Initialization service callback
    *
    * @param req request
@@ -70,6 +86,9 @@ private:
    * @return true if at least one anchor has been correctly initialized and refined
    */
   [[nodiscard]] bool initializeAnchors();
+
+  // Flags
+  bool fstart_collect_measurements_ = false;
 
   /// Ros node handler
   ros::NodeHandle nh_;
@@ -86,6 +105,8 @@ private:
   /// Messages
 
   /// Service Servers
+  ros::ServiceServer start_srv_;
+  ros::ServiceServer reset_srv_;
   ros::ServiceServer init_srv_;
 
   /// UWB initializer
