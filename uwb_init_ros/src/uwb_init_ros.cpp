@@ -1,4 +1,4 @@
-// Copyright (C) 2022 Alessandro Fornasier,
+// Copyright (C) 2022 Alessandro Fornasier, Giulio Delama
 // Control of Networked Systems, University of Klagenfurt, Austria.
 //
 // All rights reserved.
@@ -11,7 +11,8 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 //
-// You can contact the author at <alessandro.fornasier@aau.at>
+// You can contact the author at <alessandro.fornasier@aau.at> and
+// <giulio.delama@aau.at>
 
 #include <ros/ros.h>
 #include <Eigen/Eigen>
@@ -109,7 +110,7 @@ bool UwbInitRos::initializeAnchors()
   }
 
   // Refine anchors
-  if (!uwb_init_.init_anchors())
+  if (!uwb_init_.refine_anchors())
   {
     ROS_WARN("Refinement of anchor failed. Please collect additional data and repeat.");
     return false;

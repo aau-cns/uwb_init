@@ -2,13 +2,13 @@
 <launch>
 
   <!-- topic parameters -->
-  <arg name="estimated_pose_topic"      default="/mus/ground_truth_pose_imu" />
-  <arg name="uwb_range_topic"           default="/mus/uwb" />
+  <arg name="estimated_pose_topic"      default="/mavros/vision_pose/pose" />
+  <arg name="uwb_range_topic"           default="/uwb_driver_node/uwb" />
   <arg name="initialization_service"    default="/uwb_init/start" />
-  <arg name="logger_level"              default="full" />
+  <arg name="logger_level"              default="info" />
 
   <!-- calibration -->
-  <arg name="calib_p_UinI"              default="[0.0, 0.0, 0.0]" />
+  <arg name="calib_p_UinI"              default="[3.0, -4.0, -3.0]" />
 
   <!-- node parameters -->
   <arg name="method"                    default="double" />
@@ -25,6 +25,7 @@
   <arg name="step_vector"   default="[0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0]" />
 
   <node name="uwb_init" pkg="uwb_init_ros" type="uwb_init" args="" output="screen" respawn="false">
+
     <!-- topics remaps -->
     <param name="estimated_pose_topic"      type="str"  value="$(arg estimated_pose_topic)" />
     <param name="uwb_range_topic"           type="str"  value="$(arg uwb_range_topic)" />
@@ -47,5 +48,7 @@
     <param name="residual_mse_stop_condition"       type="double"  value="$(arg residual_mse_stop_condition)" />
     <param name="max_iterations"                    type="int"  value="$(arg max_iterations)" />
     <rosparam param="step_vec"                      subst_value="True">$(arg step_vector)</rosparam>
+
   </node>
+
 </launch>

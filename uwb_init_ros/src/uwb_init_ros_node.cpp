@@ -1,4 +1,4 @@
-// Copyright (C) 2022 Alessandro Fornasier,
+// Copyright (C) 2022 Alessandro Fornasier, Giulio Delama
 // Control of Networked Systems, University of Klagenfurt, Austria.
 //
 // All rights reserved.
@@ -11,7 +11,8 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 //
-// You can contact the author at <alessandro.fornasier@aau.at>
+// You can contact the author at <alessandro.fornasier@aau.at> and
+// <giulio.delama@aau.at>
 
 #include <ros/ros.h>
 #include <Eigen/Eigen>
@@ -92,11 +93,11 @@ int main(int argc, char** argv)
   nh.param<int>("max_iterations", max_iter, static_cast<int>(opts.nls_solver_options_.max_iter_));
   opts.nls_solver_options_.max_iter_ = static_cast<uint>(max_iter);
 
-   std::vector<double> step_vec;
-   std::vector<double> step_vec_default = { 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0 };
-   nh.param<std::vector<double>>("step_vec", step_vec, step_vec_default);
-   opts.nls_solver_options_.step_vec_ =
-       Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(step_vec.data(), step_vec.size());
+  std::vector<double> step_vec;
+  std::vector<double> step_vec_default = { 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0 };
+  nh.param<std::vector<double>>("step_vec", step_vec, step_vec_default);
+  opts.nls_solver_options_.step_vec_ =
+      Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(step_vec.data(), step_vec.size());
 
   // Get logger level from parameter server
   std::string logger_level;
@@ -105,22 +106,27 @@ int main(int argc, char** argv)
   if (logger_level == "full")
   {
     opts.level_ = uwb_init::LoggerLevel::FULL;
+    ROS_INFO("Logger level: full (DEBUG MODE)");
   }
   else if (logger_level == "info")
   {
     opts.level_ = uwb_init::LoggerLevel::INFO;
+    ROS_INFO("Logger level: info (NORMAL MODE)");
   }
   else if (logger_level == "warning")
   {
     opts.level_ = uwb_init::LoggerLevel::WARN;
+    ROS_INFO("Logger level: warnings and errors only");
   }
   else if (logger_level == "error")
   {
     opts.level_ = uwb_init::LoggerLevel::ERR;
+    ROS_INFO("Logger level: errors only");
   }
   else if (logger_level == "inactive")
   {
     opts.level_ = uwb_init::LoggerLevel::INACTIVE;
+    ROS_INFO("Logger level: inactive");
   }
   else
   {
@@ -128,12 +134,13 @@ int main(int argc, char** argv)
     EXIT_FAILURE;
   }
 
+  // Get calibration UWB tag -> IMU
   std::vector<double> p_ItoU;
   std::vector<double> p_ItoU_default = { 0.0, 0.0, 0.0 };
   nh.param<std::vector<double>>("p_ItoU", p_ItoU, p_ItoU_default);
   Eigen::Vector3d p_UinI(p_ItoU.data());
   opts.p_UinI_ = p_UinI;
-
+  ROS_INFO_STREAM("Calibration p_UinI = " << p_UinI.transpose());
 
   // Instanciate UwbInitRos
   uwb_init_ros::UwbInitRos UwbInitRos(nh, opts);

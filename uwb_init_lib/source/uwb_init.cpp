@@ -102,6 +102,8 @@ void UwbInitializer::feed_uwb(const double timestamp, const std::vector<UwbData>
     {
       // Push back element to buffer
       uwb_data_buffer_[uwb_measurements[i].id_].push_back(timestamp, uwb_measurements[i]);
+      logger_->debug("UwbInitializer::feed_uwb(): added measurement from anchor " +
+                     std::to_string(uwb_measurements[i].id_) + " at timestamp " + std::to_string(timestamp));
     }
     else
     {
@@ -119,6 +121,8 @@ void UwbInitializer::feed_uwb(const double timestamp, const UwbData uwb_measurem
   {
     // Push back element to buffer
     uwb_data_buffer_[uwb_measurement.id_].push_back(timestamp, uwb_measurement);
+    logger_->debug("UwbInitializer::feed_uwb(): added measurement from anchor " +
+                   std::to_string(uwb_measurement.id_) + " at timestamp " + std::to_string(timestamp));
   }
   else
   {
@@ -130,6 +134,7 @@ void UwbInitializer::feed_uwb(const double timestamp, const UwbData uwb_measurem
 void UwbInitializer::feed_position(const double timestamp, const Eigen::Vector3d p_UinG)
 {
   p_UinG_buffer_.push_back(timestamp, p_UinG);
+  logger_->debug("UwbInitializer::feed_position(): added position at timestamp " + std::to_string(timestamp));
 }
 
 bool UwbInitializer::init_anchors()

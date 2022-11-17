@@ -1,4 +1,4 @@
-// Copyright (C) 2022 Alessandro Fornasier,
+// Copyright (C) 2022 Alessandro Fornasier, Giulio Delama
 // Control of Networked Systems, University of Klagenfurt, Austria.
 //
 // All rights reserved.
@@ -11,7 +11,8 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 //
-// You can contact the author at <alessandro.fornasier@aau.at>
+// You can contact the author at <alessandro.fornasier@aau.at> and
+// <giulio.delama@aau.at>
 
 #ifndef UWB_INIT_ROS_H
 #define UWB_INIT_ROS_H

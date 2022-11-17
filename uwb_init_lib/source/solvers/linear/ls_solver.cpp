@@ -34,6 +34,8 @@ LsSolver::LsSolver(const std::shared_ptr<Logger> logger, const UwbInitOptions& i
 
   // Logging
   logger_->info("LsSolver: Initialized");
+  logger_->debug("LsSolver options: sigma_pos = " + std::to_string(solver_options_.sigma_pos_));
+  logger_->debug("LsSolver options: sigma_meas = " + std::to_string(solver_options_.sigma_meas_));
 }
 
 void LsSolver::configure(const UwbInitOptions& init_options)
