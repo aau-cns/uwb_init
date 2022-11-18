@@ -32,6 +32,7 @@ UwbInitRos::UwbInitRos(const ros::NodeHandle& nh, const UwbInitRosOptions& optio
 
   // Print topics where we are subscribing to
   ROS_INFO("Subsribing to %s", estimated_pose_sub_.getTopic().c_str());
+  ROS_INFO("Subsribing to %s", uwb_range_sub_.getTopic().c_str());
 
   // Publishers
 
