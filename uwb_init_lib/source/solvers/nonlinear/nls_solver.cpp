@@ -32,10 +32,10 @@ NlsSolver::NlsSolver(const std::shared_ptr<Logger> logger, const NlsSolverOption
   logger_->info("NlsSolver: Initialized");
   std::stringstream ss;
   ss << solver_options_.step_vec_.transpose();
-  logger_->debug("NlsSolver options: step_vec_ = " + ss.str());
-  logger_->debug("NlsSolver options: sigma_meas = " + std::to_string(solver_options_.step_cond_));
-  logger_->debug("NlsSolver options: sigma_meas = " + std::to_string(solver_options_.res_cond_));
-  logger_->debug("NlsSolver options: sigma_meas = " + std::to_string(solver_options_.max_iter_));
+  logger_->debug("NlsSolver options: step_vec = " + ss.str());
+  logger_->debug("NlsSolver options: step_cond = " + std::to_string(solver_options_.step_cond_));
+  logger_->debug("NlsSolver options: res_cond = " + std::to_string(solver_options_.res_cond_));
+  logger_->debug("NlsSolver options: max_iter = " + std::to_string(solver_options_.max_iter_));
 }
 
 bool NlsSolver::solve_nls(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer,
