@@ -138,7 +138,7 @@ bool UwbInitRos::initializeAnchors()
     return false;
   }
 
-  // Check what anchors have been sucessufully initialized
+  // Display anchors that have been sucessufully initialized
   for (const auto& it : uwb_init_.get_ls_solutions())
   {
     ROS_INFO("Anchor [%d] succesfully initialized at [%f, %f, %f]", it.first, it.second.anchor_.p_AinG_.x(),
@@ -159,7 +159,7 @@ bool UwbInitRos::refineAnchors()
     return false;
   }
 
-  // Check what anchors have been sucessufully refined
+  // Display anchors that have been sucessufully refined
   for (const auto& it : uwb_init_.get_nls_solutions())
   {
     ROS_INFO("Anchor [%d] succesfully refined at [%f, %f, %f]", it.first, it.second.anchor_.p_AinG_.x(),

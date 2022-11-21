@@ -90,18 +90,18 @@ private:
   bool callbackServiceRefine(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
 
   /**
-   * @brief Initialize anchors with data collected so far
-   *
-   * @return true if at least one anchor has been correctly initialized and refined
-   */
-  [[nodiscard]] bool refineAnchors();
-
-  /**
    * @brief Refine anchors with data collected so far
    *
    * @return true if at least one anchor has been correctly refined
    */
   [[nodiscard]] bool initializeAnchors();
+
+  /**
+   * @brief Initialize anchors with data collected so far
+   *
+   * @return true if at least one anchor has been correctly initialized and refined
+   */
+  [[nodiscard]] bool refineAnchors();
 
   // Flags
   bool fstart_collect_measurements_ = false;
