@@ -142,7 +142,7 @@ bool UwbInitRos::initializeAnchors()
   for (const auto& it : uwb_init_.get_ls_solutions())
   {
     ROS_INFO("Anchor [%d] succesfully initialized at [%f, %f, %f]", it.first, it.second.anchor_.p_AinG_.x(),
-             it.second.anchor_.p_AinG_.x(), it.second.anchor_.p_AinG_.z());
+             it.second.anchor_.p_AinG_.y(), it.second.anchor_.p_AinG_.z());
   }
 
   return true;
@@ -163,7 +163,7 @@ bool UwbInitRos::refineAnchors()
   for (const auto& it : uwb_init_.get_nls_solutions())
   {
     ROS_INFO("Anchor [%d] succesfully refined at [%f, %f, %f]", it.first, it.second.anchor_.p_AinG_.x(),
-             it.second.anchor_.p_AinG_.x(), it.second.anchor_.p_AinG_.z());
+             it.second.anchor_.p_AinG_.y(), it.second.anchor_.p_AinG_.z());
   }
 
   return true;

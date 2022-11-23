@@ -67,11 +67,11 @@ constexpr const char* BiasTypeString(BiasType e)
   switch (e)
   {
     case BiasType::NO_BIAS:
-      return "BiasType::CONST_BIAS";
+      return "BiasType::NO_BIAS";
     case BiasType::CONST_BIAS:
       return "BiasType::CONST_BIAS";
     default:
-      return "BiasType::UNKNOWN";
+      return "";
   }
 };
 

@@ -2,7 +2,7 @@
 <launch>
 
   <!-- topic parameters -->
-  <arg name="estimated_pose_topic"      default="/mavros/vision_pose/pose" />
+  <arg name="estimated_pose_topic"      default="/mavros/vision_pose/pose" /> <!-- /twins_itec/vrpn_client/raw_pose -->
   <arg name="uwb_range_topic"           default="/uwb_driver_node/uwb" />
   <arg name="start_service"             default="/uwb_init/start" />
   <arg name="reset_service"             default="/uwb_init/reset" />
@@ -11,11 +11,11 @@
   <arg name="logger_level"              default="info" />
 
   <!-- calibration -->
-  <arg name="calib_p_UinI"              default="[0.03, -0.04, -0.03]" />
+  <arg name="calib_p_UinI"              default="[0.03, -0.04, -0.03]" /> <!-- /[0.065, 0.12, -0.02] -->
 
   <!-- node parameters -->
-  <arg name="method"                    default="double" />
-  <arg name="bias_type"                 default="constant" />
+  <arg name="method"                    default="single" />
+  <arg name="bias_type"                 default="unbiased" />
   
   <!-- ls solver parameters -->
   <arg name="position_std"              default="0.03" />
