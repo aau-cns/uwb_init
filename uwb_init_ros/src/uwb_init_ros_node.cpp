@@ -59,6 +59,12 @@ int main(int argc, char** argv)
     EXIT_FAILURE;
   }
 
+  if (!nh.getParam("planner_service", opts.service_wps_))
+  {
+    ROS_ERROR("Missing planner_service parameter");
+    EXIT_FAILURE;
+  }
+
   if (!nh.getParam("refine_service", opts.service_refine_))
   {
     ROS_ERROR("Missing refine_service parameter");
@@ -116,6 +122,33 @@ int main(int argc, char** argv)
   nh.param<std::vector<double>>("step_vec", step_vec, step_vec_default);
   opts.nls_solver_options_.step_vec_ =
       Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(step_vec.data(), step_vec.size());
+
+  // Get waypoint generation options from parameter server
+  int cell_len, pop_size, itr_num, x_n, y_n, z_n;
+  nh.param<int>("cell_len", cell_len, static_cast<int>(opts.planner_options_.cell_len_));
+  opts.planner_options_.cell_len_ = static_cast<uint>(cell_len);
+  nh.param<int>("pop_size", pop_size, static_cast<int>(opts.planner_options_.pop_size_));
+  opts.planner_options_.pop_size_ = static_cast<uint>(pop_size);
+  nh.param<int>("generations_n", itr_num, static_cast<int>(opts.planner_options_.itr_num_));nh.param<int>("cell_len", cell_len, static_cast<int>(opts.planner_options_.cell_len_));
+  opts.planner_options_.cell_len_ = static_cast<uint>(cell_len);
+  nh.param<int>("x_grid", x_n, static_cast<int>(opts.planner_options_.x_n_));
+  opts.planner_options_.x_n_ = static_cast<uint>(x_n);
+  nh.param<int>("y_grid", y_n, static_cast<int>(opts.planner_options_.y_n_));
+  opts.planner_options_.y_n_ = static_cast<uint>(y_n);
+  nh.param<int>("z_grid", z_n, static_cast<int>(opts.planner_options_.z_n_));
+  opts.planner_options_.z_n_ = static_cast<uint>(z_n);
+  nh.param<double>("crossover_probability", opts.planner_options_.pc_,
+                   opts.planner_options_.pc_);
+  nh.param<double>("mutation_probability", opts.planner_options_.pm_,
+                   opts.planner_options_.pm_);
+  nh.param<double>("side_x_length", opts.planner_options_.side_x_,
+                   opts.planner_options_.side_x_);
+  nh.param<double>("side_y_length", opts.planner_options_.side_y_,
+                   opts.planner_options_.side_y_);
+  nh.param<double>("side_z_length", opts.planner_options_.side_z_,
+                   opts.planner_options_.side_z_);
+  nh.param<double>("min_z", opts.planner_options_.z_min_,
+                   opts.planner_options_.z_min_);
 
   // Get logger level from parameter server
   std::string logger_level;
