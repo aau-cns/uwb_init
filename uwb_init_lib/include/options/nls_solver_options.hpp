@@ -25,7 +25,7 @@
 namespace uwb_init
 {
 ///
-/// \brief The UwbInitOptions struct is an object containing all 'static' parameters used
+/// \brief The NlsSolverOptions struct is an object containing all 'static' parameters used
 /// for the nonlinear least squares problem solver.
 ///
 struct NlsSolverOptions
