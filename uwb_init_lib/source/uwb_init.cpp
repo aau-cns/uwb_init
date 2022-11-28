@@ -23,11 +23,13 @@
 namespace uwb_init
 {
 UwbInitializer::UwbInitializer(const LoggerLevel& level, const UwbInitOptions& init_options,
-                               const LsSolverOptions& ls_solver_options, const NlsSolverOptions& nls_solver_options)
+                               const LsSolverOptions& ls_solver_options, const NlsSolverOptions& nls_solver_options,
+                               const PlannerOptions& planner_options)
   : logger_(std::make_shared<Logger>(level))
   , init_options_(init_options)
   , ls_solver_(logger_, init_options, ls_solver_options)
   , nls_solver_(logger_, nls_solver_options)
+  , planner_(logger_, planner_options)
 {
   // Logging
   logger_->info("UwbInitializer: " + std::string(InitMethodString(init_options_.init_method_)));
@@ -60,7 +62,7 @@ const LSSolutions& UwbInitializer::get_ls_solutions() const
 {
   if (ls_sols_.empty())
   {
-    throw std::runtime_error("UwbInitializer::get_ls_solutions() Required empty solutions");
+    throw std::runtime_error("UwbInitializer::get_ls_solutions(): Required empty vector");
   }
   return ls_sols_;
 }
@@ -69,9 +71,18 @@ const NLSSolutions& UwbInitializer::get_nls_solutions() const
 {
   if (nls_sols_.empty())
   {
-    throw std::runtime_error("UwbInitializer::get_nls_solutions() Required empty solutions");
+    throw std::runtime_error("UwbInitializer::get_nls_solutions(): Required empty vector");
   }
   return nls_sols_;
+}
+
+const Waypoints &UwbInitializer::get_waypoints() const
+{
+  if (opt_wps_.empty())
+  {
+    throw std::runtime_error("UwbInitializer::get_waypoints(): Required empty vector");
+  }
+  return opt_wps_;
 }
 
 void UwbInitializer::clear_buffers()
@@ -221,6 +232,50 @@ bool UwbInitializer::init_anchors()
   // Initialization finished
   logger_->info("UwbInitializer: Initialization complete");
   return init_successful;
+}
+
+bool UwbInitializer::compute_waypoints(const Eigen::Vector3d pos_k)
+{
+  // Logging
+  logger_->info("UwbInitializer: Calculating optimal waypoints");
+
+  // Check if solution vector is empty
+  if (ls_sols_.empty())
+  {
+    logger_->err("UwbInitializer: Anchors must be initialized before computing optimal waypoints");
+    return false;
+  }
+
+  // Construct the map of the uwb anchors (matrix Nx3)
+  Eigen::MatrixXd map = Eigen::MatrixXd::Zero(ls_sols_.size(), 3);
+  uint idx = 0;
+  for (const auto& ls_sol : ls_sols_)
+  {
+    map.row(idx) << ls_sol.second.anchor_.p_AinG_.transpose();
+    idx += 1;
+  }
+
+  // Compute optimal waypoints given the map and the current position
+  Eigen::MatrixXd wps = planner_.generate_wps(map, pos_k);
+
+  // Stringstream for debug
+  std::stringstream ss;
+  ss << "Current tag position: " << pos_k.transpose() << '\n'
+     << "Current map: \n" << map << '\n';
+  ss << "\n Computed waypoints: \n";
+
+  // Save optimal waypoints in data struct
+  for (uint idx = 0; idx < wps.rows(); ++idx)
+  {
+      opt_wps_.emplace_back(Waypoint(wps.row(idx)));
+      ss << "[" << opt_wps_[idx].x_ << ", " << opt_wps_[idx].y_ << ", " <<
+            opt_wps_[idx].z_ << "] \n";
+  }
+
+  // Logging results
+  logger_->debug(ss.str());
+
+  return true;
 }
 
 bool UwbInitializer::refine_anchors()

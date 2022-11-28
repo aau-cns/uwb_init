@@ -31,6 +31,7 @@
 #include "options/uwb_init_options.hpp"
 #include "solvers/linear/ls_solver.hpp"
 #include "solvers/nonlinear/nls_solver.hpp"
+#include "planners/wps_gen.hpp"
 #include "utils/data_structs.hpp"
 
 namespace uwb_init
@@ -47,9 +48,11 @@ public:
   /// \param level logging level
   /// \param init_params Initializer options
   ///
-  UwbInitializer(const LoggerLevel& level = LoggerLevel::FULL, const UwbInitOptions& init_options = UwbInitOptions(),
+  UwbInitializer(const LoggerLevel& level = LoggerLevel::FULL,
+                 const UwbInitOptions& init_options = UwbInitOptions(),
                  const LsSolverOptions& ls_solver_options = LsSolverOptions(),
-                 const NlsSolverOptions& nls_solver_options = NlsSolverOptions());
+                 const NlsSolverOptions& nls_solver_options = NlsSolverOptions(),
+                 const PlannerOptions& planner_options = PlannerOptions());
 
   ///
   /// \brief Set option
@@ -61,7 +64,7 @@ public:
   /// \brief Get solution of the leas square formulation of the initialization problem
   ///
   /// \return the actual solution of the least square problem as a constant reference
-  /// to LSSOlution.
+  /// to LSSolutions.
   ///
   const LSSolutions& get_ls_solutions() const;
 
@@ -70,9 +73,17 @@ public:
   /// initialization problem
   ///
   /// \return the actual solution of the least square problem as a constant reference
-  /// to NLSSOlution.
+  /// to NLSSolutions.
   ///
   const NLSSolutions& get_nls_solutions() const;
+
+  ///
+  /// \brief Get optimal waypoints
+  ///
+  /// \return the optimal waypoints computed by generate_waypoints as a constant reference
+  /// to Waypoints.
+  ///
+  const Waypoints& get_waypoints() const;
 
   ///
   /// \brief clears all the data buffers
@@ -116,8 +127,11 @@ public:
   [[nodiscard]] bool init_anchors();
 
   ///
-  /// \todo planner for waypoint generation to refine anchors
+  /// \brief compute_waypoints computes the optimal waypoints given the initial guess for the uwb anchors position
+  /// and the current uwb tag position
+  /// \return true if waypoints have been correctly computed, false otherwise
   ///
+  [[nodiscard]] bool compute_waypoints(const Eigen::Vector3d pos_k);
 
   ///
   /// \brief refine_anchors refines the already initialized anchors via optimal waypoints for non-
@@ -140,6 +154,9 @@ private:
   // Nonlinear least squares solver
   NlsSolver nls_solver_;
 
+  // Optimal Waypoints Generator (Planner)
+  OptWpsGenerator planner_;
+
   // Anchor and measurement handling
   PositionBuffer p_UinG_buffer_;   //!< buffer of UWB module positions in global frame
   UwbDataBuffer uwb_data_buffer_;  //!< history of uwb readings in DataBuffer
@@ -147,6 +164,9 @@ private:
   // Solutions handling
   LSSolutions ls_sols_;
   NLSSolutions nls_sols_;
+
+  // Optimal Waypoints
+  Waypoints opt_wps_;
 };
 
 }  // namespace uwb_init
