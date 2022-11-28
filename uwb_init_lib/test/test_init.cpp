@@ -191,6 +191,11 @@ int main()
     LSSolutions ls_sols = uwb_init.get_ls_solutions();
   }
 
+  if (uwb_init.compute_waypoints(Eigen::Vector3d::Zero()))
+  {
+    Waypoints opt_wps = uwb_init.get_waypoints();
+  }
+
   if (uwb_init.refine_anchors())
   {
     NLSSolutions nls_sols = uwb_init.get_nls_solutions();
