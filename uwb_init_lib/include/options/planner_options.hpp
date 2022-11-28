@@ -46,13 +46,13 @@ struct PlannerOptions
 
   uint y_n_{ 2 };                                       // Y-dimention of the inital grid search
 
-  uint z_n_{ 2 };                                       // Z-dimention of the inital grid search
+  uint z_n_{ 4 };                                       // Z-dimention of the inital grid search
 
-  double side_x_{ 8 };                                  // Maximum side length along X-axis
+  double side_x_{ 4 };                                  // Maximum side length along X-axis
 
-  double side_y_{ 8 };                                  // Maximum side length along Y-axis
+  double side_y_{ 5 };                                  // Maximum side length along Y-axis
 
-  double side_z_{ 8 };                                  // Maximum side length along Z-axis
+  double side_z_{ 6 };                                  // Maximum side length along Z-axis
 
   double z_min_{ 1 };                                   // Minimum distance from the ground
 

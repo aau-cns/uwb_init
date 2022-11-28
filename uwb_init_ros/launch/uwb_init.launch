@@ -15,8 +15,8 @@
   <arg name="calib_p_UinI"              default="[0.065, 0.12, -0.02]" /> <!-- /[0.03, -0.04, -0.03] -->
 
   <!-- node parameters -->
-  <arg name="method"                    default="single" />
-  <arg name="bias_type"                 default="unbiased" />
+  <arg name="method"                    default="double" />
+  <arg name="bias_type"                 default="constant" />
   
   <!-- ls solver parameters -->
   <arg name="position_std"              default="0.03" />
@@ -36,10 +36,10 @@
   <arg name="mutation_probability"              default="0.5" />
   <arg name="x_grid"                            default="2" />
   <arg name="y_grid"                            default="2" />
-  <arg name="z_grid"                            default="2" />
-  <arg name="side_x_length"                     default="8" />
-  <arg name="side_y_length"                     default="8" />
-  <arg name="side_z_length"                     default="8" />
+  <arg name="z_grid"                            default="4" />
+  <arg name="side_x_length"                     default="4" />
+  <arg name="side_y_length"                     default="5" />
+  <arg name="side_z_length"                     default="6" />
   <arg name="min_z"                             default="1" />
 
   <node name="uwb_init" pkg="uwb_init_ros" type="uwb_init" args="" output="screen" respawn="false">
