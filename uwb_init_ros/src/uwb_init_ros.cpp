@@ -24,7 +24,8 @@ namespace uwb_init_ros
 UwbInitRos::UwbInitRos(const ros::NodeHandle& nh, UwbInitRosOptions&& options)
   : nh_(nh)
   , options_(std::move(options))
-  , uwb_init_(options_.level_, std::move(options_.init_options_), std::move(options_.ls_solver_options_), std::move(options_.nls_solver_options_), std::move(options_.planner_options_))
+  , uwb_init_(options_.level_, std::move(options_.init_options_), std::move(options_.ls_solver_options_),
+              std::move(options_.nls_solver_options_), std::move(options_.planner_options_))
 {
   // Subscribers
   estimated_pose_sub_ = nh_.subscribe(options_.estimated_pose_topic_, 1, &UwbInitRos::callbackPose, this);
@@ -33,11 +34,6 @@ UwbInitRos::UwbInitRos(const ros::NodeHandle& nh, UwbInitRosOptions&& options)
   // Print topics where we are subscribing to
   ROS_INFO("Subsribing to %s", estimated_pose_sub_.getTopic().c_str());
   ROS_INFO("Subsribing to %s", uwb_range_sub_.getTopic().c_str());
-
-  // Publishers
-
-  // Print topics where we are publishing on
-  // ROS_INFO("Publishing in %s");
 
   // Services
   start_srv_ = nh_.advertiseService(options_.service_start_, &UwbInitRos::callbackServiceStart, this);

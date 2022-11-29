@@ -133,7 +133,7 @@ int main(int argc, char** argv)
   nh.param<int>("x_grid", x_n, 2);
   uint opt_x_n = static_cast<uint>(x_n);
   nh.param<int>("y_grid", y_n, 2);
-  uint opt_y_n= static_cast<uint>(y_n);
+  uint opt_y_n = static_cast<uint>(y_n);
   nh.param<int>("z_grid", z_n, 4);
   uint opt_z_n = static_cast<uint>(z_n);
   nh.param<double>("crossover_probability", opt_pc, 0.5);
@@ -186,15 +186,16 @@ int main(int argc, char** argv)
   opts.p_UinI_ = p_UinI;
   ROS_INFO_STREAM("Calibration p_UinI = " << p_UinI.transpose());
 
-  // Instanciate UwbInitRos
+  // Make options
   opts.init_options_ = std::make_shared<uwb_init::UwbInitOptions>(opt_init_method, opt_bias_type);
   opts.ls_solver_options_ = std::make_unique<uwb_init::LsSolverOptions>(opt_sigma_pos, opt_sigma_mes);
-  opts.nls_solver_options_ = std::make_unique<uwb_init::NlsSolverOptions>(opt_step_vec, opt_step_cond,
-                                                                          opt_res_cond, opt_max_iter);
-  opts.planner_options_ = std::make_unique<uwb_init::PlannerOptions>(opt_cell_len, opt_pop_size,
-                                                                     opt_itr_num, opt_pc, opt_pm,
-                                                                     opt_x_n, opt_y_n, opt_z_n, opt_side_x,
-                                                                     opt_side_y, opt_side_z, opt_z_min);
+  opts.nls_solver_options_ =
+      std::make_unique<uwb_init::NlsSolverOptions>(opt_step_vec, opt_step_cond, opt_res_cond, opt_max_iter);
+  opts.planner_options_ =
+      std::make_unique<uwb_init::PlannerOptions>(opt_cell_len, opt_pop_size, opt_itr_num, opt_pc, opt_pm, opt_x_n,
+                                                 opt_y_n, opt_z_n, opt_side_x, opt_side_y, opt_side_z, opt_z_min);
+
+  // Instanciate UwbInitRos
   uwb_init_ros::UwbInitRos UwbInitRos(nh, std::move(opts));
 
   // ROS Spin

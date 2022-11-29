@@ -132,14 +132,10 @@ private:
   /// Options
   UwbInitRosOptions options_;
 
-  /// Publishers
-
-  /// Messages
-
   /// Service Servers
   ros::ServiceServer start_srv_;
   ros::ServiceServer reset_srv_;
-  ros::ServiceServer init_srv_;  
+  ros::ServiceServer init_srv_;
   ros::ServiceServer wps_srv_;
   ros::ServiceServer refine_srv_;
 
