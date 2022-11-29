@@ -29,9 +29,9 @@
 #include "logger/logger.hpp"
 #include "options/nls_solver_options.hpp"
 #include "options/uwb_init_options.hpp"
+#include "planners/wps_gen.hpp"
 #include "solvers/linear/ls_solver.hpp"
 #include "solvers/nonlinear/nls_solver.hpp"
-#include "planners/wps_gen.hpp"
 #include "utils/data_structs.hpp"
 
 namespace uwb_init
@@ -46,13 +46,15 @@ public:
   ///
   /// \brief UwbInitializer default constructor
   /// \param level logging level
-  /// \param init_params Initializer options
+  /// \param init_options Initializer options
+  /// \param ls_solver_options least square solver options
+  /// \param nls_solver_options nonlinear least square solver options
+  /// \param planner_options planner options
   ///
-  UwbInitializer(const LoggerLevel& level = LoggerLevel::FULL,
-                 const UwbInitOptions& init_options = UwbInitOptions(),
-                 const LsSolverOptions& ls_solver_options = LsSolverOptions(),
-                 const NlsSolverOptions& nls_solver_options = NlsSolverOptions(),
-                 const PlannerOptions& planner_options = PlannerOptions());
+  UwbInitializer(const LoggerLevel& level, std::shared_ptr<UwbInitOptions>&& init_options,
+                 std::unique_ptr<LsSolverOptions>&& ls_solver_options,
+                 std::unique_ptr<NlsSolverOptions>&& nls_solver_options,
+                 std::unique_ptr<PlannerOptions>&& planner_options);
 
   ///
   /// \brief Set option
@@ -146,7 +148,7 @@ private:
   std::shared_ptr<Logger> logger_ = nullptr;
 
   // Initializer parameters
-  UwbInitOptions init_options_;
+  std::shared_ptr<UwbInitOptions> init_options_ = nullptr;
 
   // Least squares solver
   LsSolver ls_solver_;

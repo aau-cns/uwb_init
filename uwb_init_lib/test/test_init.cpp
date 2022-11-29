@@ -26,8 +26,24 @@ using namespace uwb_init;
 
 int main()
 {
+  // Options
+  Eigen::VectorXd steps(10);
+  steps << 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100;
+
+  // Options
+  std::shared_ptr<UwbInitOptions> init_options = nullptr;
+  std::unique_ptr<LsSolverOptions> ls_options = nullptr;
+  std::unique_ptr<NlsSolverOptions> nls_options = nullptr;
+  std::unique_ptr<PlannerOptions> planner_options = nullptr;
+
+  init_options = std::make_shared<UwbInitOptions>(InitMethod::DOUBLE, BiasType::CONST_BIAS);
+  ls_options = std::make_unique<LsSolverOptions>(0.05, 0.1);
+  nls_options = std::make_unique<NlsSolverOptions>(steps, 0.001, 0.0001, 100000);
+  planner_options = std::make_unique<PlannerOptions>(10, 10, 3000, 0.5, 0.2, 2, 2, 4, 4, 5, 6, 1);
+
   // Test initialization
-  UwbInitializer uwb_init(LoggerLevel::FULL);
+  UwbInitializer uwb_init(LoggerLevel::FULL, std::move(init_options), std::move(ls_options), std::move(nls_options),
+                          std::move(planner_options));
   uwb_init.set_bias_type(BiasType::CONST_BIAS);
   uwb_init.set_init_method(InitMethod::DOUBLE);
 

@@ -34,71 +34,72 @@ namespace uwb_init
 class OptWpsGenerator
 {
 public:
-    /**
-     * @brief OptWpsGenerator
-     *
-     * @param logger
-     * @param nls_solver_options
-     */
-    OptWpsGenerator(const std::shared_ptr<Logger> logger, const PlannerOptions& planner_options);
+  /**
+   * @brief OptWpsGenerator
+   *
+   * @param logger
+   * @param nls_solver_options
+   */
+  OptWpsGenerator(const std::shared_ptr<Logger> logger, std::unique_ptr<PlannerOptions>&& planner_options);
 
-    /**
-     * @brief generate_wps
-     *
-     * @param cost
-     * @param UWBs
-     * @param C_v
-     * @param C_e
-     * @param p_k
-     * @param x_n
-     * @param y_n
-     * @param z_n
-     * @param x_s
-     * @param y_s
-     * @param z_s
-     * @param pop_size
-     * @param cell_len
-     * @param pc
-     * @param pm
-     * @param itr_num
-     * @return
-     */
-    Eigen::MatrixXd generate_wps(const Eigen::MatrixXd& UWBs, const Eigen::Vector3d& p_k);
+  /**
+   * @brief generate_wps
+   *
+   * @param cost
+   * @param UWBs
+   * @param C_v
+   * @param C_e
+   * @param p_k
+   * @param x_n
+   * @param y_n
+   * @param z_n
+   * @param x_s
+   * @param y_s
+   * @param z_s
+   * @param pop_size
+   * @param cell_len
+   * @param pc
+   * @param pm
+   * @param itr_num
+   * @return
+   */
+  Eigen::MatrixXd generate_wps(const Eigen::MatrixXd& UWBs, const Eigen::Vector3d& p_k);
 
 private:
-    /// Shared pointer to logger
-    std::shared_ptr<Logger> logger_;
+  /// Shared pointer to logger
+  std::shared_ptr<Logger> logger_ = nullptr;
 
-    /// OptWpsGenerator options
-    PlannerOptions planner_options_;
+  /// OptWpsGenerator options
+  std::unique_ptr<PlannerOptions> planner_options_ = nullptr;
 
-    /// Cost value
-    double cost_;
+  /// Cost value
+  double cost_;
 
-    void sortrows(Eigen::MatrixXd& A_nx3, int idx);
+  void sortrows(Eigen::MatrixXd& A_nx3, int idx);
 
-    Eigen::VectorXd repelem(Eigen::VectorXd V, Eigen::VectorXd N);
+  Eigen::VectorXd repelem(Eigen::VectorXd V, Eigen::VectorXd N);
 
-    Eigen::MatrixXd RndI(int LO, int HI, uint n_r, uint n_c);
+  Eigen::MatrixXd RndI(int LO, int HI, uint n_r, uint n_c);
 
-    Eigen::MatrixXd Rnd(double LO, double HI, uint n_r, uint n_c);
+  Eigen::MatrixXd Rnd(double LO, double HI, uint n_r, uint n_c);
 
-    double dp(Eigen::MatrixXd P, Eigen::MatrixXd UWBs);
+  double dp(Eigen::MatrixXd P, Eigen::MatrixXd UWBs);
 
-    double fitness_calculation(Eigen::MatrixXd chromosome, tens R, const Eigen::MatrixXd& UWBs, uint l_c, const Eigen::VectorXd& p_k);
+  double fitness_calculation(Eigen::MatrixXd chromosome, tens R, const Eigen::MatrixXd& UWBs, uint l_c,
+                             const Eigen::VectorXd& p_k);
 
-    Eigen::MatrixXd genrate_cube(double xs_2, double ys_2, double zs_2);
+  Eigen::MatrixXd genrate_cube(double xs_2, double ys_2, double zs_2);
 
-    tens genInitSet();
+  tens genInitSet();
 
-    bool selection(tens& selcted_chrom_for_reprodoction, tens& elit, tens& selcted_chrom_for_mutaion,
-                   tens pop, Eigen::VectorXd Fit, uint c_n, uint m_n, uint e_n);
+  bool selection(tens& selcted_chrom_for_reprodoction, tens& elit, tens& selcted_chrom_for_mutaion, tens pop,
+                 Eigen::VectorXd Fit, uint c_n, uint m_n, uint e_n);
 
-    void crossover(tens& selcted_chrom_for_reprodoction, uint l_c, uint c_n);
+  void crossover(tens& selcted_chrom_for_reprodoction, uint l_c, uint c_n);
 
-    void mutation(tens& selcted_chrom_for_mutaion, uint m_n, uint l_c);
+  void mutation(tens& selcted_chrom_for_mutaion, uint m_n, uint l_c);
 
-    Eigen::MatrixXd GA(const Eigen::MatrixXd& UWBs, const Eigen::Vector3d& p_k);
+  Eigen::MatrixXd GA(const Eigen::MatrixXd& UWBs, const Eigen::Vector3d& p_k);
 };
 
 }  // namespace uwb_init

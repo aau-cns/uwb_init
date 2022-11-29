@@ -30,64 +30,78 @@ namespace uwb_init
 ///
 struct PlannerOptions
 {
-  // Independent parameters
+  /// cell length (defualt suggested value: 10)
+  uint cell_len_;
 
-  uint cell_len_{ 10 };
+  /// Population size (defualt suggested value: 10)
+  uint pop_size_;
 
-  uint pop_size_{ 10 };                                 // Population size
+  /// Number of generations (defualt suggested value: 3000)
+  uint itr_num_;
 
-  uint itr_num_{ 3000 };                                // Number of generations
+  /// Crossover probability (defualt suggested value: 0.5)
+  double pc_;
 
-  double pc_{ 0.5 };                                    // Crossover probability
+  /// Mutaion probability (defualt suggested value: 0.2)
+  double pm_;
 
-  double pm_{ 0.2 };                                    // Mutaion probability
+  /// X-dimention of the inital grid search (defualt suggested value: 2)
+  uint x_n_;
 
-  uint x_n_{ 2 };                                       // X-dimention of the inital grid search
+  /// Y-dimention of the inital grid search (defualt suggested value: 2)
+  uint y_n_;
 
-  uint y_n_{ 2 };                                       // Y-dimention of the inital grid search
+  /// Z-dimention of the inital grid search (defualt suggested value: 3)
+  uint z_n_;
 
-  uint z_n_{ 4 };                                       // Z-dimention of the inital grid search
+  /// Maximum side length along X-axis (defualt suggested value: 3)
+  double side_x_;
 
-  double side_x_{ 4 };                                  // Maximum side length along X-axis
+  /// Maximum side length along Y-axis (defualt suggested value: 4)
+  double side_y_;
 
-  double side_y_{ 5 };                                  // Maximum side length along Y-axis
+  /// Maximum side length along Z-axis (defualt suggested value: 50)
+  double side_z_;
 
-  double side_z_{ 6 };                                  // Maximum side length along Z-axis
+  /// Minimum distance from the ground (defualt suggested value: 1)
+  double z_min_;
 
-  double z_min_{ 1 };                                   // Minimum distance from the ground
+  /// x-side length of each small cell (side_x / x_n)
+  double x_s_;
 
-  // Dependent parameters
+  /// x-side length of each small cell (side_y / y_n)
+  double y_s_;
 
-  double x_s_;                                       // x-side length of each small cell (side_x / x_n)
+  /// x-side length of each small cell (side_z / z_n)
+  double z_s_;
 
-  double y_s_;                                       // x-side length of each small cell (side_y / y_n)
+  /// Origin (The environment centroid)
+  Eigen::Vector3d C_e_;
 
-  double z_s_;                                       // x-side length of each small cell (side_z / z_n)
+  /// The volume centroid
+  Eigen::Vector3d C_v_;
 
-  Eigen::Vector3d C_e_;        // Origin (The environment centroid)
-
-  Eigen::Vector3d C_v_;        // The volume centroid
-
-  PlannerOptions()
+  PlannerOptions(const uint& cell_len, const uint& pop_size, const uint& itr_num, const double& pc, const double& pm,
+                 const uint& x_n, const uint& y_n, const uint& z_n, const double& side_x, const double& side_y,
+                 const double& side_z, const double& z_min)
+    : cell_len_(cell_len)
+    , pop_size_(pop_size)
+    , itr_num_(itr_num)
+    , pc_(pc)
+    , pm_(pm)
+    , x_n_(x_n)
+    , y_n_(y_n)
+    , z_n_(z_n)
+    , side_x_(side_x)
+    , side_y_(side_y)
+    , side_z_(side_z)
+    , z_min_(z_min)
   {
-    C_e_ << 0, 0, side_z_/2 + z_min_;
+    C_e_ << 0, 0, side_z_ / 2 + z_min_;
     x_s_ = side_x_ / x_n_;
     y_s_ = side_y_ / y_n_;
     z_s_ = side_z_ / z_n_;
-    C_v_ << side_x_/2, side_y_/2, side_z_/2;
-  }
-
-  PlannerOptions(const uint& cell_len, const uint& pop_size, const uint& itr_num, const double& pc,
-                 const double& pm, const uint& x_n, const uint& y_n, const uint& z_n,
-                 const double& side_x, const double& side_y, const double& side_z, const double& z_min)
-      : cell_len_(cell_len), pop_size_(pop_size), itr_num_(itr_num), pc_(pc), pm_(pm), x_n_(x_n), y_n_(y_n),
-        z_n_(z_n), side_x_(side_x), side_y_(side_y), side_z_(side_z), z_min_(z_min)
-  {
-    C_e_ << 0, 0, side_z_/2 + z_min_;
-    x_s_ = side_x_ / x_n_;
-    y_s_ = side_y_ / y_n_;
-    z_s_ = side_z_ / z_n_;
-    C_v_ << side_x_/2, side_y_/2, side_z_/2;
+    C_v_ << side_x_ / 2, side_y_ / 2, side_z_ / 2;
   }
 
 };  // struct PlannerOptions
