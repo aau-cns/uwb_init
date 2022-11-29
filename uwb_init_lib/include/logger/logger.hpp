@@ -71,7 +71,7 @@ public:
   {
     if (level_ == LoggerLevel::INFO || level_ == LoggerLevel::FULL)
     {
-      log("[INFO] " + msg + '.');
+      log("[ INFO] [UWB INIT LOGGER]: " + msg + '.');
     }
   }
 
@@ -84,7 +84,7 @@ public:
     if (level_ == LoggerLevel::INFO || level_ == LoggerLevel::WARN || level_ == LoggerLevel::ERR ||
         level_ == LoggerLevel::FULL)
     {
-      log("\033[31m[ERROR] " + msg + ".\033[0m");
+      log("\033[31m[ ERROR] [UWB INIT LOGGER]: " + msg + ".\033[0m");
     }
   }
 
@@ -96,7 +96,7 @@ public:
   {
     if (level_ == LoggerLevel::INFO || level_ == LoggerLevel::WARN || level_ == LoggerLevel::FULL)
     {
-      log("\033[33m[WARNING] " + msg + ".\033[0m");
+      log("\033[33m[ WARNING] [UWB INIT LOGGER]: " + msg + ".\033[0m");
     }
   }
 
@@ -108,7 +108,7 @@ public:
   {
     if (level_ == LoggerLevel::FULL)
     {
-      log("\033[33m[DEBUG] " + msg + ".\033[0m");
+      log("\033[33m[ DEBUG] [UWB INIT LOGGER]: " + msg + ".\033[0m");
     }
   }
 
@@ -119,7 +119,8 @@ private:
    */
   inline void log(const std::string& msg)
   {
-    std::cout << msg << '\n' << std::endl;
+    // std::cout << msg << '\n' << std::endl;
+    std::cout << msg << std::endl;
   }
 
   /// Logger level

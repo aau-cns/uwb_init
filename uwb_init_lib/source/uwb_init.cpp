@@ -189,7 +189,7 @@ bool UwbInitializer::init_anchors()
          << "p_AinG = " << ls_sols_.at(uwb_data.first).anchor_.p_AinG_.transpose() << '\n'
          << "Covariance = \n"
          << ls_sols_.at(uwb_data.first).cov_ << '\n'
-         << "gamma = " << ls_sols_.at(uwb_data.first).gamma_ << '\n';
+         << "gamma = " << ls_sols_.at(uwb_data.first).gamma_;
       logger_->debug(ss.str());
       init_successful = true;
       continue;
@@ -225,7 +225,7 @@ bool UwbInitializer::init_anchors()
          << "p_AinG = " << ls_sols_.at(uwb_data.first).anchor_.p_AinG_.transpose() << '\n'
          << "Covariance = \n"
          << ls_sols_.at(uwb_data.first).cov_ << '\n'
-         << "gamma = " << ls_sols_.at(uwb_data.first).gamma_ << '\n';
+         << "gamma = " << ls_sols_.at(uwb_data.first).gamma_;
       logger_->debug(ss.str());
       init_successful = true;
     }
@@ -265,16 +265,28 @@ bool UwbInitializer::compute_waypoints(const Eigen::Vector3d pos_k)
   // Compute optimal waypoints given the map and the current position
   Eigen::MatrixXd wps = planner_.generate_wps(map, pos_k);
 
-  // Stringstream for debug
+  // Debug sstream
   std::stringstream ss;
-  ss << "Current tag position: " << pos_k.transpose() << '\n' << "Current map: \n" << map << '\n';
-  ss << "\n Computed waypoints: \n";
+  ss << "\nCurrent tag position:" << pos_k.transpose() << '\n'
+     << "Current map:\n"
+     << map << '\n'
+     << "Computed optimal waypoints:\n";
 
   // Save optimal waypoints in data struct
+  auto sep = "]\n";
   for (uint idx = 0; idx < wps.rows(); ++idx)
   {
+    // Change separator to avoid \n at the end
+    if (idx == wps.rows() - 1)
+    {
+      sep = "]";
+    }
+
+    // Fill optimal waypoints
     opt_wps_.emplace_back(Waypoint(wps.row(idx)));
-    ss << "[" << opt_wps_[idx].x_ << ", " << opt_wps_[idx].y_ << ", " << opt_wps_[idx].z_ << "] \n";
+
+    // Debug sstream
+    ss << "[" << opt_wps_[idx].x_ << ", " << opt_wps_[idx].y_ << ", " << opt_wps_[idx].z_ << sep;
   }
 
   // Logging results
@@ -318,7 +330,7 @@ bool UwbInitializer::refine_anchors()
          << "Covariance = \n"
          << nls_sols_.at(ls_sol.first).cov_ << '\n'
          << "gamma = " << nls_sols_.at(ls_sol.first).gamma_ << '\n'
-         << "beta = " << nls_sols_.at(ls_sol.first).beta_ << '\n';
+         << "beta = " << nls_sols_.at(ls_sol.first).beta_;
       logger_->debug(ss.str());
       refine_successful = true;
       continue;
@@ -349,7 +361,7 @@ bool UwbInitializer::refine_anchors()
          << "Covariance = \n"
          << nls_sols_.at(ls_sol.first).cov_ << '\n'
          << "gamma = " << nls_sols_.at(ls_sol.first).gamma_ << '\n'
-         << "beta = " << nls_sols_.at(ls_sol.first).beta_ << '\n';
+         << "beta = " << nls_sols_.at(ls_sol.first).beta_;
       logger_->debug(ss.str());
       refine_successful = true;
     }

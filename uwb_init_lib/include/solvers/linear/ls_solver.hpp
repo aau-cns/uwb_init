@@ -36,8 +36,8 @@ public:
    * @brief Construct a new Ls Solver object
    *
    * @param logger
-   * @param options initialization options specifying the type of model, and the method used for building the least
-   * square problem
+   * @param options initialization options specifying the type of model,
+   * and the method used for building the least square problem
    * @param ls_solver_options configuration of the least square solver
    */
   LsSolver(const std::shared_ptr<Logger> logger, const std::shared_ptr<UwbInitOptions>& init_options,
@@ -46,8 +46,8 @@ public:
   /**
    * @brief Configure LS solver problem type (unbiased or const bias), and method (single or double)
    *
-   * @param init_options initialization options specifying the type of model, and the method used for building the least
-   * square problem
+   * @param init_options initialization options specifying the type of model,
+   * and the method used for building the least square problem
    */
   void configure(const std::shared_ptr<UwbInitOptions>& init_options);
 
