@@ -40,8 +40,8 @@ public:
    * square problem
    * @param ls_solver_options configuration of the least square solver
    */
-  LsSolver(const std::shared_ptr<Logger> logger, const UwbInitOptions& init_options,
-           const LsSolverOptions& ls_solver_options);
+  LsSolver(const std::shared_ptr<Logger> logger, const std::shared_ptr<UwbInitOptions>& init_options,
+           std::unique_ptr<LsSolverOptions>&& ls_solver_options);
 
   /**
    * @brief Configure LS solver problem type (unbiased or const bias), and method (single or double)
@@ -49,7 +49,7 @@ public:
    * @param init_options initialization options specifying the type of model, and the method used for building the least
    * square problem
    */
-  void configure(const UwbInitOptions& init_options);
+  void configure(const std::shared_ptr<UwbInitOptions>& init_options);
 
   /**
    * @brief Function to be called to solve the least square problem
@@ -73,10 +73,10 @@ public:
 
 private:
   /// Shared pointer to logger
-  std::shared_ptr<Logger> logger_;
+  std::shared_ptr<Logger> logger_ = nullptr;
 
   // LsSolver parameters
-  LsSolverOptions solver_options_;
+  std::unique_ptr<LsSolverOptions> solver_options_ = nullptr;
 
   ///
   /// \brief functions for least squares problem formulation depending on selected method and variables

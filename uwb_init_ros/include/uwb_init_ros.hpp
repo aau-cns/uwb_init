@@ -81,6 +81,15 @@ private:
   bool callbackServiceInit(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
 
   /**
+   * @brief Waypoints generation service callback
+   *
+   * @param req request
+   * @param res response
+   * @return true if waypoints have been correctly generated
+   */
+  bool callbackServiceWps(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
+
+  /**
    * @brief Refine service callback
    *
    * @param req request
@@ -97,6 +106,13 @@ private:
   [[nodiscard]] bool initializeAnchors();
 
   /**
+   * @brief Compute optimal waypoints
+   *
+   * @return true if waypoints have been correctly computed
+   */
+  [[nodiscard]] bool computeWaypoints();
+
+  /**
    * @brief Initialize anchors with data collected so far
    *
    * @return true if at least one anchor has been correctly initialized and refined
@@ -104,7 +120,7 @@ private:
   [[nodiscard]] bool refineAnchors();
 
   // Flags
-  bool fstart_collect_measurements_ = false;
+  bool collect_measurements_ = false;
 
   /// Ros node handler
   ros::NodeHandle nh_;
@@ -123,11 +139,15 @@ private:
   /// Service Servers
   ros::ServiceServer start_srv_;
   ros::ServiceServer reset_srv_;
-  ros::ServiceServer init_srv_;
+  ros::ServiceServer init_srv_;  
+  ros::ServiceServer wps_srv_;
   ros::ServiceServer refine_srv_;
 
   /// UWB initializer
   uwb_init::UwbInitializer uwb_init_;
+
+  /// Last registered position of UWB tag in Global frame of reference
+  Eigen::Vector3d p_UinG_;
 };
 }  // namespace uwb_init_ros
 

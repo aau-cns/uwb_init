@@ -37,7 +37,7 @@ public:
    * @param logger
    * @param nls_solver_options
    */
-  NlsSolver(const std::shared_ptr<Logger> logger, const NlsSolverOptions& nls_solver_options);
+  NlsSolver(const std::shared_ptr<Logger> logger, std::unique_ptr<NlsSolverOptions>&& nls_solver_options);
 
   /**
    * @brief Function to be called to solve the nonlinear least square problem
@@ -65,10 +65,10 @@ public:
 
 private:
   /// Shared pointer to logger
-  std::shared_ptr<Logger> logger_;
+  std::shared_ptr<Logger> logger_ = nullptr;
 
   // LsSolver parameters
-  NlsSolverOptions solver_options_;
+  std::unique_ptr<NlsSolverOptions> solver_options_ = nullptr;
 };
 
 }  // namespace uwb_init

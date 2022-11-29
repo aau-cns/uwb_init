@@ -42,7 +42,8 @@ UwbInitRos::UwbInitRos(const ros::NodeHandle& nh, const UwbInitRosOptions& optio
   // Services
   start_srv_ = nh_.advertiseService(options_.service_start_, &UwbInitRos::callbackServiceStart, this);
   reset_srv_ = nh_.advertiseService(options_.service_reset_, &UwbInitRos::callbackServiceReset, this);
-  init_srv_ = nh_.advertiseService(options_.service_init_, &UwbInitRos::callbackServiceInit, this);  
+  init_srv_ = nh_.advertiseService(options_.service_init_, &UwbInitRos::callbackServiceInit, this);
+  wps_srv_ = nh_.advertiseService(options_.service_wps_, &UwbInitRos::callbackServiceWps, this);
   refine_srv_ = nh_.advertiseService(options_.service_refine_, &UwbInitRos::callbackServiceRefine, this);
 }
 
@@ -54,12 +55,12 @@ void UwbInitRos::callbackPose(const geometry_msgs::PoseStamped::ConstPtr& msg)
                           msg->pose.orientation.z);
 
   // Compute position of UWB module in Global frame
-  Eigen::Vector3d p_UinG = p_IinG + q_GI.toRotationMatrix() * options_.p_UinI_;
+  p_UinG_ = p_IinG + q_GI.toRotationMatrix() * options_.p_UinI_;
 
   // Feed p_UinG
-  if (fstart_collect_measurements_)
+  if (collect_measurements_)
   {
-    uwb_init_.feed_position(msg->header.stamp.toSec(), p_UinG);
+    uwb_init_.feed_position(msg->header.stamp.toSec(), p_UinG_);
   }
 }
 
@@ -89,7 +90,7 @@ void UwbInitRos::callbackUwbRanges(const mdek_uwb_driver::UwbConstPtr& msg)
   }
 
   // Feed measurements
-  if (fstart_collect_measurements_)
+  if (collect_measurements_)
   {
     uwb_init_.feed_uwb(msg->header.stamp.toSec(), data);
   }
@@ -98,7 +99,7 @@ void UwbInitRos::callbackUwbRanges(const mdek_uwb_driver::UwbConstPtr& msg)
 bool UwbInitRos::callbackServiceStart(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
 {
   ROS_INFO("Start service called.");
-  fstart_collect_measurements_ = true;
+  collect_measurements_ = true;
   return true;
 }
 
@@ -106,7 +107,7 @@ bool UwbInitRos::callbackServiceReset(std_srvs::Empty::Request& req, std_srvs::E
 {
   ROS_INFO("Reset service called.");
   uwb_init_.reset();
-  fstart_collect_measurements_ = false;
+  collect_measurements_ = false;
   return true;
 }
 
@@ -114,6 +115,12 @@ bool UwbInitRos::callbackServiceInit(std_srvs::Empty::Request& req, std_srvs::Em
 {
   ROS_INFO("Inizialization service called.");
   return initializeAnchors();
+}
+
+bool UwbInitRos::callbackServiceWps(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
+{
+  ROS_INFO("Refinement service called.");
+  return computeWaypoints();
 }
 
 bool UwbInitRos::callbackServiceRefine(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
@@ -126,12 +133,12 @@ bool UwbInitRos::initializeAnchors()
 {
   ROS_INFO("Performing anchor inizalization...");
 
-  // Initialize anchor
+  // Initialize anchors
   if (!uwb_init_.init_anchors())
   {
     ROS_WARN("Initialization of anchor failed. Please collect additional data and repeat.");
 
-    if (!fstart_collect_measurements_)
+    if (!collect_measurements_)
     {
       ROS_WARN_STREAM("Call " << options_.service_start_ << " to start collecting measurements.");
     }
@@ -142,7 +149,29 @@ bool UwbInitRos::initializeAnchors()
   for (const auto& it : uwb_init_.get_ls_solutions())
   {
     ROS_INFO("Anchor [%d] succesfully initialized at [%f, %f, %f]", it.first, it.second.anchor_.p_AinG_.x(),
-             it.second.anchor_.p_AinG_.x(), it.second.anchor_.p_AinG_.z());
+             it.second.anchor_.p_AinG_.y(), it.second.anchor_.p_AinG_.z());
+  }
+
+  collect_measurements_ = false;
+
+  return true;
+}
+
+bool UwbInitRos::computeWaypoints()
+{
+  ROS_INFO("Computing optimal waypoints...");
+
+  // Compute waypoints passing last registerd UWB tag position
+  if (!uwb_init_.compute_waypoints(p_UinG_))
+  {
+    ROS_WARN("Optimal waipoints computation. Please make sure that the UWB anchors have been correctly initialized.");
+    return false;
+  }
+
+  // Display waypoints
+  for (const auto& it : uwb_init_.get_waypoints())
+  {
+    ROS_INFO("Waypoint at [%f, %f, %f]", it.x_, it.y_, it.z_);
   }
 
   return true;
@@ -163,7 +192,7 @@ bool UwbInitRos::refineAnchors()
   for (const auto& it : uwb_init_.get_nls_solutions())
   {
     ROS_INFO("Anchor [%d] succesfully refined at [%f, %f, %f]", it.first, it.second.anchor_.p_AinG_.x(),
-             it.second.anchor_.p_AinG_.x(), it.second.anchor_.p_AinG_.z());
+             it.second.anchor_.p_AinG_.y(), it.second.anchor_.p_AinG_.z());
   }
 
   return true;

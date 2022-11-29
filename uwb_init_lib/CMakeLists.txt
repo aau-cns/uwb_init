@@ -43,7 +43,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 message(STATUS "Set compiler ${CMAKE_CXX_COMPILER}.")
 
 ## Define build type
-#set(CMAKE_BUILD_TYPE "Release")
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
 endif()
@@ -53,6 +52,8 @@ if (CMAKE_BUILD_TYPE STREQUAL "Release")
 elseif (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3 -Wall -Wuninitialized -Wmaybe-uninitialized -fno-omit-frame-pointer")
 endif ()
+
+message(STATUS "CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE}.")
 message(STATUS "CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS}.")
 
 ## List library source files
@@ -61,6 +62,7 @@ list(
     source/uwb_init.cpp
     source/solvers/linear/ls_solver.cpp
     source/solvers/nonlinear/nls_solver.cpp
+    source/planners/wps_gen.cpp
 )
 
 ## Declare a C++ library
@@ -86,6 +88,9 @@ target_include_directories(${PROJECT_NAME}
 
 ## Declare C++ tests
 if(${BUILD_TESTS})
+    add_executable(test_wps test/test_wps_gen.cpp)
+    target_include_directories(test_wps PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include ${EIGEN3_INCLUDE_DIR})
+    target_link_libraries(test_wps ${PROJECT_NAME})
     add_executable(test_utils test/test_utils.cpp)
     target_include_directories(test_utils PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include ${EIGEN3_INCLUDE_DIR})
     target_link_libraries(test_utils ${PROJECT_NAME} GTest::gtest_main)
