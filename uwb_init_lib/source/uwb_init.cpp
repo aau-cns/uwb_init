@@ -22,26 +22,27 @@
 
 namespace uwb_init
 {
-UwbInitializer::UwbInitializer(const LoggerLevel& level, const UwbInitOptions& init_options,
-                               const LsSolverOptions& ls_solver_options, const NlsSolverOptions& nls_solver_options,
-                               const PlannerOptions& planner_options)
+UwbInitializer::UwbInitializer(const LoggerLevel& level, const std::shared_ptr<UwbInitOptions> init_options,
+                               std::unique_ptr<LsSolverOptions>&& ls_solver_options,
+                               std::unique_ptr<NlsSolverOptions>&& nls_solver_options,
+                               std::unique_ptr<PlannerOptions>&& planner_options)
   : logger_(std::make_shared<Logger>(level))
-  , init_options_(init_options)
-  , ls_solver_(logger_, init_options, ls_solver_options)
-  , nls_solver_(logger_, nls_solver_options)
-  , planner_(logger_, planner_options)
+  , init_options_(std::move(init_options))
+  , ls_solver_(logger_, init_options_, std::move(ls_solver_options))
+  , nls_solver_(logger_, std::move(nls_solver_options))
+  , planner_(logger_, std::move(planner_options))
 {
   // Logging
-  logger_->info("UwbInitializer: " + std::string(InitMethodString(init_options_.init_method_)));
-  logger_->info("UwbInitializer: " + std::string(BiasTypeString(init_options_.bias_type_)));
+  logger_->info("UwbInitializer: " + std::string(InitMethodString(init_options_->init_method_)));
+  logger_->info("UwbInitializer: " + std::string(BiasTypeString(init_options_->bias_type_)));
 }
 
 void UwbInitializer::set_init_method(const InitMethod& method)
 {
-  init_options_.init_method_ = method;
+  init_options_->init_method_ = method;
 
   // Logging
-  logger_->info("UwbInitializer: " + std::string(InitMethodString(init_options_.init_method_)));
+  logger_->info("UwbInitializer: " + std::string(InitMethodString(init_options_->init_method_)));
 
   // Configure Least Squares Solver
   ls_solver_.configure(init_options_);
@@ -49,10 +50,10 @@ void UwbInitializer::set_init_method(const InitMethod& method)
 
 void UwbInitializer::set_bias_type(const BiasType& type)
 {
-  init_options_.bias_type_ = type;
+  init_options_->bias_type_ = type;
 
   // Logging
-  logger_->info("UwbInitializer: " + std::string(BiasTypeString(init_options_.bias_type_)));
+  logger_->info("UwbInitializer: " + std::string(BiasTypeString(init_options_->bias_type_)));
 
   // Configure Least Squares Solver
   ls_solver_.configure(init_options_);
@@ -76,7 +77,7 @@ const NLSSolutions& UwbInitializer::get_nls_solutions() const
   return nls_sols_;
 }
 
-const Waypoints &UwbInitializer::get_waypoints() const
+const Waypoints& UwbInitializer::get_waypoints() const
 {
   if (opt_wps_.empty())
   {
@@ -132,8 +133,8 @@ void UwbInitializer::feed_uwb(const double timestamp, const UwbData uwb_measurem
   {
     // Push back element to buffer
     uwb_data_buffer_[uwb_measurement.id_].push_back(timestamp, uwb_measurement);
-    logger_->debug("UwbInitializer::feed_uwb(): added measurement from anchor " +
-                   std::to_string(uwb_measurement.id_) + " at timestamp " + std::to_string(timestamp));
+    logger_->debug("UwbInitializer::feed_uwb(): added measurement from anchor " + std::to_string(uwb_measurement.id_) +
+                   " at timestamp " + std::to_string(timestamp));
   }
   else
   {
@@ -200,7 +201,7 @@ bool UwbInitializer::init_anchors()
       double const_bias = 0.0;
 
       // If constant bias was estimated assign the value
-      if (init_options_.bias_type_ == BiasType::CONST_BIAS)
+      if (init_options_->bias_type_ == BiasType::CONST_BIAS)
       {
         const_bias = lsSolution(3);
       }
@@ -260,16 +261,14 @@ bool UwbInitializer::compute_waypoints(const Eigen::Vector3d pos_k)
 
   // Stringstream for debug
   std::stringstream ss;
-  ss << "Current tag position: " << pos_k.transpose() << '\n'
-     << "Current map: \n" << map << '\n';
+  ss << "Current tag position: " << pos_k.transpose() << '\n' << "Current map: \n" << map << '\n';
   ss << "\n Computed waypoints: \n";
 
   // Save optimal waypoints in data struct
   for (uint idx = 0; idx < wps.rows(); ++idx)
   {
-      opt_wps_.emplace_back(Waypoint(wps.row(idx)));
-      ss << "[" << opt_wps_[idx].x_ << ", " << opt_wps_[idx].y_ << ", " <<
-            opt_wps_[idx].z_ << "] \n";
+    opt_wps_.emplace_back(Waypoint(wps.row(idx)));
+    ss << "[" << opt_wps_[idx].x_ << ", " << opt_wps_[idx].y_ << ", " << opt_wps_[idx].z_ << "] \n";
   }
 
   // Logging results

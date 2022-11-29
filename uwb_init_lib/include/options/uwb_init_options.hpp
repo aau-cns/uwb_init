@@ -80,11 +80,15 @@ constexpr const char* BiasTypeString(BiasType e)
 ///
 struct UwbInitOptions
 {
-  /// determines the method to use for initialization \see UwbInit::UwbInitOptions::InitMethod
-  InitMethod init_method_{ InitMethod::DOUBLE };
+  /// determines the method to use for initialization
+  InitMethod init_method_;
 
   /// determines the type of bias used in the measurement model, to be estimated during the initialization routine
-  BiasType bias_type_{ BiasType::CONST_BIAS };
+  BiasType bias_type_;
+
+  UwbInitOptions(const InitMethod& method, const BiasType& bias_type) : init_method_(method), bias_type_(bias_type)
+  {
+  }
 
 };  // struct UwbInitOptions
 }  // namespace uwb_init

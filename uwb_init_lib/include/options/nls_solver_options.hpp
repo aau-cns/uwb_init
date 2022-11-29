@@ -31,16 +31,21 @@ namespace uwb_init
 struct NlsSolverOptions
 {
   /// norm of step ( theta(k+1) = theta(k) + zeta(i)*d_theta )
-  Eigen::VectorXd step_vec_{ Eigen::VectorXd::LinSpaced(100, 0.1, 10) };
+  Eigen::VectorXd step_vec_;
 
-  /// stopping condition for the relative norm of step
-  double step_cond_{ 1e-4 };
+  /// stopping condition for the relative norm of step (suggested default value: 1e-4)
+  double step_cond_;
 
-  /// stopping condition for residual (mean squared error r'*r/(m-p))
-  double res_cond_{ 1e-2 };
+  /// stopping condition for residual (mean squared error r'*r/(m-p)) (suggested default value: 1e-2)
+  double res_cond_;
 
-  /// stopping condition for maximum number of iterations
-  uint max_iter_{ 100000 };
+  /// stopping condition for maximum number of iterations (suggested defualt value: 100000)
+  uint max_iter_;
+
+  NlsSolverOptions(Eigen::VectorXd& step_vec, double& step_cond, double& res_cond, const uint& max_iter)
+    : step_vec_(step_vec), step_cond_(step_cond), res_cond_(res_cond), max_iter_(max_iter)
+  {
+  }
 
 };  // struct NlsSolverOptions
 }  // namespace uwb_init

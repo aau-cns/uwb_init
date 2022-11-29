@@ -22,30 +22,27 @@
 
 namespace uwb_init
 {
-LsSolver::LsSolver(const std::shared_ptr<Logger> logger, const UwbInitOptions& init_options,
-                   const LsSolverOptions& ls_solver_options)
-  : logger_(std::move(logger))
+LsSolver::LsSolver(const std::shared_ptr<Logger> logger, const std::shared_ptr<UwbInitOptions>& init_options,
+                   std::unique_ptr<LsSolverOptions>&& ls_solver_options)
+  : logger_(std::move(logger)), solver_options_(std::move(ls_solver_options))
 {
   // Configure solver
   configure(init_options);
 
-  // Set solver options
-  solver_options_ = ls_solver_options;
-
   // Logging
   logger_->info("LsSolver: Initialized");
-  logger_->debug("LsSolver options: sigma_pos = " + std::to_string(solver_options_.sigma_pos_));
-  logger_->debug("LsSolver options: sigma_meas = " + std::to_string(solver_options_.sigma_meas_));
+  logger_->debug("LsSolver options: sigma_pos = " + std::to_string(solver_options_->sigma_pos_));
+  logger_->debug("LsSolver options: sigma_meas = " + std::to_string(solver_options_->sigma_meas_));
 }
 
-void LsSolver::configure(const UwbInitOptions& init_options)
+void LsSolver::configure(const std::shared_ptr<UwbInitOptions>& init_options)
 {
   // Bind LS-problem initialization function based on selected method and model variables
-  switch (init_options.init_method_)
+  switch (init_options->init_method_)
   {
     // Single measurement initialization method
     case InitMethod::SINGLE:
-      switch (init_options.bias_type_)
+      switch (init_options->bias_type_)
       {
         // Unbiased measurement model (only distance between tag and uwb anchor)
         case BiasType::NO_BIAS:
@@ -61,7 +58,7 @@ void LsSolver::configure(const UwbInitOptions& init_options)
       break;
     // Double measurements initialization method
     case InitMethod::DOUBLE:
-      switch (init_options.bias_type_)
+      switch (init_options->bias_type_)
       {
         // Unbiased measurement model (only distance between tag and uwb anchor)
         case BiasType::NO_BIAS:
@@ -212,14 +209,14 @@ bool LsSolver::ls_double_const_bias(const TimedBuffer<UwbData>& uwb_data, const 
   // Find pivot index (minimize weight uwb_dist^2*sigma_d + p_UinG'*sigma_p*p_UinG)
   uint pivot_idx = 0;
   double weight_pivot =
-      (std::pow(uwb_data[pivot_idx].second.distance_, 2) * solver_options_.sigma_meas_ +
+      (std::pow(uwb_data[pivot_idx].second.distance_, 2) * solver_options_->sigma_meas_ +
        p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first).transpose() * Eigen::Matrix3d::Identity() *
-           solver_options_.sigma_pos_ * p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first));
+           solver_options_->sigma_pos_ * p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first));
   for (uint i = 1; i < uwb_data.size(); ++i)
   {
-    double weight_i = (std::pow(uwb_data[i].second.distance_, 2) * solver_options_.sigma_meas_ +
+    double weight_i = (std::pow(uwb_data[i].second.distance_, 2) * solver_options_->sigma_meas_ +
                        p_UinG_buffer.get_at_timestamp(uwb_data[i].first).transpose() * Eigen::Matrix3d::Identity() *
-                           solver_options_.sigma_pos_ * p_UinG_buffer.get_at_timestamp(uwb_data[i].first));
+                           solver_options_->sigma_pos_ * p_UinG_buffer.get_at_timestamp(uwb_data[i].first));
     if (weight_i < weight_pivot)
     {
       pivot_idx = i;
@@ -251,8 +248,8 @@ bool LsSolver::ls_double_const_bias(const TimedBuffer<UwbData>& uwb_data, const 
     b(j) = 0.5 * (std::pow(uwb_data[i].second.distance_, 2) - std::pow(uwb_pivot, 2) -
                   (std::pow(p_UinG.norm(), 2) - std::pow(p_UinG_pivot.norm(), 2)));
 
-    s(j) = std::pow(uwb_data[i].second.distance_, 2) * solver_options_.sigma_meas_ +
-           p_UinG.transpose() * Eigen::Matrix3d::Identity() * solver_options_.sigma_pos_ * p_UinG + weight_pivot;
+    s(j) = std::pow(uwb_data[i].second.distance_, 2) * solver_options_->sigma_meas_ +
+           p_UinG.transpose() * Eigen::Matrix3d::Identity() * solver_options_->sigma_pos_ * p_UinG + weight_pivot;
 
     // Increment row index
     j += 1;
@@ -282,14 +279,14 @@ bool LsSolver::ls_double_no_bias(const TimedBuffer<UwbData>& uwb_data, const Pos
   // Find pivot index (minimize weight uwb_dist^2*sigma_d + p_UinG'*sigma_p*p_UinG)
   uint pivot_idx = 0;
   double weight_pivot =
-      (std::pow(uwb_data[pivot_idx].second.distance_, 2) * solver_options_.sigma_meas_ +
+      (std::pow(uwb_data[pivot_idx].second.distance_, 2) * solver_options_->sigma_meas_ +
        p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first).transpose() * Eigen::Matrix3d::Identity() *
-           solver_options_.sigma_pos_ * p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first));
+           solver_options_->sigma_pos_ * p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first));
   for (uint i = 1; i < uwb_data.size(); ++i)
   {
-    double weight_i = (std::pow(uwb_data[i].second.distance_, 2) * solver_options_.sigma_meas_ +
+    double weight_i = (std::pow(uwb_data[i].second.distance_, 2) * solver_options_->sigma_meas_ +
                        p_UinG_buffer.get_at_timestamp(uwb_data[i].first).transpose() * Eigen::Matrix3d::Identity() *
-                           solver_options_.sigma_pos_ * p_UinG_buffer.get_at_timestamp(uwb_data[i].first));
+                           solver_options_->sigma_pos_ * p_UinG_buffer.get_at_timestamp(uwb_data[i].first));
     if (weight_i < weight_pivot)
     {
       pivot_idx = i;
@@ -319,8 +316,8 @@ bool LsSolver::ls_double_no_bias(const TimedBuffer<UwbData>& uwb_data, const Pos
 
     b(j) = 0.5 * (std::pow(uwb_data[i].second.distance_, 2) - std::pow(uwb_pivot, 2) -
                   (std::pow(p_UinG.norm(), 2) - std::pow(p_UinG_pivot.norm(), 2)));
-    s(j) = std::pow(uwb_data[i].second.distance_, 2) * solver_options_.sigma_meas_ +
-           p_UinG.transpose() * solver_options_.sigma_pos_ * Eigen::Matrix3d::Identity() * p_UinG + weight_pivot;
+    s(j) = std::pow(uwb_data[i].second.distance_, 2) * solver_options_->sigma_meas_ +
+           p_UinG.transpose() * solver_options_->sigma_pos_ * Eigen::Matrix3d::Identity() * p_UinG + weight_pivot;
 
     // Increment row index
     j += 1;
