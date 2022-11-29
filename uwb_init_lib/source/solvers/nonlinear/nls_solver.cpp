@@ -18,6 +18,8 @@
 // You can contact the authors at <alessandro.fornasier@aau.at> and
 // <giulio.delama@aau.at>
 
+#include <assert.h>
+
 #include "solvers/nonlinear/nls_solver.hpp"
 
 namespace uwb_init
@@ -25,6 +27,10 @@ namespace uwb_init
 NlsSolver::NlsSolver(const std::shared_ptr<Logger> logger, std::unique_ptr<NlsSolverOptions>&& nls_solver_options)
   : logger_(std::move(logger)), solver_options_(std::move(nls_solver_options))
 {
+  // Debug assertation
+  assert(logger_ != nullptr);
+  assert(solver_options_ != nullptr);
+
   // Logging
   logger_->info("NlsSolver: Initialized");
   std::stringstream ss;

@@ -18,6 +18,8 @@
 // You can contact the authors at <alessandro.fornasier@aau.at> and
 // <giulio.delama@aau.at>
 
+#include <assert.h>
+
 #include "solvers/linear/ls_solver.hpp"
 
 namespace uwb_init
@@ -26,6 +28,10 @@ LsSolver::LsSolver(const std::shared_ptr<Logger> logger, const std::shared_ptr<U
                    std::unique_ptr<LsSolverOptions>&& ls_solver_options)
   : logger_(std::move(logger)), solver_options_(std::move(ls_solver_options))
 {
+  // Debug assertation
+  assert(logger_ != nullptr);
+  assert(solver_options_ != nullptr);
+
   // Configure solver
   configure(init_options);
 

@@ -1,3 +1,25 @@
+// Copyright (C) 2021 Farhad Shamsfakhr, Giulio Delama.
+// Control of Networked Systems, University of Klagenfurt, Austria.
+//
+// All rights reserved.
+//
+// This software is licensed under the terms of the BSD-2-Clause-License with
+// no commercial use allowed, the full terms of which are made available
+// in the LICENSE file. No license in patents is granted.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+// THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+// DEALINGS IN THE SOFTWARE.
+//
+// You can contact the authors at <farhad.shamsfakhr@unitn.it> and
+// <giulio.delama@aau.at>
+
+#include <assert.h>
+
 #include "planners/wps_gen.hpp"
 
 namespace uwb_init
@@ -6,6 +28,10 @@ OptWpsGenerator::OptWpsGenerator(const std::shared_ptr<Logger> logger,
                                  std::unique_ptr<PlannerOptions>&& planner_options)
   : logger_(std::move(logger)), planner_options_(std::move(planner_options))
 {
+  // Debug assertation
+  assert(logger_ != nullptr);
+  assert(planner_options_ != nullptr);
+
   // Logging
   logger_->info("OptWpsGenerator: Initialized");
   std::stringstream ss;

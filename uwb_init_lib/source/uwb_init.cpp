@@ -18,6 +18,8 @@
 // You can contact the authors at <alessandro.fornasier@aau.at>,
 // <giulio.delama@aau.at> and <martin.scheiber@aau.at>
 
+#include <assert.h>
+
 #include "uwb_init.hpp"
 
 namespace uwb_init
@@ -32,6 +34,10 @@ UwbInitializer::UwbInitializer(const LoggerLevel& level, const std::shared_ptr<U
   , nls_solver_(logger_, std::move(nls_solver_options))
   , planner_(logger_, std::move(planner_options))
 {
+  // Debug assertation
+  assert(logger_ != nullptr);
+  assert(init_options_ != nullptr);
+
   // Logging
   logger_->info("UwbInitializer: " + std::string(InitMethodString(init_options_->init_method_)));
   logger_->info("UwbInitializer: " + std::string(BiasTypeString(init_options_->bias_type_)));
