@@ -17,6 +17,12 @@
 #ifndef UWB_INIT_ROS_OPTIONS_H
 #define UWB_INIT_ROS_OPTIONS_H
 
+#include "logger/logger.hpp"
+#include "options/ls_solver_options.hpp"
+#include "options/nls_solver_options.hpp"
+#include "options/planner_options.hpp"
+#include "options/uwb_init_options.hpp"
+
 namespace uwb_init_ros
 {
 struct UwbInitRosOptions
@@ -25,9 +31,10 @@ struct UwbInitRosOptions
   uwb_init::LoggerLevel level_;
 
   /// Lib options
-  uwb_init::UwbInitOptions init_options_;
-  uwb_init::LsSolverOptions ls_solver_options_;
-  uwb_init::NlsSolverOptions nls_solver_options_;
+  std::unique_ptr<uwb_init::UwbInitOptions> init_options_ = nullptr;
+  std::unique_ptr<uwb_init::LsSolverOptions> ls_solver_options_ = nullptr;
+  std::unique_ptr<uwb_init::NlsSolverOptions> nls_solver_options_ = nullptr;
+  std::unique_ptr<uwb_init::PlannerOptions> planner_options_ = nullptr;
 
   /// ROS options
   std::string estimated_pose_topic_;
@@ -35,6 +42,7 @@ struct UwbInitRosOptions
   std::string service_start_;
   std::string service_reset_;
   std::string service_init_;
+  std::string service_wps_;
   std::string service_refine_;
 
   /// Position of the UWB module expressed in IMU frame

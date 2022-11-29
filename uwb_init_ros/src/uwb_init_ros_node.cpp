@@ -59,6 +59,12 @@ int main(int argc, char** argv)
     EXIT_FAILURE;
   }
 
+  if (!nh.getParam("planner_service", opts.service_wps_))
+  {
+    ROS_ERROR("Missing planner_service parameter");
+    EXIT_FAILURE;
+  }
+
   if (!nh.getParam("refine_service", opts.service_refine_))
   {
     ROS_ERROR("Missing refine_service parameter");
@@ -70,13 +76,15 @@ int main(int argc, char** argv)
   nh.param<std::string>("method", method, "double");
   nh.param<std::string>("bias_type", bias_type, "constant");
 
+  uwb_init::InitMethod method;
+  uwb_init::BiasType bias_type;
   if (method == "single")
   {
-    opts.init_options_.init_method_ = uwb_init::InitMethod::SINGLE;
+    method = uwb_init::InitMethod::SINGLE;
   }
   else if (method == "double")
   {
-    opts.init_options_.init_method_ = uwb_init::InitMethod::DOUBLE;
+    method = uwb_init::InitMethod::DOUBLE;
   }
   else
   {
@@ -86,11 +94,11 @@ int main(int argc, char** argv)
 
   if (bias_type == "unbiased")
   {
-    opts.init_options_.bias_type_ = uwb_init::BiasType::NO_BIAS;
+    bias_type = uwb_init::BiasType::NO_BIAS;
   }
   else if (bias_type == "constant")
   {
-    opts.init_options_.bias_type_ = uwb_init::BiasType::CONST_BIAS;
+    bias_type = uwb_init::BiasType::CONST_BIAS;
   }
   else
   {
@@ -114,8 +122,29 @@ int main(int argc, char** argv)
   std::vector<double> step_vec;
   std::vector<double> step_vec_default = { 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0 };
   nh.param<std::vector<double>>("step_vec", step_vec, step_vec_default);
-  opts.nls_solver_options_.step_vec_ =
-      Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(step_vec.data(), step_vec.size());
+  opts.nls_solver_options_.step_vec_ = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(step_vec.data(), step_vec.size());
+
+  // Get waypoint generation options from parameter server
+  int cell_len, pop_size, itr_num, x_n, y_n, z_n;
+  nh.param<int>("cell_len", cell_len, static_cast<int>(opts.planner_options_.cell_len_));
+  opts.planner_options_.cell_len_ = static_cast<uint>(cell_len);
+  nh.param<int>("pop_size", pop_size, static_cast<int>(opts.planner_options_.pop_size_));
+  opts.planner_options_.pop_size_ = static_cast<uint>(pop_size);
+  nh.param<int>("generations_n", itr_num, static_cast<int>(opts.planner_options_.itr_num_));
+  nh.param<int>("cell_len", cell_len, static_cast<int>(opts.planner_options_.cell_len_));
+  opts.planner_options_.cell_len_ = static_cast<uint>(cell_len);
+  nh.param<int>("x_grid", x_n, static_cast<int>(opts.planner_options_.x_n_));
+  opts.planner_options_.x_n_ = static_cast<uint>(x_n);
+  nh.param<int>("y_grid", y_n, static_cast<int>(opts.planner_options_.y_n_));
+  opts.planner_options_.y_n_ = static_cast<uint>(y_n);
+  nh.param<int>("z_grid", z_n, static_cast<int>(opts.planner_options_.z_n_));
+  opts.planner_options_.z_n_ = static_cast<uint>(z_n);
+  nh.param<double>("crossover_probability", opts.planner_options_.pc_, opts.planner_options_.pc_);
+  nh.param<double>("mutation_probability", opts.planner_options_.pm_, opts.planner_options_.pm_);
+  nh.param<double>("side_x_length", opts.planner_options_.side_x_, opts.planner_options_.side_x_);
+  nh.param<double>("side_y_length", opts.planner_options_.side_y_, opts.planner_options_.side_y_);
+  nh.param<double>("side_z_length", opts.planner_options_.side_z_, opts.planner_options_.side_z_);
+  nh.param<double>("min_z", opts.planner_options_.z_min_, opts.planner_options_.z_min_);
 
   // Get logger level from parameter server
   std::string logger_level;
@@ -161,6 +190,10 @@ int main(int argc, char** argv)
   ROS_INFO_STREAM("Calibration p_UinI = " << p_UinI.transpose());
 
   // Instanciate UwbInitRos
+  opts.init_options_(std::make_unique<uwb_init::UwbInitOptions>(method, bias_type));
+  // opts.ls_solver_options_(std::make_unique<uwb_init::LsSolverOptions>());
+  // opts.nls_solver_options_(std::make_unique<uwb_init::NlsSolverOptions>());
+  // opts.planner_options_(std::make_unique<uwb_init::PlannerOptions>());
   uwb_init_ros::UwbInitRos UwbInitRos(nh, opts);
 
   // ROS Spin

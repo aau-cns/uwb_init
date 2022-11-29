@@ -2,20 +2,21 @@
 <launch>
 
   <!-- topic parameters -->
-  <arg name="estimated_pose_topic"      default="/mavros/vision_pose/pose" /> <!-- /twins_itec/vrpn_client/raw_pose -->
+  <arg name="estimated_pose_topic"      default="/twins_itec/vrpn_client/raw_pose" /> <!-- /mavros/vision_pose/pose -->
   <arg name="uwb_range_topic"           default="/uwb_driver_node/uwb" />
   <arg name="start_service"             default="/uwb_init/start" />
   <arg name="reset_service"             default="/uwb_init/reset" />
   <arg name="initialization_service"    default="/uwb_init/initialize" />
+  <arg name="planner_service"           default="/uwb_init/compute_wps" />
   <arg name="refine_service"            default="/uwb_init/refine" />
   <arg name="logger_level"              default="info" />
 
   <!-- calibration -->
-  <arg name="calib_p_UinI"              default="[0.03, -0.04, -0.03]" /> <!-- /[0.065, 0.12, -0.02] -->
+  <arg name="calib_p_UinI"              default="[0.065, 0.12, -0.02]" /> <!-- /[0.03, -0.04, -0.03] -->
 
   <!-- node parameters -->
-  <arg name="method"                    default="single" />
-  <arg name="bias_type"                 default="unbiased" />
+  <arg name="method"                    default="double" />
+  <arg name="bias_type"                 default="constant" />
   
   <!-- ls solver parameters -->
   <arg name="position_std"              default="0.03" />
@@ -27,6 +28,20 @@
   <arg name="max_iterations"            		default="10000" />
   <arg name="step_vector"   default="[0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0]" />
 
+  <!-- waypoint generator parameters -->
+  <arg name="cell_len"                          default="10" />
+  <arg name="pop_size"                          default="10" />
+  <arg name="generations_n"            		default="3000" />
+  <arg name="crossover_probability"             default="0.5" />
+  <arg name="mutation_probability"              default="0.5" />
+  <arg name="x_grid"                            default="2" />
+  <arg name="y_grid"                            default="2" />
+  <arg name="z_grid"                            default="4" />
+  <arg name="side_x_length"                     default="4" />
+  <arg name="side_y_length"                     default="5" />
+  <arg name="side_z_length"                     default="6" />
+  <arg name="min_z"                             default="1" />
+
   <node name="uwb_init" pkg="uwb_init_ros" type="uwb_init" args="" output="screen" respawn="false">
 
     <!-- topics remaps -->
@@ -35,6 +50,7 @@
     <param name="start_service"             type="str"  value="$(arg start_service)" />
     <param name="reset_service"             type="str"  value="$(arg reset_service)" />
     <param name="initialization_service"    type="str"  value="$(arg initialization_service)" />
+    <param name="planner_service"           type="str"  value="$(arg planner_service)" />
     <param name="refine_service"            type="str"  value="$(arg refine_service)" />
     <param name="logger_level"              type="str"  value="$(arg logger_level)" />
 
@@ -50,10 +66,24 @@
     <param name="uwb_range_std"             type="double"  value="$(arg uwb_range_std)" />
 
     <!-- nls solver parameters -->
-    <param name="step_norm_stop_condition"          type="double"  value="$(arg step_norm_stop_condition)" />
-    <param name="residual_mse_stop_condition"       type="double"  value="$(arg residual_mse_stop_condition)" />
-    <param name="max_iterations"                    type="int"  value="$(arg max_iterations)" />
+    <param name="step_norm_stop_condition"          type="double"   value="$(arg step_norm_stop_condition)" />
+    <param name="residual_mse_stop_condition"       type="double"   value="$(arg residual_mse_stop_condition)" />
+    <param name="max_iterations"                    type="int"      value="$(arg max_iterations)" />
     <rosparam param="step_vec"                      subst_value="True">$(arg step_vector)</rosparam>
+
+    <!-- waypoint generation parameters -->
+    <param name="cell_len"                          type="int"      value="$(arg cell_len)" />
+    <param name="pop_size"                          type="int"      value="$(arg pop_size)" />
+    <param name="generations_n"                     type="int"      value="$(arg generations_n)" />
+    <param name="crossover_probability"             type="double"   value="$(arg crossover_probability)" />
+    <param name="mutation_probability"              type="double"   value="$(arg mutation_probability)" />
+    <param name="x_grid"                            type="int"      value="$(arg x_grid)" />
+    <param name="y_grid"                            type="int"      value="$(arg y_grid)" />
+    <param name="z_grid"                            type="int"      value="$(arg z_grid)" />
+    <param name="side_x_length"                     type="double"   value="$(arg side_x_length)" />
+    <param name="side_y_length"                     type="double"   value="$(arg side_y_length)" />
+    <param name="side_z_length"                     type="double"   value="$(arg side_z_length)" />
+    <param name="min_z"                             type="double"   value="$(arg min_z)" />
 
   </node>
 

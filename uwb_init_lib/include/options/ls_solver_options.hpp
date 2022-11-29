@@ -28,13 +28,17 @@ namespace uwb_init
 ///
 struct LsSolverOptions
 {
-  /// position uncertainty
-  double sigma_pos_{ 0.03 };
+  /// position uncertainty (default suggested value: 0.03)
+  double sigma_pos_;
 
-  /// uwb uncertainty
-  double sigma_meas_{ 0.1 };
+  /// uwb uncertainty (default suggested value: 0.1)
+  double sigma_meas_;
 
-};  // struct LsSolverOptions
+  LsSolverOptions(const double& sigma_pos, const double& sigma_meas) : sigma_pos_(sigma_pos), sigma_meas_(sigma_meas)
+  {
+  }
+
+};  // namespace uwb_init
 }  // namespace uwb_init
 
 #endif  // UWB_INIT_LS_OPTIONS_HPP_
