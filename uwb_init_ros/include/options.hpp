@@ -31,7 +31,7 @@ struct UwbInitRosOptions
   uwb_init::LoggerLevel level_;
 
   /// Lib options
-  std::unique_ptr<uwb_init::UwbInitOptions> init_options_ = nullptr;
+  std::shared_ptr<uwb_init::UwbInitOptions> init_options_ = nullptr;
   std::unique_ptr<uwb_init::LsSolverOptions> ls_solver_options_ = nullptr;
   std::unique_ptr<uwb_init::NlsSolverOptions> nls_solver_options_ = nullptr;
   std::unique_ptr<uwb_init::PlannerOptions> planner_options_ = nullptr;
@@ -47,6 +47,10 @@ struct UwbInitRosOptions
 
   /// Position of the UWB module expressed in IMU frame
   Eigen::Vector3d p_UinI_;
+
+  /// Constructors (implicitly deleted copy constructor)
+  UwbInitRosOptions() = default;
+  UwbInitRosOptions(UwbInitRosOptions&&) = default;
 };
 }  // namespace uwb_init_ros
 
