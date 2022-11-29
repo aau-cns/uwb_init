@@ -75,30 +75,28 @@ int main(int argc, char** argv)
   std::string method, bias_type;
   nh.param<std::string>("method", method, "double");
   nh.param<std::string>("bias_type", bias_type, "constant");
-
-  uwb_init::InitMethod method;
-  uwb_init::BiasType bias_type;
+  uwb_init::InitMethod opt_init_method;
+  uwb_init::BiasType opt_bias_type;
   if (method == "single")
   {
-    method = uwb_init::InitMethod::SINGLE;
+    opt_init_method = uwb_init::InitMethod::SINGLE;
   }
   else if (method == "double")
   {
-    method = uwb_init::InitMethod::DOUBLE;
+    opt_init_method = uwb_init::InitMethod::DOUBLE;
   }
   else
   {
     ROS_ERROR("Invalidmethod! Please use single or double");
     EXIT_FAILURE;
   }
-
   if (bias_type == "unbiased")
   {
-    bias_type = uwb_init::BiasType::NO_BIAS;
+    opt_bias_type = uwb_init::BiasType::NO_BIAS;
   }
   else if (bias_type == "constant")
   {
-    bias_type = uwb_init::BiasType::CONST_BIAS;
+    opt_bias_type = uwb_init::BiasType::CONST_BIAS;
   }
   else
   {
@@ -107,44 +105,43 @@ int main(int argc, char** argv)
   }
 
   // Get LS solver options from parameter server
-  nh.param<double>("position_std", opts.ls_solver_options_.sigma_pos_, opts.ls_solver_options_.sigma_pos_);
-  nh.param<double>("uwb_range_std", opts.ls_solver_options_.sigma_meas_, opts.ls_solver_options_.sigma_meas_);
+  double opt_sigma_pos, opt_sigma_mes;
+  nh.param<double>("position_std", opt_sigma_pos, 0.05);
+  nh.param<double>("uwb_range_std", opt_sigma_mes, 0.1);
 
   // Get NLS solver options from parameter server
+  double opt_step_cond, opt_res_cond;
   int max_iter;
-  nh.param<double>("step_norm_stop_condition", opts.nls_solver_options_.step_cond_,
-                   opts.nls_solver_options_.step_cond_);
-  nh.param<double>("residual_mse_stop_condition", opts.nls_solver_options_.res_cond_,
-                   opts.nls_solver_options_.res_cond_);
-  nh.param<int>("max_iterations", max_iter, static_cast<int>(opts.nls_solver_options_.max_iter_));
-  opts.nls_solver_options_.max_iter_ = static_cast<uint>(max_iter);
-
   std::vector<double> step_vec;
   std::vector<double> step_vec_default = { 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0 };
+  nh.param<double>("step_norm_stop_condition", opt_step_cond, 0.01);
+  nh.param<double>("residual_mse_stop_condition", opt_res_cond, 0.0001);
+  nh.param<int>("max_iterations", max_iter, 100000);
+  uint opt_max_iter = static_cast<uint>(max_iter);
   nh.param<std::vector<double>>("step_vec", step_vec, step_vec_default);
-  opts.nls_solver_options_.step_vec_ = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(step_vec.data(), step_vec.size());
+  Eigen::VectorXd opt_step_vec = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(step_vec.data(), step_vec.size());
 
   // Get waypoint generation options from parameter server
   int cell_len, pop_size, itr_num, x_n, y_n, z_n;
-  nh.param<int>("cell_len", cell_len, static_cast<int>(opts.planner_options_.cell_len_));
-  opts.planner_options_.cell_len_ = static_cast<uint>(cell_len);
-  nh.param<int>("pop_size", pop_size, static_cast<int>(opts.planner_options_.pop_size_));
-  opts.planner_options_.pop_size_ = static_cast<uint>(pop_size);
-  nh.param<int>("generations_n", itr_num, static_cast<int>(opts.planner_options_.itr_num_));
-  nh.param<int>("cell_len", cell_len, static_cast<int>(opts.planner_options_.cell_len_));
-  opts.planner_options_.cell_len_ = static_cast<uint>(cell_len);
-  nh.param<int>("x_grid", x_n, static_cast<int>(opts.planner_options_.x_n_));
-  opts.planner_options_.x_n_ = static_cast<uint>(x_n);
-  nh.param<int>("y_grid", y_n, static_cast<int>(opts.planner_options_.y_n_));
-  opts.planner_options_.y_n_ = static_cast<uint>(y_n);
-  nh.param<int>("z_grid", z_n, static_cast<int>(opts.planner_options_.z_n_));
-  opts.planner_options_.z_n_ = static_cast<uint>(z_n);
-  nh.param<double>("crossover_probability", opts.planner_options_.pc_, opts.planner_options_.pc_);
-  nh.param<double>("mutation_probability", opts.planner_options_.pm_, opts.planner_options_.pm_);
-  nh.param<double>("side_x_length", opts.planner_options_.side_x_, opts.planner_options_.side_x_);
-  nh.param<double>("side_y_length", opts.planner_options_.side_y_, opts.planner_options_.side_y_);
-  nh.param<double>("side_z_length", opts.planner_options_.side_z_, opts.planner_options_.side_z_);
-  nh.param<double>("min_z", opts.planner_options_.z_min_, opts.planner_options_.z_min_);
+  double opt_pc, opt_pm, opt_side_x, opt_side_y, opt_side_z, opt_z_min;
+  nh.param<int>("cell_len", cell_len, 10);
+  uint opt_cell_len = static_cast<uint>(cell_len);
+  nh.param<int>("pop_size", pop_size, 10);
+  uint opt_pop_size = static_cast<uint>(pop_size);
+  nh.param<int>("generations_n", itr_num, 3000);
+  uint opt_itr_num = static_cast<uint>(itr_num);
+  nh.param<int>("x_grid", x_n, 2);
+  uint opt_x_n = static_cast<uint>(x_n);
+  nh.param<int>("y_grid", y_n, 2);
+  uint opt_y_n= static_cast<uint>(y_n);
+  nh.param<int>("z_grid", z_n, 4);
+  uint opt_z_n = static_cast<uint>(z_n);
+  nh.param<double>("crossover_probability", opt_pc, 0.5);
+  nh.param<double>("mutation_probability", opt_pm, 0.2);
+  nh.param<double>("side_x_length", opt_side_x, 4);
+  nh.param<double>("side_y_length", opt_side_y, 5);
+  nh.param<double>("side_z_length", opt_side_z, 6);
+  nh.param<double>("min_z", opt_z_min, 1);
 
   // Get logger level from parameter server
   std::string logger_level;
@@ -190,11 +187,15 @@ int main(int argc, char** argv)
   ROS_INFO_STREAM("Calibration p_UinI = " << p_UinI.transpose());
 
   // Instanciate UwbInitRos
-  opts.init_options_(std::make_unique<uwb_init::UwbInitOptions>(method, bias_type));
-  // opts.ls_solver_options_(std::make_unique<uwb_init::LsSolverOptions>());
-  // opts.nls_solver_options_(std::make_unique<uwb_init::NlsSolverOptions>());
-  // opts.planner_options_(std::make_unique<uwb_init::PlannerOptions>());
-  uwb_init_ros::UwbInitRos UwbInitRos(nh, opts);
+  opts.init_options_ = std::make_shared<uwb_init::UwbInitOptions>(opt_init_method, opt_bias_type);
+  opts.ls_solver_options_ = std::make_unique<uwb_init::LsSolverOptions>(opt_sigma_pos, opt_sigma_mes);
+  opts.nls_solver_options_ = std::make_unique<uwb_init::NlsSolverOptions>(opt_step_vec, opt_step_cond,
+                                                                          opt_res_cond, opt_max_iter);
+  opts.planner_options_ = std::make_unique<uwb_init::PlannerOptions>(opt_cell_len, opt_pop_size,
+                                                                     opt_itr_num, opt_pc, opt_pm,
+                                                                     opt_x_n, opt_y_n, opt_z_n, opt_side_x,
+                                                                     opt_side_y, opt_side_z, opt_z_min);
+  uwb_init_ros::UwbInitRos UwbInitRos(nh, std::move(opts));
 
   // ROS Spin
   ros::spin();

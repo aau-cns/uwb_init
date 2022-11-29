@@ -38,7 +38,7 @@ public:
    *
    * @param nh ROS NodeHandle
    */
-  UwbInitRos(const ros::NodeHandle& nh, const UwbInitRosOptions& options);
+  UwbInitRos(const ros::NodeHandle& nh, UwbInitRosOptions&& options);
 
 private:
   /**

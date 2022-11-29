@@ -21,10 +21,10 @@
 
 namespace uwb_init_ros
 {
-UwbInitRos::UwbInitRos(const ros::NodeHandle& nh, const UwbInitRosOptions& options)
+UwbInitRos::UwbInitRos(const ros::NodeHandle& nh, UwbInitRosOptions&& options)
   : nh_(nh)
-  , options_(options)
-  , uwb_init_(options.level_, options.init_options_, options.ls_solver_options_, options.nls_solver_options_)
+  , options_(std::move(options))
+  , uwb_init_(options_.level_, std::move(options_.init_options_), std::move(options_.ls_solver_options_), std::move(options_.nls_solver_options_), std::move(options_.planner_options_))
 {
   // Subscribers
   estimated_pose_sub_ = nh_.subscribe(options_.estimated_pose_topic_, 1, &UwbInitRos::callbackPose, this);
