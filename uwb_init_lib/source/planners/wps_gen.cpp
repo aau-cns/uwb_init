@@ -33,10 +33,8 @@ OptWpsGenerator::OptWpsGenerator(const std::shared_ptr<Logger> logger,
   assert(planner_options_ != nullptr);
 
   // Logging
-  logger_->info("OptWpsGenerator: Initialized");
   std::stringstream ss;
-  ss << "OptWpsGenerator options: C_e = " << planner_options_->C_e_.transpose() << '\n'
-     << "OptWpsGenerator options: C_v = " << planner_options_->C_v_.transpose() << '\n';
+  logger_->info("OptWpsGenerator: Initialized");
   logger_->debug("OptWpsGenerator options: cell_len = " + std::to_string(planner_options_->cell_len_));
   logger_->debug("OptWpsGenerator options: pop_size = " + std::to_string(planner_options_->pop_size_));
   logger_->debug("OptWpsGenerator options: max_iter = " + std::to_string(planner_options_->itr_num_));
@@ -52,7 +50,11 @@ OptWpsGenerator::OptWpsGenerator(const std::shared_ptr<Logger> logger,
   logger_->debug("OptWpsGenerator options: x_s = " + std::to_string(planner_options_->x_s_));
   logger_->debug("OptWpsGenerator options: y_s = " + std::to_string(planner_options_->y_s_));
   logger_->debug("OptWpsGenerator options: z_s = " + std::to_string(planner_options_->z_s_));
-  logger_->debug(ss.str());
+  ss << planner_options_->C_e_.transpose();
+  logger_->debug("OptWpsGenerator options: C_e = " + ss.str());
+  ss.str(std::string());
+  ss << planner_options_->C_v_.transpose();
+  logger_->debug("OptWpsGenerator options: C_v = " + ss.str());
 }
 
 Eigen::MatrixXd OptWpsGenerator::generate_wps(const Eigen::MatrixXd& UWBs, const Eigen::Vector3d& p_k)

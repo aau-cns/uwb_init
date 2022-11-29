@@ -42,7 +42,8 @@ struct NlsSolverOptions
   /// stopping condition for maximum number of iterations (suggested defualt value: 100000)
   uint max_iter_;
 
-  NlsSolverOptions(Eigen::VectorXd& step_vec, double& step_cond, double& res_cond, const uint& max_iter)
+  NlsSolverOptions(const Eigen::VectorXd& step_vec, const double& step_cond, const double& res_cond,
+                   const uint& max_iter)
     : step_vec_(step_vec), step_cond_(step_cond), res_cond_(res_cond), max_iter_(max_iter)
   {
   }

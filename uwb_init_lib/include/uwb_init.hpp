@@ -46,9 +46,12 @@ public:
   ///
   /// \brief UwbInitializer default constructor
   /// \param level logging level
-  /// \param init_params Initializer options
+  /// \param init_options Initializer options
+  /// \param ls_solver_options least square solver options
+  /// \param nls_solver_options nonlinear least square solver options
+  /// \param planner_options planner options
   ///
-  UwbInitializer(const LoggerLevel& level, const std::shared_ptr<UwbInitOptions> init_options,
+  UwbInitializer(const LoggerLevel& level, std::shared_ptr<UwbInitOptions>&& init_options,
                  std::unique_ptr<LsSolverOptions>&& ls_solver_options,
                  std::unique_ptr<NlsSolverOptions>&& nls_solver_options,
                  std::unique_ptr<PlannerOptions>&& planner_options);

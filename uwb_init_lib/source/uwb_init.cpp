@@ -24,7 +24,7 @@
 
 namespace uwb_init
 {
-UwbInitializer::UwbInitializer(const LoggerLevel& level, const std::shared_ptr<UwbInitOptions> init_options,
+UwbInitializer::UwbInitializer(const LoggerLevel& level, std::shared_ptr<UwbInitOptions>&& init_options,
                                std::unique_ptr<LsSolverOptions>&& ls_solver_options,
                                std::unique_ptr<NlsSolverOptions>&& nls_solver_options,
                                std::unique_ptr<PlannerOptions>&& planner_options)

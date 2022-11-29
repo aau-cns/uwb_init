@@ -34,7 +34,7 @@ struct LsSolverOptions
   /// uwb uncertainty (default suggested value: 0.1)
   double sigma_meas_;
 
-  LsSolverOptions(double& sigma_pos, double& sigma_meas) : sigma_pos_(sigma_pos), sigma_meas_(sigma_meas)
+  LsSolverOptions(const double& sigma_pos, const double& sigma_meas) : sigma_pos_(sigma_pos), sigma_meas_(sigma_meas)
   {
   }
 
