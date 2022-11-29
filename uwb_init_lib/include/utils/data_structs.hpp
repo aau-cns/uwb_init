@@ -120,10 +120,32 @@ struct UwbData
   }
 };
 
+/**
+ * @brief A simple data structure that defines a Waypoint with 2 digit precision
+ *
+ */
+struct Waypoint
+{
+  double x_;
+  double y_;
+  double z_;
+
+  Waypoint(const double& x, const double& y, const double& z)
+      : x_(std::round(x*100)/100), y_(std::round(y*100)/100), z_(std::round(z*100)/100)
+  {
+  }
+
+  Waypoint(const Eigen::Vector3d& wp)
+      : x_(std::round(wp.x()*100)/100), y_(std::round(wp.y()*100)/100), z_(std::round(wp.z()*100)/100)
+  {
+  }
+};
+
 typedef TimedBuffer<Eigen::Vector3d> PositionBuffer;
 typedef std::unordered_map<uint, TimedBuffer<UwbData>> UwbDataBuffer;
 typedef std::unordered_map<uint, LSSolution> LSSolutions;
 typedef std::unordered_map<uint, NLSSolution> NLSSolutions;
+typedef std::vector<Waypoint> Waypoints;
 
 }  // namespace uwb_init
 

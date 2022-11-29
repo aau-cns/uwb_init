@@ -25,8 +25,8 @@
 
 using namespace uwb_init;
 
-template <typename T>
-requires(std::derived_from<T, Eigen::MatrixBase<T>>) void EXPECT_EIGEN_EQ(T const& obj, T val, double eps)
+template <typename T, typename std::enable_if<std::is_base_of_v<Eigen::MatrixBase<T>, T>, T>::type* = nullptr>
+void EXPECT_EIGEN_EQ(T const& obj, T val, double eps)
 {
   double norm_diff = (obj - val).norm();
   EXPECT_LT(norm_diff, eps);

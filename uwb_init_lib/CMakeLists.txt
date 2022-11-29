@@ -32,18 +32,17 @@ endif()
 
 ## Try to compile with newer versions of C++
 include(CheckCXXCompilerFlag)
-CHECK_CXX_COMPILER_FLAG("-std=c++20" COMPILER_SUPPORTS_CXX20)
-if(COMPILER_SUPPORTS_CXX20)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
-    set(CMAKE_CXX_STANDARD 20)
+CHECK_CXX_COMPILER_FLAG("-std=c++17" COMPILER_SUPPORTS_CXX17)
+if(COMPILER_SUPPORTS_CXX17)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+    set(CMAKE_CXX_STANDARD 17)
 else()
-    message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no c++20 support. Please use a different C++ compiler.")
+    message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no c++17 support. Please use a different C++ compiler.")
 endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 message(STATUS "Set compiler ${CMAKE_CXX_COMPILER}.")
 
 ## Define build type
-#set(CMAKE_BUILD_TYPE "Release")
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
 endif()
@@ -53,6 +52,8 @@ if (CMAKE_BUILD_TYPE STREQUAL "Release")
 elseif (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g3 -Wall -Wuninitialized -Wmaybe-uninitialized -fno-omit-frame-pointer")
 endif ()
+
+message(STATUS "CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE}.")
 message(STATUS "CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS}.")
 
 ## List library source files
@@ -61,6 +62,7 @@ list(
     source/uwb_init.cpp
     source/solvers/linear/ls_solver.cpp
     source/solvers/nonlinear/nls_solver.cpp
+    source/planners/wps_gen.cpp
 )
 
 ## Declare a C++ library
@@ -86,6 +88,9 @@ target_include_directories(${PROJECT_NAME}
 
 ## Declare C++ tests
 if(${BUILD_TESTS})
+    add_executable(test_wps test/test_wps_gen.cpp)
+    target_include_directories(test_wps PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include ${EIGEN3_INCLUDE_DIR})
+    target_link_libraries(test_wps ${PROJECT_NAME})
     add_executable(test_utils test/test_utils.cpp)
     target_include_directories(test_utils PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include ${EIGEN3_INCLUDE_DIR})
     target_link_libraries(test_utils ${PROJECT_NAME} GTest::gtest_main)

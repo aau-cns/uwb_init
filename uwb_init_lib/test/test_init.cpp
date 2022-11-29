@@ -26,8 +26,24 @@ using namespace uwb_init;
 
 int main()
 {
+  // Options
+  Eigen::VectorXd steps(10);
+  steps << 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100;
+
+  // Options
+  std::shared_ptr<UwbInitOptions> init_options = nullptr;
+  std::unique_ptr<LsSolverOptions> ls_options = nullptr;
+  std::unique_ptr<NlsSolverOptions> nls_options = nullptr;
+  std::unique_ptr<PlannerOptions> planner_options = nullptr;
+
+  init_options = std::make_shared<UwbInitOptions>(InitMethod::DOUBLE, BiasType::CONST_BIAS);
+  ls_options = std::make_unique<LsSolverOptions>(0.05, 0.1);
+  nls_options = std::make_unique<NlsSolverOptions>(steps, 0.001, 0.0001, 100000);
+  planner_options = std::make_unique<PlannerOptions>(10, 10, 3000, 0.5, 0.2, 2, 2, 4, 4, 5, 6, 1);
+
   // Test initialization
-  UwbInitializer uwb_init(LoggerLevel::FULL);
+  UwbInitializer uwb_init(LoggerLevel::FULL, std::move(init_options), std::move(ls_options), std::move(nls_options),
+                          std::move(planner_options));
   uwb_init.set_bias_type(BiasType::CONST_BIAS);
   uwb_init.set_init_method(InitMethod::DOUBLE);
 
@@ -77,16 +93,16 @@ int main()
   Eigen::Vector3d pos8(-0.857750302293823, -2.40139677562462, 2.90896002179294);
   Eigen::Vector3d pos9(-1.64333667173238, -0.663158026573088, 0.993430776713046);
   Eigen::Vector3d pos10(-1.55134529868046, -0.710414381215266, 5.87619464407085);
-  uwb_init.feed_pose(t1, pos1);
-  uwb_init.feed_pose(t2, pos2);
-  uwb_init.feed_pose(t3, pos3);
-  uwb_init.feed_pose(t4, pos4);
-  uwb_init.feed_pose(t5, pos5);
-  uwb_init.feed_pose(t6, pos6);
-  uwb_init.feed_pose(t7, pos7);
-  uwb_init.feed_pose(t8, pos8);
-  uwb_init.feed_pose(t9, pos9);
-  uwb_init.feed_pose(t10, pos10);
+  uwb_init.feed_position(t1, pos1);
+  uwb_init.feed_position(t2, pos2);
+  uwb_init.feed_position(t3, pos3);
+  uwb_init.feed_position(t4, pos4);
+  uwb_init.feed_position(t5, pos5);
+  uwb_init.feed_position(t6, pos6);
+  uwb_init.feed_position(t7, pos7);
+  uwb_init.feed_position(t8, pos8);
+  uwb_init.feed_position(t9, pos9);
+  uwb_init.feed_position(t10, pos10);
 
   uwb_init::UwbData uwb11(1, 5.87758160026499, 1);
   uwb_init::UwbData uwb21(1, 5.81972230335446, 1);
@@ -155,16 +171,16 @@ int main()
   //  Eigen::Vector3d pos8(std::sqrt(2)/2, -std::sqrt(2)/2, 1);
   //  Eigen::Vector3d pos9(0, 0, 0.5);
   //  Eigen::Vector3d pos10(0, 0, 1);
-  //  uwb_init.feed_pose(t1, pos1);
-  //  uwb_init.feed_pose(t2, pos2);
-  //  uwb_init.feed_pose(t3, pos3);
-  //  uwb_init.feed_pose(t4, pos4);
-  //  uwb_init.feed_pose(t5, pos5);
-  //  uwb_init.feed_pose(t6, pos6);
-  //  uwb_init.feed_pose(t7, pos7);
-  //  uwb_init.feed_pose(t8, pos8);
-  //  uwb_init.feed_pose(t9, pos9);
-  //  uwb_init.feed_pose(t10, pos10);
+  //  uwb_init.feed_position(t1, pos1);
+  //  uwb_init.feed_position(t2, pos2);
+  //  uwb_init.feed_position(t3, pos3);
+  //  uwb_init.feed_position(t4, pos4);
+  //  uwb_init.feed_position(t5, pos5);
+  //  uwb_init.feed_position(t6, pos6);
+  //  uwb_init.feed_position(t7, pos7);
+  //  uwb_init.feed_position(t8, pos8);
+  //  uwb_init.feed_position(t9, pos9);
+  //  uwb_init.feed_position(t10, pos10);
   //  uwb_init::UwbData uwb1(1, std::sqrt(2), 1);
   //  uwb_init::UwbData uwb2(1, std::sqrt(2), 1);
   //  uwb_init::UwbData uwb3(1, std::sqrt(2), 1);
@@ -189,6 +205,11 @@ int main()
   if (uwb_init.init_anchors())
   {
     LSSolutions ls_sols = uwb_init.get_ls_solutions();
+  }
+
+  if (uwb_init.compute_waypoints(Eigen::Vector3d::Zero()))
+  {
+    Waypoints opt_wps = uwb_init.get_waypoints();
   }
 
   if (uwb_init.refine_anchors())

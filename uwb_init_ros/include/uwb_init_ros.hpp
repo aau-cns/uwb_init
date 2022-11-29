@@ -1,4 +1,4 @@
-// Copyright (C) 2022 Alessandro Fornasier,
+// Copyright (C) 2022 Alessandro Fornasier, Giulio Delama
 // Control of Networked Systems, University of Klagenfurt, Austria.
 //
 // All rights reserved.
@@ -11,7 +11,8 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 //
-// You can contact the author at <alessandro.fornasier@aau.at>
+// You can contact the author at <alessandro.fornasier@aau.at> and
+// <giulio.delama@aau.at>
 
 #ifndef UWB_INIT_ROS_H
 #define UWB_INIT_ROS_H
@@ -55,20 +56,71 @@ private:
   void callbackUwbRanges(const mdek_uwb_driver::UwbConstPtr& msg);
 
   /**
+   * @brief Starting service callback
+   *
+   * @param req request
+   * @param res response
+   */
+  bool callbackServiceStart(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
+
+  /**
+   * @brief Reset service callback
+   *
+   * @param req request
+   * @param res response
+   */
+  bool callbackServiceReset(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
+
+  /**
    * @brief Initialization service callback
    *
    * @param req request
    * @param res response
-   * @return true if at least one anchor has been correctly initialized and refined
+   * @return true if at least one anchor has been correctly initialized
    */
   bool callbackServiceInit(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
+
+  /**
+   * @brief Waypoints generation service callback
+   *
+   * @param req request
+   * @param res response
+   * @return true if waypoints have been correctly generated
+   */
+  bool callbackServiceWps(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
+
+  /**
+   * @brief Refine service callback
+   *
+   * @param req request
+   * @param res response
+   * @return true if at least one anchor has been correctly refined
+   */
+  bool callbackServiceRefine(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
+
+  /**
+   * @brief Refine anchors with data collected so far
+   *
+   * @return true if at least one anchor has been correctly refined
+   */
+  [[nodiscard]] bool initializeAnchors();
+
+  /**
+   * @brief Compute optimal waypoints
+   *
+   * @return true if waypoints have been correctly computed
+   */
+  [[nodiscard]] bool computeWaypoints();
 
   /**
    * @brief Initialize anchors with data collected so far
    *
    * @return true if at least one anchor has been correctly initialized and refined
    */
-  [[nodiscard]] bool initializeAnchors();
+  [[nodiscard]] bool refineAnchors();
+
+  // Flags
+  bool collect_measurements_ = false;
 
   /// Ros node handler
   ros::NodeHandle nh_;
@@ -85,10 +137,17 @@ private:
   /// Messages
 
   /// Service Servers
-  ros::ServiceServer init_srv_;
+  ros::ServiceServer start_srv_;
+  ros::ServiceServer reset_srv_;
+  ros::ServiceServer init_srv_;  
+  ros::ServiceServer wps_srv_;
+  ros::ServiceServer refine_srv_;
 
   /// UWB initializer
   uwb_init::UwbInitializer uwb_init_;
+
+  /// Last registered position of UWB tag in Global frame of reference
+  Eigen::Vector3d p_UinG_;
 };
 }  // namespace uwb_init_ros
 
