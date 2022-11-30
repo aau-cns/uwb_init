@@ -101,6 +101,7 @@ void UwbInitializer::clear_buffers()
 void UwbInitializer::clear_solutions()
 {
   ls_sols_.clear();
+  opt_wps_.clear();
   nls_sols_.clear();
 }
 
@@ -253,6 +254,13 @@ bool UwbInitializer::compute_waypoints(const Eigen::Vector3d pos_k)
     return false;
   }
 
+  // Check if optimal waypoints have been already computed
+  if (!opt_wps_.empty())
+  {
+    logger_->warn("UwbInitializer: Clearing already computed waypoints");
+    opt_wps_.clear();
+  }
+
   // Construct the map of the uwb anchors (matrix Nx3)
   Eigen::MatrixXd map = Eigen::MatrixXd::Zero(ls_sols_.size(), 3);
   uint idx = 0;
@@ -270,6 +278,7 @@ bool UwbInitializer::compute_waypoints(const Eigen::Vector3d pos_k)
   ss << "\nCurrent tag position:" << pos_k.transpose() << '\n'
      << "Current map:\n"
      << map << '\n'
+     << "Cost: " << planner_.get_cost() << '\n'
      << "Computed optimal waypoints:\n";
 
   // Save optimal waypoints in data struct
@@ -291,6 +300,7 @@ bool UwbInitializer::compute_waypoints(const Eigen::Vector3d pos_k)
 
   // Logging results
   logger_->debug(ss.str());
+  logger_->info("Waypoint generator: cost = " + std::to_string(planner_.get_cost()));
 
   return true;
 }

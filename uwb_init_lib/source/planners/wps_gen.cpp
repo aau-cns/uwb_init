@@ -90,6 +90,11 @@ Eigen::MatrixXd OptWpsGenerator::generate_wps(const Eigen::MatrixXd& UWBs, const
   return final_p_optimal;
 }
 
+double OptWpsGenerator::get_cost()
+{
+  return cost_;
+}
+
 void OptWpsGenerator::sortrows(Eigen::MatrixXd& A_nx3, int idx)
 {
   std::vector<Eigen::VectorXd> vec;

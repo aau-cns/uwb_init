@@ -44,26 +44,17 @@ public:
 
   /**
    * @brief generate_wps
-   *
-   * @param cost
    * @param UWBs
-   * @param C_v
-   * @param C_e
    * @param p_k
-   * @param x_n
-   * @param y_n
-   * @param z_n
-   * @param x_s
-   * @param y_s
-   * @param z_s
-   * @param pop_size
-   * @param cell_len
-   * @param pc
-   * @param pm
-   * @param itr_num
    * @return
    */
   Eigen::MatrixXd generate_wps(const Eigen::MatrixXd& UWBs, const Eigen::Vector3d& p_k);
+
+  /**
+   * @brief get_cost
+   * @return
+   */
+  double get_cost();
 
 private:
   /// Shared pointer to logger

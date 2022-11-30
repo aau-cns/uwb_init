@@ -115,7 +115,7 @@ bool UwbInitRos::callbackServiceInit(std_srvs::Empty::Request& req, std_srvs::Em
 
 bool UwbInitRos::callbackServiceWps(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
 {
-  ROS_INFO("Refinement service called.");
+  ROS_INFO("Waypoints generation service called.");
   return computeWaypoints();
 }
 

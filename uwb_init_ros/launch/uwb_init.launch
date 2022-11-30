@@ -33,7 +33,7 @@
   <arg name="pop_size"                          default="10" />
   <arg name="generations_n"            		default="3000" />
   <arg name="crossover_probability"             default="0.5" />
-  <arg name="mutation_probability"              default="0.5" />
+  <arg name="mutation_probability"              default="0.2" />
   <arg name="x_grid"                            default="2" />
   <arg name="y_grid"                            default="2" />
   <arg name="z_grid"                            default="4" />
@@ -41,8 +41,9 @@
   <arg name="side_y_length"                     default="5" />
   <arg name="side_z_length"                     default="6" />
   <arg name="min_z"                             default="1" />
+  <arg name="launchprefix"                      default="gdbserver localhost:10000"/>
 
-  <node name="uwb_init" pkg="uwb_init_ros" type="uwb_init" args="" output="screen" respawn="false">
+  <node name="uwb_init" pkg="uwb_init_ros" type="uwb_init" args="" output="screen" respawn="false"><!-- launch-prefix="$(arg launchprefix)">-->
 
     <!-- topics remaps -->
     <param name="estimated_pose_topic"      type="str"  value="$(arg estimated_pose_topic)" />
