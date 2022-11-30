@@ -278,7 +278,6 @@ bool UwbInitializer::compute_waypoints(const Eigen::Vector3d pos_k)
   ss << "\nCurrent tag position:" << pos_k.transpose() << '\n'
      << "Current map:\n"
      << map << '\n'
-     << "Cost: " << planner_.get_cost() << '\n'
      << "Computed optimal waypoints:\n";
 
   // Save optimal waypoints in data struct
@@ -300,7 +299,6 @@ bool UwbInitializer::compute_waypoints(const Eigen::Vector3d pos_k)
 
   // Logging results
   logger_->debug(ss.str());
-  logger_->info("Waypoint generator: cost = " + std::to_string(planner_.get_cost()));
 
   return true;
 }

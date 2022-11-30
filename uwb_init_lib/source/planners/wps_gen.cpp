@@ -86,6 +86,7 @@ Eigen::MatrixXd OptWpsGenerator::generate_wps(const Eigen::MatrixXd& UWBs, const
   }
 
   logger_->info("OptWpsGenerator: Computed optimal waypoints");
+  logger_->info("OptWpsGenerator: Cost = " + std::to_string(cost_));
 
   return final_p_optimal;
 }
