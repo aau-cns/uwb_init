@@ -24,6 +24,9 @@
 #include <mdek_uwb_driver/Uwb.h>
 #include <std_srvs/Empty.h>
 #include <uwb_init_lib/include/uwb_init.hpp>
+#include <mission_sequencer/MissionWaypointArray.h>
+#include "uwb_init_ros/UwbAnchor.h"
+#include "uwb_init_ros/UwbAnchorArrayStamped.h"
 
 #include "options.hpp"
 #include "utilities.hpp"
@@ -129,6 +132,10 @@ private:
   ros::Subscriber uwb_range_sub_;
   ros::Subscriber estimated_pose_sub_;
 
+  /// Publishers
+  ros::Publisher uwb_anchors_pub_;
+  ros::Publisher waypoints_pub_;
+
   /// Options
   UwbInitRosOptions options_;
 
@@ -144,6 +151,7 @@ private:
 
   /// Last registered position of UWB tag in Global frame of reference
   Eigen::Vector3d p_UinG_;
+
 };
 }  // namespace uwb_init_ros
 
