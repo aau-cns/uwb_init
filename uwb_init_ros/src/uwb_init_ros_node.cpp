@@ -71,6 +71,18 @@ int main(int argc, char** argv)
     EXIT_FAILURE;
   }
 
+  // Get topics to publish to from parameter server
+  if (!nh.getParam("uwb_anchors_topic", opts.uwb_anchors_topic_))
+  {
+    ROS_ERROR("Missing uwb_anchors_topic parameter");
+    EXIT_FAILURE;
+  }
+  if (!nh.getParam("waypoints_topic", opts.waypoints_topic_))
+  {
+    ROS_ERROR("Missing waypoints_topic parameter");
+    EXIT_FAILURE;
+  }
+
   // Get init options from parameter server
   std::string method, bias_type;
   nh.param<std::string>("method", method, "double");
@@ -185,6 +197,10 @@ int main(int argc, char** argv)
   Eigen::Vector3d p_UinI(p_ItoU.data());
   opts.p_UinI_ = p_UinI;
   ROS_INFO_STREAM("Calibration p_UinI = " << p_UinI.transpose());
+
+  // Get waypoint flight options from parameter server
+  nh.param<double>("wp_yaw", opts.wp_yaw_, 0.0);
+  nh.param<double>("wp_holdtime", opts.wp_holdtime_, 1.0);
 
   // Make options
   opts.init_options_ = std::make_shared<uwb_init::UwbInitOptions>(opt_init_method, opt_bias_type);
