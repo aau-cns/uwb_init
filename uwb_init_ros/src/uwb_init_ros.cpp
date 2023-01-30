@@ -155,6 +155,7 @@ bool UwbInitRos::initializeAnchors()
     ROS_INFO("Anchor [%d] succesfully initialized at [%f, %f, %f]", it.first, it.second.anchor_.p_AinG_.x(),
              it.second.anchor_.p_AinG_.y(), it.second.anchor_.p_AinG_.z());
 
+    // Anchor message
     uwb_init_ros::UwbAnchor anchor;
     anchor.id = it.first;
     anchor.position.x = it.second.anchor_.p_AinG_.x();
@@ -163,15 +164,16 @@ bool UwbInitRos::initializeAnchors()
     anchor.gamma = it.second.gamma_;
     anchor.beta = 1.0;
 
+    // Covariance
     Eigen::MatrixXd cov = Eigen::MatrixXd::Zero(5, 5);
     cov.block(0, 0, 4, 4) = it.second.cov_;
-    cov(4, 4) = 1.0;
+    cov(4, 4) = 0.1;    // Initial guess
 
-    Eigen::VectorXd upperTriangularPart(cov.rows()*(cov.rows()+1)/2);
+    // Store upper simmetric part only
     int index = 0;
     for(int i = 0; i < cov.rows(); i++) {
       for(int j = i; j < cov.cols(); j++) {
-        upperTriangularPart(index++) = cov(i,j);
+        anchor.covariance.at(index++) = cov(i,j);
       }
     }
 
@@ -240,6 +242,7 @@ bool UwbInitRos::refineAnchors()
     ROS_INFO("Anchor [%d] succesfully refined at [%f, %f, %f]", it.first, it.second.anchor_.p_AinG_.x(),
              it.second.anchor_.p_AinG_.y(), it.second.anchor_.p_AinG_.z());
 
+    // Anchor message
     uwb_init_ros::UwbAnchor anchor;
     anchor.id = it.first;
     anchor.position.x = it.second.anchor_.p_AinG_.x();
@@ -248,11 +251,11 @@ bool UwbInitRos::refineAnchors()
     anchor.gamma = it.second.gamma_;
     anchor.beta = it.second.beta_;
 
-    Eigen::VectorXd upperTriangularPart(it.second.cov_.rows()*(it.second.cov_.rows()+1)/2);
+    // Store covarinace upper simmetric part only
     int index = 0;
     for(int i = 0;i < it.second.cov_.rows(); i++) {
       for(int j = i; j < it.second.cov_.cols(); j++) {
-        upperTriangularPart(index++) = it.second.cov_(i,j);
+        anchor.covariance.at(index++) = it.second.cov_(i,j);
       }
     }
 
