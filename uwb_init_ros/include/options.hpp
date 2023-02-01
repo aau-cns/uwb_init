@@ -47,6 +47,9 @@ struct UwbInitRosOptions
   std::string uwb_anchors_topic_;
   std::string waypoints_topic_;
 
+  /// Minimum number of anchors required to complete the initialization
+  uint min_num_anchors_;
+
   /// Position of the UWB module expressed in IMU frame
   Eigen::Vector3d p_UinI_;
   double wp_yaw_;

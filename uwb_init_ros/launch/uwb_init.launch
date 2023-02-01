@@ -19,6 +19,7 @@
   <!-- node parameters -->
   <arg name="method"                    default="double" />
   <arg name="bias_type"                 default="constant" />
+  <arg name="min_num_anchors"           default="4" />
   
   <!-- ls solver parameters -->
   <arg name="position_std"              default="0.03" />
@@ -73,6 +74,7 @@
     <!-- node parameters -->
     <param name="method"                    type="str"  value="$(arg method)" />
     <param name="bias_type"                 type="str"  value="$(arg bias_type)" />
+    <param name="min_num_anchors"           type="int"  value="$(arg min_num_anchors)" />
 
     <!-- ls solver parameters -->
     <param name="position_std"              type="double"  value="$(arg position_std)" />
@@ -124,6 +126,7 @@
     <!-- node parameters -->
     <param name="method"                    type="str"  value="$(arg method)" />
     <param name="bias_type"                 type="str"  value="$(arg bias_type)" />
+    <param name="min_num_anchors"           type="int"  value="$(arg min_num_anchors)" />
 
     <!-- ls solver parameters -->
     <param name="position_std"              type="double"  value="$(arg position_std)" />

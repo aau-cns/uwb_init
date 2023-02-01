@@ -14,10 +14,11 @@
 // You can contact the author at <alessandro.fornasier@aau.at> and
 // <giulio.delama@aau.at>
 
-#include <ros/ros.h>
-#include <Eigen/Eigen>
-
 #include "uwb_init_ros.hpp"
+
+#include <ros/ros.h>
+
+#include <Eigen/Eigen>
 
 namespace uwb_init_ros
 {
@@ -34,7 +35,6 @@ UwbInitRos::UwbInitRos(const ros::NodeHandle& nh, UwbInitRosOptions&& options)
   // Publishers
   uwb_anchors_pub_ = nh_.advertise<uwb_init_ros::UwbAnchorArrayStamped>(options_.uwb_anchors_topic_, 1);
   waypoints_pub_ = nh_.advertise<mission_sequencer::MissionWaypointArray>(options_.waypoints_topic_, 1);
-
 
   // Print topics where we are subscribing to
   ROS_INFO("Subsribing to %s", estimated_pose_sub_.getTopic().c_str());
@@ -146,43 +146,97 @@ bool UwbInitRos::initializeAnchors()
     return false;
   }
 
+  // Add a check for the number of anchors initialized and ask if the user wants to continue
+  if (uwb_init_.get_ls_solutions().size() < options_.min_num_anchors_)
+  {
+    ROS_WARN("Number of anchors initialized is less than the minimum required. Please collect additional data and "
+             "repeat.");
+    return false;
+  }
+
+  // Stop collecting measurements
+  ROS_INFO("Anchor initialization completed. Stopping data collection.");
   collect_measurements_ = false;
 
   // Display and publish anchors that have been sucessufully initialized
   uwb_init_ros::UwbAnchorArrayStamped anchors_msg_;
-  for (const auto& it : uwb_init_.get_ls_solutions())
+
+  if (!uwb_init_.refine_anchors() || (uwb_init_.get_nls_solutions().size() < options_.min_num_anchors_))
   {
-    ROS_INFO("Anchor [%d] succesfully initialized at [%f, %f, %f]", it.first, it.second.anchor_.p_AinG_.x(),
-             it.second.anchor_.p_AinG_.y(), it.second.anchor_.p_AinG_.z());
+    ROS_WARN("Refinement of anchor failed. Publishing linear solution.");
 
-    // Anchor message
-    uwb_init_ros::UwbAnchor anchor;
-    anchor.id = it.first;
-    anchor.position.x = it.second.anchor_.p_AinG_.x();
-    anchor.position.y = it.second.anchor_.p_AinG_.y();
-    anchor.position.z = it.second.anchor_.p_AinG_.z();
-    anchor.gamma = it.second.gamma_;
-    anchor.beta = 1.0;
+    for (const auto& it : uwb_init_.get_ls_solutions())
+    {
+      ROS_INFO("Anchor [%d]: p_AinG = [%f, %f, %f] | const_bias = %f", it.first, it.second.anchor_.p_AinG_.x(),
+               it.second.anchor_.p_AinG_.y(), it.second.anchor_.p_AinG_.z(), it.second.gamma_);
 
-    // Covariance
-    Eigen::MatrixXd cov = Eigen::MatrixXd::Zero(5, 5);
-    cov.block(0, 0, 4, 4) = it.second.cov_;
-    cov(4, 4) = 0.1;    // Initial guess
+      // Anchor message
+      uwb_init_ros::UwbAnchor anchor;
+      anchor.id = it.first;
+      anchor.position.x = it.second.anchor_.p_AinG_.x();
+      anchor.position.y = it.second.anchor_.p_AinG_.y();
+      anchor.position.z = it.second.anchor_.p_AinG_.z();
+      anchor.gamma = it.second.gamma_;
+      anchor.beta = 1.0;
 
-    // Store upper simmetric part only
-    int index = 0;
-    for(int i = 0; i < cov.rows(); i++) {
-      for(int j = i; j < cov.cols(); j++) {
-        anchor.covariance.at(index++) = cov(i,j);
+      // Covariance
+      Eigen::MatrixXd cov = Eigen::MatrixXd::Zero(5, 5);
+      cov.block(0, 0, 4, 4) = it.second.cov_;
+      cov(4, 4) = 0.1;  // Initial guess
+
+      // Store upper simmetric part only
+      int index = 0;
+      for (int i = 0; i < cov.rows(); i++)
+      {
+        for (int j = i; j < cov.cols(); j++)
+        {
+          anchor.covariance.at(index++) = cov(i, j);
+        }
       }
+
+      anchors_msg_.anchors.push_back(anchor);
     }
 
-    anchors_msg_.anchors.push_back(anchor);
+    ++anchors_msg_.header.seq;
+    anchors_msg_.header.stamp = ros::Time::now();
+    anchors_msg_.header.frame_id = "global";
   }
+  else
+  {
+    ROS_INFO("Refinement of anchor successful. Publishing refined solution.");
 
-  ++anchors_msg_.header.seq;
-  anchors_msg_.header.stamp = ros::Time::now();
-  anchors_msg_.header.frame_id = "global";
+    for (const auto& it : uwb_init_.get_nls_solutions())
+    {
+      ROS_INFO("Anchor [%d]: p_AinG = [%f, %f, %f] | const_bias = %f | dist_bias = %f", it.first,
+               it.second.anchor_.p_AinG_.x(), it.second.anchor_.p_AinG_.y(), it.second.anchor_.p_AinG_.z(),
+               it.second.gamma_, it.second.beta_);
+
+      // Anchor message
+      uwb_init_ros::UwbAnchor anchor;
+      anchor.id = it.first;
+      anchor.position.x = it.second.anchor_.p_AinG_.x();
+      anchor.position.y = it.second.anchor_.p_AinG_.y();
+      anchor.position.z = it.second.anchor_.p_AinG_.z();
+      anchor.gamma = it.second.gamma_;
+      anchor.beta = it.second.beta_;
+
+      // Store covarinace upper simmetric part only
+      int index = 0;
+      for (int i = 0; i < it.second.cov_.rows(); i++)
+      {
+        for (int j = i; j < it.second.cov_.cols(); j++)
+        {
+          anchor.covariance.at(index++) = it.second.cov_(i, j);
+        }
+      }
+
+      anchors_msg_.anchors.push_back(anchor);
+    }
+
+    ++anchors_msg_.header.seq;
+    anchors_msg_.header.stamp = ros::Time::now();
+    anchors_msg_.header.frame_id = "global";
+  }
 
   uwb_anchors_pub_.publish(anchors_msg_);
 
@@ -253,9 +307,11 @@ bool UwbInitRos::refineAnchors()
 
     // Store covarinace upper simmetric part only
     int index = 0;
-    for(int i = 0;i < it.second.cov_.rows(); i++) {
-      for(int j = i; j < it.second.cov_.cols(); j++) {
-        anchor.covariance.at(index++) = it.second.cov_(i,j);
+    for (int i = 0; i < it.second.cov_.rows(); i++)
+    {
+      for (int j = i; j < it.second.cov_.cols(); j++)
+      {
+        anchor.covariance.at(index++) = it.second.cov_(i, j);
       }
     }
 

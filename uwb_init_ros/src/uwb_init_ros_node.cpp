@@ -15,7 +15,9 @@
 // <giulio.delama@aau.at>
 
 #include <ros/ros.h>
+
 #include <Eigen/Eigen>
+
 #include "uwb_init_ros.hpp"
 
 // Main function
@@ -115,6 +117,11 @@ int main(int argc, char** argv)
     ROS_ERROR("Invalid bias type! Please use unbiased or constant");
     EXIT_FAILURE;
   }
+
+  // Get minimum number of anchors from parameter server
+  int opt_min_num_anchors;
+  nh.param<int>("min_num_anchors_", opt_min_num_anchors, 4);
+  opts.min_num_anchors_ = uint(opt_min_num_anchors);
 
   // Get LS solver options from parameter server
   double opt_sigma_pos, opt_sigma_mes;
