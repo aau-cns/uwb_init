@@ -18,9 +18,9 @@
 // You can contact the authors at <alessandro.fornasier@aau.at>,
 // <giulio.delama@aau.at> and <martin.scheiber@aau.at>
 
-#include <assert.h>
-
 #include "uwb_init.hpp"
+
+#include <assert.h>
 
 namespace uwb_init
 {
@@ -345,18 +345,21 @@ bool UwbInitializer::refine_anchors()
     }
 
     // Initialize solution and covariance
-    Eigen::VectorXd theta(5);
-    Eigen::MatrixXd cov;
+    Eigen::VectorXd theta = Eigen::VectorXd::Zero(5);
+    Eigen::MatrixXd cov = Eigen::MatrixXd::Identity(5, 5);
 
     // Theta0 (p_AinG, gamma, beta)
-    theta << ls_sol.second.anchor_.p_AinG_, 1.0, ls_sol.second.gamma_;
+    theta << ls_sol.second.anchor_.p_AinG_, ls_sol.second.gamma_, 1.0;
 
     // Perform nonlinear optimization
-    if (nls_solver_.solve_nls(uwb_data_buffer_.at(ls_sol.first), p_UinG_buffer_, theta, cov))
+    if (nls_solver_.levenbergMarquardt(uwb_data_buffer_.at(ls_sol.first), p_UinG_buffer_, theta, cov))
     {
       // Initialize anchor and solution
       UwbAnchor new_anchor(ls_sol.first, theta.head(3));
       NLSSolution nls_sol(new_anchor, theta(3), theta(4), cov);
+
+      // Compute standard deviation
+      Eigen::VectorXd std_dev = nls_sol.cov_.diagonal().cwiseSqrt();
 
       // Add solution to vector
       nls_sols_.emplace(std::make_pair(ls_sol.first, nls_sol));
@@ -369,7 +372,8 @@ bool UwbInitializer::refine_anchors()
          << "Covariance = \n"
          << nls_sols_.at(ls_sol.first).cov_ << '\n'
          << "gamma = " << nls_sols_.at(ls_sol.first).gamma_ << '\n'
-         << "beta = " << nls_sols_.at(ls_sol.first).beta_;
+         << "beta = " << nls_sols_.at(ls_sol.first).beta_ << '\n'
+         << "Standard deviation = " << std_dev.transpose();
       logger_->debug(ss.str());
       refine_successful = true;
     }
