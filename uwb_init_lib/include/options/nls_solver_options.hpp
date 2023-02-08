@@ -30,21 +30,20 @@ namespace uwb_init
 ///
 struct NlsSolverOptions
 {
-  /// norm of step ( theta(k+1) = theta(k) + zeta(i)*d_theta )
-  Eigen::VectorXd step_vec_;
+  /// Lambda parameter for Levenberg-Marquardt algorithm (suggested default value: 1e-2)
+  double lambda_;
 
-  /// stopping condition for the relative norm of step (suggested default value: 1e-4)
+  /// Stopping condition for step size (suggested default value: 1e-6)
   double step_cond_;
 
-  /// stopping condition for residual (mean squared error r'*r/(m-p)) (suggested default value: 1e-2)
+  /// Stoping condition for residual (Mean Squared Error) (suggested default value: 1e-6)
   double res_cond_;
 
-  /// stopping condition for maximum number of iterations (suggested defualt value: 100000)
+  /// Stopping condition for maximum number of iterations (suggested defualt value: 1e3)
   uint max_iter_;
 
-  NlsSolverOptions(const Eigen::VectorXd& step_vec, const double& step_cond, const double& res_cond,
-                   const uint& max_iter)
-    : step_vec_(step_vec), step_cond_(step_cond), res_cond_(res_cond), max_iter_(max_iter)
+  NlsSolverOptions(const double& lambda, const double& step_cond, const double& res_cond, const uint& max_iter)
+    : lambda_(lambda), step_cond_(step_cond), res_cond_(res_cond), max_iter_(max_iter)
   {
   }
 

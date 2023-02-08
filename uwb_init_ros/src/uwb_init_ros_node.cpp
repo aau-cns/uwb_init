@@ -15,7 +15,9 @@
 // <giulio.delama@aau.at>
 
 #include <ros/ros.h>
+
 #include <Eigen/Eigen>
+
 #include "uwb_init_ros.hpp"
 
 // Main function
@@ -71,6 +73,18 @@ int main(int argc, char** argv)
     EXIT_FAILURE;
   }
 
+  // Get topics to publish to from parameter server
+  if (!nh.getParam("uwb_anchors_topic", opts.uwb_anchors_topic_))
+  {
+    ROS_ERROR("Missing uwb_anchors_topic parameter");
+    EXIT_FAILURE;
+  }
+  if (!nh.getParam("waypoints_topic", opts.waypoints_topic_))
+  {
+    ROS_ERROR("Missing waypoints_topic parameter");
+    EXIT_FAILURE;
+  }
+
   // Get init options from parameter server
   std::string method, bias_type;
   nh.param<std::string>("method", method, "double");
@@ -104,22 +118,24 @@ int main(int argc, char** argv)
     EXIT_FAILURE;
   }
 
+  // Get minimum number of anchors from parameter server
+  int opt_min_num_anchors;
+  nh.param<int>("min_num_anchors_", opt_min_num_anchors, 4);
+  opts.min_num_anchors_ = uint(opt_min_num_anchors);
+
   // Get LS solver options from parameter server
   double opt_sigma_pos, opt_sigma_mes;
   nh.param<double>("position_std", opt_sigma_pos, 0.05);
   nh.param<double>("uwb_range_std", opt_sigma_mes, 0.1);
 
   // Get NLS solver options from parameter server
-  double opt_step_cond, opt_res_cond;
+  double opt_lambda, opt_step_cond, opt_res_cond;
   int max_iter;
-  std::vector<double> step_vec;
-  std::vector<double> step_vec_default = { 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0 };
-  nh.param<double>("step_norm_stop_condition", opt_step_cond, 0.01);
-  nh.param<double>("residual_mse_stop_condition", opt_res_cond, 0.0001);
-  nh.param<int>("max_iterations", max_iter, 100000);
+  nh.param<double>("levenberg_marquardt_lambda", opt_lambda, 0.01);
+  nh.param<double>("step_norm_stop_condition", opt_step_cond, 0.000001);
+  nh.param<double>("residual_mse_stop_condition", opt_res_cond, 0.000001);
+  nh.param<int>("max_iterations", max_iter, 1000);
   uint opt_max_iter = static_cast<uint>(max_iter);
-  nh.param<std::vector<double>>("step_vec", step_vec, step_vec_default);
-  Eigen::VectorXd opt_step_vec = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(step_vec.data(), step_vec.size());
 
   // Get waypoint generation options from parameter server
   int cell_len, pop_size, itr_num, x_n, y_n, z_n;
@@ -186,11 +202,15 @@ int main(int argc, char** argv)
   opts.p_UinI_ = p_UinI;
   ROS_INFO_STREAM("Calibration p_UinI = " << p_UinI.transpose());
 
+  // Get waypoint flight options from parameter server
+  nh.param<double>("wp_yaw", opts.wp_yaw_, 0.0);
+  nh.param<double>("wp_holdtime", opts.wp_holdtime_, 1.0);
+
   // Make options
   opts.init_options_ = std::make_shared<uwb_init::UwbInitOptions>(opt_init_method, opt_bias_type);
   opts.ls_solver_options_ = std::make_unique<uwb_init::LsSolverOptions>(opt_sigma_pos, opt_sigma_mes);
   opts.nls_solver_options_ =
-      std::make_unique<uwb_init::NlsSolverOptions>(opt_step_vec, opt_step_cond, opt_res_cond, opt_max_iter);
+      std::make_unique<uwb_init::NlsSolverOptions>(opt_lambda, opt_step_cond, opt_res_cond, opt_max_iter);
   opts.planner_options_ =
       std::make_unique<uwb_init::PlannerOptions>(opt_cell_len, opt_pop_size, opt_itr_num, opt_pc, opt_pm, opt_x_n,
                                                  opt_y_n, opt_z_n, opt_side_x, opt_side_y, opt_side_z, opt_z_min);

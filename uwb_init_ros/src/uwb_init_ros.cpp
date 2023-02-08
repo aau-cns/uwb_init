@@ -14,10 +14,11 @@
 // You can contact the author at <alessandro.fornasier@aau.at> and
 // <giulio.delama@aau.at>
 
-#include <ros/ros.h>
-#include <Eigen/Eigen>
-
 #include "uwb_init_ros.hpp"
+
+#include <ros/ros.h>
+
+#include <Eigen/Eigen>
 
 namespace uwb_init_ros
 {
@@ -30,6 +31,10 @@ UwbInitRos::UwbInitRos(const ros::NodeHandle& nh, UwbInitRosOptions&& options)
   // Subscribers
   estimated_pose_sub_ = nh_.subscribe(options_.estimated_pose_topic_, 1, &UwbInitRos::callbackPose, this);
   uwb_range_sub_ = nh_.subscribe(options_.uwb_range_topic_, 1, &UwbInitRos::callbackUwbRanges, this);
+
+  // Publishers
+  uwb_anchors_pub_ = nh_.advertise<uwb_init_ros::UwbAnchorArrayStamped>(options_.uwb_anchors_topic_, 1);
+  waypoints_pub_ = nh_.advertise<mission_sequencer::MissionWaypointArray>(options_.waypoints_topic_, 1);
 
   // Print topics where we are subscribing to
   ROS_INFO("Subsribing to %s", estimated_pose_sub_.getTopic().c_str());
@@ -141,14 +146,99 @@ bool UwbInitRos::initializeAnchors()
     return false;
   }
 
-  // Display anchors that have been sucessufully initialized
-  for (const auto& it : uwb_init_.get_ls_solutions())
+  // Add a check for the number of anchors initialized and ask if the user wants to continue
+  if (uwb_init_.get_ls_solutions().size() < options_.min_num_anchors_)
   {
-    ROS_INFO("Anchor [%d] succesfully initialized at [%f, %f, %f]", it.first, it.second.anchor_.p_AinG_.x(),
-             it.second.anchor_.p_AinG_.y(), it.second.anchor_.p_AinG_.z());
+    ROS_WARN("Number of anchors initialized is less than the minimum required. Please collect additional data and "
+             "repeat.");
+    return false;
   }
 
+  // Stop collecting measurements
+  ROS_INFO("Anchor initialization completed. Stopping data collection.");
   collect_measurements_ = false;
+
+  // Display and publish anchors that have been sucessufully initialized
+  uwb_init_ros::UwbAnchorArrayStamped anchors_msg_;
+
+  if (!uwb_init_.refine_anchors() || (uwb_init_.get_nls_solutions().size() < options_.min_num_anchors_))
+  {
+    ROS_WARN("Refinement of anchor failed. Publishing linear solution.");
+
+    for (const auto& it : uwb_init_.get_ls_solutions())
+    {
+      ROS_INFO("Anchor [%d]: p_AinG = [%f, %f, %f] | const_bias = %f", it.first, it.second.anchor_.p_AinG_.x(),
+               it.second.anchor_.p_AinG_.y(), it.second.anchor_.p_AinG_.z(), it.second.gamma_);
+
+      // Anchor message
+      uwb_init_ros::UwbAnchor anchor;
+      anchor.id = it.first;
+      anchor.position.x = it.second.anchor_.p_AinG_.x();
+      anchor.position.y = it.second.anchor_.p_AinG_.y();
+      anchor.position.z = it.second.anchor_.p_AinG_.z();
+      anchor.gamma = it.second.gamma_;
+      anchor.beta = 1.0;
+
+      // Covariance
+      Eigen::MatrixXd cov = Eigen::MatrixXd::Zero(5, 5);
+      cov.block(0, 0, 4, 4) = it.second.cov_;
+      cov(4, 4) = 0.1;  // Initial guess
+
+      // Store upper simmetric part only
+      int index = 0;
+      for (int i = 0; i < cov.rows(); i++)
+      {
+        for (int j = i; j < cov.cols(); j++)
+        {
+          anchor.covariance.at(index++) = cov(i, j);
+        }
+      }
+
+      anchors_msg_.anchors.push_back(anchor);
+    }
+
+    ++anchors_msg_.header.seq;
+    anchors_msg_.header.stamp = ros::Time::now();
+    anchors_msg_.header.frame_id = "global";
+  }
+  else
+  {
+    ROS_INFO("Refinement of anchor successful. Publishing refined solution.");
+
+    for (const auto& it : uwb_init_.get_nls_solutions())
+    {
+      ROS_INFO("Anchor [%d]: p_AinG = [%f, %f, %f] | const_bias = %f | dist_bias = %f", it.first,
+               it.second.anchor_.p_AinG_.x(), it.second.anchor_.p_AinG_.y(), it.second.anchor_.p_AinG_.z(),
+               it.second.gamma_, it.second.beta_);
+
+      // Anchor message
+      uwb_init_ros::UwbAnchor anchor;
+      anchor.id = it.first;
+      anchor.position.x = it.second.anchor_.p_AinG_.x();
+      anchor.position.y = it.second.anchor_.p_AinG_.y();
+      anchor.position.z = it.second.anchor_.p_AinG_.z();
+      anchor.gamma = it.second.gamma_;
+      anchor.beta = it.second.beta_;
+
+      // Store covarinace upper simmetric part only
+      int index = 0;
+      for (int i = 0; i < it.second.cov_.rows(); i++)
+      {
+        for (int j = i; j < it.second.cov_.cols(); j++)
+        {
+          anchor.covariance.at(index++) = it.second.cov_(i, j);
+        }
+      }
+
+      anchors_msg_.anchors.push_back(anchor);
+    }
+
+    ++anchors_msg_.header.seq;
+    anchors_msg_.header.stamp = ros::Time::now();
+    anchors_msg_.header.frame_id = "global";
+  }
+
+  uwb_anchors_pub_.publish(anchors_msg_);
 
   return true;
 }
@@ -164,11 +254,26 @@ bool UwbInitRos::computeWaypoints()
     return false;
   }
 
-  // Display waypoints
+  // Display and publish waypoints
+  mission_sequencer::MissionWaypointArray waypoints_msg_;
   for (const auto& it : uwb_init_.get_waypoints())
   {
     ROS_INFO("Waypoint at [%f, %f, %f]", it.x_, it.y_, it.z_);
+
+    mission_sequencer::MissionWaypoint wp;
+    wp.x = it.x_;
+    wp.y = it.y_;
+    wp.z = it.z_;
+    wp.yaw = options_.wp_yaw_;
+    wp.holdtime = options_.wp_holdtime_;
+    waypoints_msg_.waypoints.push_back(wp);
   }
+
+  ++waypoints_msg_.header.seq;
+  waypoints_msg_.header.stamp = ros::Time::now();
+  waypoints_msg_.header.frame_id = "global";
+
+  waypoints_pub_.publish(waypoints_msg_);
 
   return true;
 }
@@ -184,12 +289,40 @@ bool UwbInitRos::refineAnchors()
     return false;
   }
 
-  // Display anchors that have been sucessufully refined
+  // Display and publish anchors that have been sucessufully refined
+  uwb_init_ros::UwbAnchorArrayStamped anchors_msg_;
   for (const auto& it : uwb_init_.get_nls_solutions())
   {
     ROS_INFO("Anchor [%d] succesfully refined at [%f, %f, %f]", it.first, it.second.anchor_.p_AinG_.x(),
              it.second.anchor_.p_AinG_.y(), it.second.anchor_.p_AinG_.z());
+
+    // Anchor message
+    uwb_init_ros::UwbAnchor anchor;
+    anchor.id = it.first;
+    anchor.position.x = it.second.anchor_.p_AinG_.x();
+    anchor.position.y = it.second.anchor_.p_AinG_.y();
+    anchor.position.z = it.second.anchor_.p_AinG_.z();
+    anchor.gamma = it.second.gamma_;
+    anchor.beta = it.second.beta_;
+
+    // Store covarinace upper simmetric part only
+    int index = 0;
+    for (int i = 0; i < it.second.cov_.rows(); i++)
+    {
+      for (int j = i; j < it.second.cov_.cols(); j++)
+      {
+        anchor.covariance.at(index++) = it.second.cov_(i, j);
+      }
+    }
+
+    anchors_msg_.anchors.push_back(anchor);
   }
+
+  ++anchors_msg_.header.seq;
+  anchors_msg_.header.stamp = ros::Time::now();
+  anchors_msg_.header.frame_id = "global";
+
+  uwb_anchors_pub_.publish(anchors_msg_);
 
   return true;
 }

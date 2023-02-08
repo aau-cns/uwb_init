@@ -40,7 +40,7 @@ public:
   NlsSolver(const std::shared_ptr<Logger> logger, std::unique_ptr<NlsSolverOptions>&& nls_solver_options);
 
   /**
-   * @brief Function to be called to solve the nonlinear least square problem
+   * @brief Function to be called to solve the nonlinear least square problem via Levenberg-Marquardt algorithm
    *
    * @param uwb_data
    * @param p_UinG_buffer
@@ -48,20 +48,8 @@ public:
    * @param cov
    * @return true if one solution is found, false otherwise
    */
-  [[nodiscard]] bool solve_nls(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer,
-                               Eigen::VectorXd& theta, Eigen::MatrixXd& cov);
-
-  /**
-   * @brief Function to be called to solve the nonlinear least square problem via output error algorithm
-   *
-   * @param uwb_data
-   * @param p_UinG_buffer
-   * @param theta
-   * @param cov
-   * @return true if one solution is found, false otherwise
-   */
-  [[nodiscard]] bool solve_oea(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer,
-                               Eigen::VectorXd& theta, Eigen::MatrixXd& cov);
+  [[nodiscard]] bool levenbergMarquardt(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer,
+                                        Eigen::VectorXd& theta, Eigen::MatrixXd& cov);
 
 private:
   /// Shared pointer to logger

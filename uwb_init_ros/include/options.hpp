@@ -44,9 +44,16 @@ struct UwbInitRosOptions
   std::string service_init_;
   std::string service_wps_;
   std::string service_refine_;
+  std::string uwb_anchors_topic_;
+  std::string waypoints_topic_;
+
+  /// Minimum number of anchors required to complete the initialization
+  uint min_num_anchors_;
 
   /// Position of the UWB module expressed in IMU frame
   Eigen::Vector3d p_UinI_;
+  double wp_yaw_;
+  double wp_holdtime_;
 
   /// Constructors (implicitly deleted copy constructor)
   UwbInitRosOptions() = default;

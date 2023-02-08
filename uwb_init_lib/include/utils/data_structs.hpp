@@ -88,7 +88,7 @@ struct NLSSolution
   /// Covariance of the solution
   Eigen::MatrixXd cov_;
 
-  NLSSolution(const UwbAnchor& anchor, const double& beta, const double& gamma, const Eigen::MatrixXd& cov)
+  NLSSolution(const UwbAnchor& anchor, const double& gamma, const double& beta, const Eigen::MatrixXd& cov)
     : anchor_(anchor), gamma_(gamma), beta_(beta)
   {
     // Check if cov is 5x5 and if it is semi positive definite
@@ -131,12 +131,12 @@ struct Waypoint
   double z_;
 
   Waypoint(const double& x, const double& y, const double& z)
-      : x_(std::round(x*100)/100), y_(std::round(y*100)/100), z_(std::round(z*100)/100)
+    : x_(std::round(x * 100) / 100), y_(std::round(y * 100) / 100), z_(std::round(z * 100) / 100)
   {
   }
 
   Waypoint(const Eigen::Vector3d& wp)
-      : x_(std::round(wp.x()*100)/100), y_(std::round(wp.y()*100)/100), z_(std::round(wp.z()*100)/100)
+    : x_(std::round(wp.x() * 100) / 100), y_(std::round(wp.y() * 100) / 100), z_(std::round(wp.z() * 100) / 100)
   {
   }
 };

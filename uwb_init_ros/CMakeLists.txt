@@ -25,7 +25,7 @@ message(STATUS "CMAKE_CXX_FLAGES: ${CMAKE_CXX_FLAGS}")
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp dynamic_reconfigure message_generation std_msgs nav_msgs sensor_msgs geometry_msgs mdek_uwb_driver)
+find_package(catkin REQUIRED COMPONENTS roscpp dynamic_reconfigure message_generation std_msgs nav_msgs sensor_msgs geometry_msgs mdek_uwb_driver mission_sequencer)
 
 ## System dependencies are found with CMake's conventions
 find_package(Eigen3 3.4 REQUIRED)
@@ -45,10 +45,11 @@ message(STATUS "uwb_init_lib VERSION: " ${uwb_init_lib_VERSION})
 ################################################
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#  DIRECTORY msg
-#  FILES Message1.msg Message2.msg
-# )
+add_message_files(DIRECTORY msg
+    FILES
+    UwbAnchor.msg
+    UwbAnchorArrayStamped.msg
+)
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -63,9 +64,9 @@ message(STATUS "uwb_init_lib VERSION: " ${uwb_init_lib_VERSION})
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES std_msgs nav_msgs sensor_msgs geometry_msgs
-# )
+generate_messages(
+  DEPENDENCIES std_msgs nav_msgs sensor_msgs geometry_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##

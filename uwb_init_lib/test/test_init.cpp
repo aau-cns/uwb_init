@@ -27,10 +27,6 @@ using namespace uwb_init;
 int main()
 {
   // Options
-  Eigen::VectorXd steps(10);
-  steps << 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100;
-
-  // Options
   std::shared_ptr<UwbInitOptions> init_options = nullptr;
   std::unique_ptr<LsSolverOptions> ls_options = nullptr;
   std::unique_ptr<NlsSolverOptions> nls_options = nullptr;
@@ -38,7 +34,7 @@ int main()
 
   init_options = std::make_shared<UwbInitOptions>(InitMethod::DOUBLE, BiasType::CONST_BIAS);
   ls_options = std::make_unique<LsSolverOptions>(0.05, 0.1);
-  nls_options = std::make_unique<NlsSolverOptions>(steps, 0.001, 0.0001, 100000);
+  nls_options = std::make_unique<NlsSolverOptions>(1e-2, 1e-6, 1e-6, 1e3);
   planner_options = std::make_unique<PlannerOptions>(10, 10, 3000, 0.5, 0.2, 2, 2, 4, 4, 5, 6, 1);
 
   // Test initialization
@@ -62,24 +58,28 @@ int main()
   ///
   /// Matlab results for comparison:
   /// Initialization (LS):
+  ///
   /// Anchor[1]: p_AinG = -0.0360222839749992, 0.00666158295331482, 0.0148258701503742
-  /// Anchor[2]: p_AinG = -1.13714438550190, 3.37236670313509, 1.67803660542359
   /// Gamma[1] = 0.556469019410618
+  ///
+  /// Anchor[2]: p_AinG = -1.13714438550190, 3.37236670313509, 1.67803660542359
   /// Gamma[2] = 0.755554156299525
   ///
   /// Refine (NLS):
+  ///
   /// Anchor[1]: p_AinG = -0.0385000400434036, -0.00136077803215360, -0.0332151287418269
-  /// Anchor[2]: p_AinG = -1.16547191352937, 3.38234948420681, 1.71278516345063
-  /// Beta[1] = 1.00306493356913
-  /// Beta[2] = 1.03160376429695
   /// Gamma[1] = 0.516707076790005
+  /// Beta[1] = 1.00306493356913
+  ///
+  /// Anchor[2]: p_AinG = -1.16547191352937, 3.38234948420681, 1.71278516345063
   /// Gamma[2] = 0.559234935997764
+  /// Beta[2] = 1.03160376429695
   ///
   /// Real values:
   /// Anchor[1]: p_AinG = 0, 0, 0
   /// Anchor[2]: p_AinG = -1, 3.50000000000000, 1.50000000000000
-  /// Beta = 1.02
   /// Gamma = 0.5
+  /// Beta = 1.02
   /// Measurement noise = 0.1
   /// Position noise = 0.03
 
