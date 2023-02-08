@@ -26,15 +26,15 @@
   <arg name="uwb_range_std"             default="0.1" />
 
   <!-- nls solver parameters -->
-  <arg name="step_norm_stop_condition"            	default="0.00001" />
-  <arg name="residual_mse_stop_condition"         	default="0.01" />
-  <arg name="max_iterations"            		default="10000" />
-  <arg name="step_vector"   default="[0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0]" />
+  <arg name="levenberg_marquardt_lambda"    default="0.001" />
+  <arg name="step_norm_stop_condition"      default="0.000001" />
+  <arg name="residual_mse_stop_condition"   default="0.000001" />
+  <arg name="max_iterations"            		default="1000" />
 
   <!-- waypoint generator parameters -->
   <arg name="cell_len"                          default="10" />
   <arg name="pop_size"                          default="10" />
-  <arg name="generations_n"            		default="3000" />
+  <arg name="generations_n"            		      default="3000" />
   <arg name="crossover_probability"             default="0.5" />
   <arg name="mutation_probability"              default="0.2" />
   <arg name="x_grid"                            default="2" />
@@ -81,10 +81,10 @@
     <param name="uwb_range_std"             type="double"  value="$(arg uwb_range_std)" />
 
     <!-- nls solver parameters -->
+    <param name="levenberg_marquardt_lambda"        type="double"   value="$(arg levenberg_marquardt_lambda)" />
     <param name="step_norm_stop_condition"          type="double"   value="$(arg step_norm_stop_condition)" />
     <param name="residual_mse_stop_condition"       type="double"   value="$(arg residual_mse_stop_condition)" />
     <param name="max_iterations"                    type="int"      value="$(arg max_iterations)" />
-    <rosparam param="step_vec"                      subst_value="True">$(arg step_vector)</rosparam>
 
     <!-- waypoint generation parameters -->
     <param name="cell_len"                          type="int"      value="$(arg cell_len)" />
@@ -133,10 +133,10 @@
     <param name="uwb_range_std"             type="double"  value="$(arg uwb_range_std)" />
 
     <!-- nls solver parameters -->
+    <param name="levenberg_marquardt_lambda"        type="double"   value="$(arg levenberg_marquardt_lambda)" />
     <param name="step_norm_stop_condition"          type="double"   value="$(arg step_norm_stop_condition)" />
     <param name="residual_mse_stop_condition"       type="double"   value="$(arg residual_mse_stop_condition)" />
     <param name="max_iterations"                    type="int"      value="$(arg max_iterations)" />
-    <rosparam param="step_vec"                      subst_value="True">$(arg step_vector)</rosparam>
 
     <!-- waypoint generation parameters -->
     <param name="cell_len"                          type="int"      value="$(arg cell_len)" />
