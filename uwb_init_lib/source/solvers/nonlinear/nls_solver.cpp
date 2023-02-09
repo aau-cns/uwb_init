@@ -34,6 +34,7 @@ NlsSolver::NlsSolver(const std::shared_ptr<Logger> logger, std::unique_ptr<NlsSo
   // Logging
   logger_->info("NlsSolver: Initialized");
   logger_->debug("NlsSolver options: lambda = " + std::to_string(solver_options_->lambda_));
+  logger_->debug("NlsSolver options: lambda_factor = " + std::to_string(solver_options_->lambda_factor_));
   logger_->debug("NlsSolver options: step_cond = " + std::to_string(solver_options_->step_cond_));
   logger_->debug("NlsSolver options: res_cond = " + std::to_string(solver_options_->res_cond_));
   logger_->debug("NlsSolver options: max_iter = " + std::to_string(solver_options_->max_iter_));
@@ -65,20 +66,24 @@ bool NlsSolver::levenbergMarquardt(const TimedBuffer<UwbData>& uwb_data, const P
     return false;
   }
 
-  // Non-linear Least Squares
+  // Iteration counter
   size_t iter = 0;
 
-  // While not converged
-  while (true)
+  // Levenberg-Marquardt algorithm
+  while (iter <= solver_options_->max_iter_)
   {
     // Jacobian, Hessian and residual initialization
-    Eigen::MatrixXd J = Eigen::MatrixXd::Zero(uwb_vec.size(), 5);
+    Eigen::MatrixXd J = Eigen::MatrixXd::Zero(uwb_vec.size(), theta.size());
     Eigen::MatrixXd H = Eigen::MatrixXd::Zero(J.rows(), J.rows());
     Eigen::VectorXd res = Eigen::VectorXd::Zero(uwb_vec.size());
     Eigen::VectorXd res_new = Eigen::VectorXd::Zero(uwb_vec.size());
 
+    // Auxiliary variables
+    Eigen::VectorXd d_theta = Eigen::VectorXd::Zero(theta.size());
+    double mse = 0.0;
+
     // Compute Jacobian and residual
-    for (uint j = 0; j < uwb_vec.size(); ++j)
+    for (uint j = 0; j < J.rows(); ++j)
     {
       // Jacobian [df/dp_AinG, df/dgamma, df/dbeta]
       J.row(j) << theta(4) * (theta(0) - pose_vec(j, 0)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
@@ -92,26 +97,65 @@ bool NlsSolver::levenbergMarquardt(const TimedBuffer<UwbData>& uwb_data, const P
     // Calculate Moore-Penrose Pseudo-Inverse of matrix J
     Eigen::BDCSVD<Eigen::MatrixXd> svd_J(J, Eigen::ComputeThinU | Eigen::ComputeThinV);
 
-    // Calculate Hessian (H = J'*J = V*S*S*V' (see properties of SVD)
-    H = svd_J.matrixV() * svd_J.singularValues().asDiagonal() * svd_J.singularValues().asDiagonal() *
-        svd_J.matrixV().transpose();
+    // While residual is not decreasing
+    while (iter <= solver_options_->max_iter_)
+    {
+      // Calculate Hessian (H = J'*J = V*S*S*V' (see properties of SVD)
+      H = svd_J.matrixV() * svd_J.singularValues().asDiagonal() * svd_J.singularValues().asDiagonal() *
+          svd_J.matrixV().transpose();
 
-    // Add I * lambda to Hessian
-    H.diagonal() += Eigen::VectorXd::Ones(H.rows()) * lambda;
+      // Add lambda * diag(H) to Hessian
+      H.diagonal() += lambda * H.diagonal();
 
-    // Compute the singular value decomposition of H and calculate pinv_H
-    Eigen::JacobiSVD<Eigen::MatrixXd> svd_H(H, Eigen::ComputeThinU | Eigen::ComputeThinV);
-    double tolerance =
-        std::numeric_limits<double>::epsilon() * std::max(H.cols(), H.rows()) * svd_H.singularValues().array().abs()(0);
-    Eigen::MatrixXd pinv_H = svd_H.matrixV() *
-                             (svd_H.singularValues().array().abs() > tolerance)
-                                 .select(svd_H.singularValues().array().inverse(), 0)
-                                 .matrix()
-                                 .asDiagonal() *
-                             svd_H.matrixU().adjoint();
+      // Compute the singular value decomposition of H and calculate pinv_H
+      Eigen::JacobiSVD<Eigen::MatrixXd> svd_H(H, Eigen::ComputeThinU | Eigen::ComputeThinV);
+      double tolerance = std::numeric_limits<double>::epsilon() * std::max(H.cols(), H.rows()) *
+                         svd_H.singularValues().array().abs()(0);
+      Eigen::MatrixXd pinv_H = svd_H.matrixV() *
+                               (svd_H.singularValues().array().abs() > tolerance)
+                                   .select(svd_H.singularValues().array().inverse(), 0)
+                                   .matrix()
+                                   .asDiagonal() *
+                               svd_H.matrixU().adjoint();
 
-    // Calculate step d_theta
-    Eigen::VectorXd d_theta = pinv_H * J.transpose() * res;
+      // Calculate step d_theta
+      d_theta = pinv_H * J.transpose() * res;
+
+      // Temporary theta
+      Eigen::VectorXd theta_tmp = theta + d_theta;
+
+      // Compute new residual
+      for (uint j = 0; j < res_new.size(); ++j)
+      {
+        res_new(j) =
+            uwb_vec(j) - (theta_tmp(4) * (theta_tmp.head(3).transpose() - pose_vec.row(j)).norm() + theta_tmp(3));
+      }
+
+      // If residual decreases, update lambda and theta, and break
+      if (res_new.norm() < res.norm())
+      {
+        // Decrease lambda
+        lambda /= solver_options_->lambda_factor_;
+
+        // Update theta
+        theta += d_theta;
+
+        // Calculate MSE = ||res_new||^2 / (n - p)
+        mse = res_new.squaredNorm() / (uwb_vec.size() - theta.size());
+
+        // Compute estimation Covariance matrix
+        cov = pinv_H * mse;
+
+        // Break inner loop
+        break;
+      }
+
+      // If residual does not decrease, increase lambda and continue
+      lambda *= solver_options_->lambda_factor_;
+
+      // Increase iteration counter
+      ++iter;
+    }
 
     // Norm of step stopping condition
     if (d_theta.norm() < solver_options_->step_cond_)
@@ -122,21 +166,6 @@ bool NlsSolver::levenbergMarquardt(const TimedBuffer<UwbData>& uwb_data, const P
       break;
     }
 
-    // Update theta
-    theta += d_theta;
-
-    // Compute new residual
-    for (uint j = 0; j < uwb_vec.size(); ++j)
-    {
-      res_new(j) = uwb_vec(j) - (theta(4) * (theta.head(3).transpose() - pose_vec.row(j)).norm() + theta(3));
-    }
-
-    // Calculate MSE = ||res_new||^2 / (n - p)
-    double mse = res_new.squaredNorm() / (uwb_vec.size() - theta.size());
-
-    // Compute estimation Covariance matrix
-    cov = pinv_H * mse;
-
     // Residual stopping condition
     if (mse < solver_options_->res_cond_)
     {
@@ -144,16 +173,6 @@ bool NlsSolver::levenbergMarquardt(const TimedBuffer<UwbData>& uwb_data, const P
                     std::to_string(solver_options_->res_cond_));
       logger_->info("NlsSolver::levenbergMarquardt(): Converged in " + std::to_string(iter) + " iterations");
       break;
-    }
-
-    // Update damping factor
-    if (res_new.norm() < res.norm())
-    {
-      lambda /= 10;
-    }
-    else
-    {
-      lambda *= 10;
     }
 
     // Max iterations stopping condition

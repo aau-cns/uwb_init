@@ -33,6 +33,9 @@ struct NlsSolverOptions
   /// Lambda parameter for Levenberg-Marquardt algorithm (suggested default value: 1e-2)
   double lambda_;
 
+  /// Lambda factor for Levenberg-Marquardt algorithm (suggested default value: 10)
+  double lambda_factor_;
+
   /// Stopping condition for step size (suggested default value: 1e-6)
   double step_cond_;
 
@@ -42,8 +45,9 @@ struct NlsSolverOptions
   /// Stopping condition for maximum number of iterations (suggested defualt value: 1e3)
   uint max_iter_;
 
-  NlsSolverOptions(const double& lambda, const double& step_cond, const double& res_cond, const uint& max_iter)
-    : lambda_(lambda), step_cond_(step_cond), res_cond_(res_cond), max_iter_(max_iter)
+  NlsSolverOptions(const double& lambda, const double& lambda_factor, const double& step_cond, const double& res_cond,
+                   const uint& max_iter)
+    : lambda_(lambda), lambda_factor_(lambda_factor), step_cond_(step_cond), res_cond_(res_cond), max_iter_(max_iter)
   {
   }
 
