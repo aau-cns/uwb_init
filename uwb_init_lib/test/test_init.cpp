@@ -34,7 +34,7 @@ int main()
 
   init_options = std::make_shared<UwbInitOptions>(InitMethod::DOUBLE, BiasType::CONST_BIAS);
   ls_options = std::make_unique<LsSolverOptions>(0.05, 0.1);
-  nls_options = std::make_unique<NlsSolverOptions>(1e-2, 1e-6, 1e-6, 1e3);
+  nls_options = std::make_unique<NlsSolverOptions>(1e-2, 10, 1e-6, 1e-6, 1e3);
   planner_options = std::make_unique<PlannerOptions>(10, 10, 3000, 0.5, 0.2, 2, 2, 4, 4, 5, 6, 1);
 
   // Test initialization

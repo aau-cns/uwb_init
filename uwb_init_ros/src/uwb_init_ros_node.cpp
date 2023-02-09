@@ -129,9 +129,10 @@ int main(int argc, char** argv)
   nh.param<double>("uwb_range_std", opt_sigma_mes, 0.1);
 
   // Get NLS solver options from parameter server
-  double opt_lambda, opt_step_cond, opt_res_cond;
+  double opt_lambda, opt_lambda_scale_factor, opt_step_cond, opt_res_cond;
   int max_iter;
   nh.param<double>("levenberg_marquardt_lambda", opt_lambda, 0.01);
+  nh.param<double>("lambda_scale_factor", opt_lambda_scale_factor, 10.0);
   nh.param<double>("step_norm_stop_condition", opt_step_cond, 0.000001);
   nh.param<double>("residual_mse_stop_condition", opt_res_cond, 0.000001);
   nh.param<int>("max_iterations", max_iter, 1000);
@@ -209,8 +210,8 @@ int main(int argc, char** argv)
   // Make options
   opts.init_options_ = std::make_shared<uwb_init::UwbInitOptions>(opt_init_method, opt_bias_type);
   opts.ls_solver_options_ = std::make_unique<uwb_init::LsSolverOptions>(opt_sigma_pos, opt_sigma_mes);
-  opts.nls_solver_options_ =
-      std::make_unique<uwb_init::NlsSolverOptions>(opt_lambda, opt_step_cond, opt_res_cond, opt_max_iter);
+  opts.nls_solver_options_ = std::make_unique<uwb_init::NlsSolverOptions>(opt_lambda, opt_lambda_scale_factor,
+                                                                          opt_step_cond, opt_res_cond, opt_max_iter);
   opts.planner_options_ =
       std::make_unique<uwb_init::PlannerOptions>(opt_cell_len, opt_pop_size, opt_itr_num, opt_pc, opt_pm, opt_x_n,
                                                  opt_y_n, opt_z_n, opt_side_x, opt_side_y, opt_side_z, opt_z_min);

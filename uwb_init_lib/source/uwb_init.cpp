@@ -346,7 +346,7 @@ bool UwbInitializer::refine_anchors()
 
     // Initialize solution and covariance
     Eigen::VectorXd theta = Eigen::VectorXd::Zero(5);
-    Eigen::MatrixXd cov = Eigen::MatrixXd::Identity(5, 5);
+    Eigen::MatrixXd cov;
 
     // Theta0 (p_AinG, gamma, beta)
     theta << ls_sol.second.anchor_.p_AinG_, ls_sol.second.gamma_, 1.0;
