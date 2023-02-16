@@ -27,7 +27,7 @@
 
   <!-- nls solver parameters -->
   <arg name="levenberg_marquardt_lambda"    default="0.001" />
-  <ard name="lambda_scale_factor"           default="10.0" />
+  <arg name="lambda_scale_factor"           default="10" />
   <arg name="step_norm_stop_condition"      default="0.000001" />
   <arg name="residual_mse_stop_condition"   default="0.000001" />
   <arg name="max_iterations"            		default="1000" />
