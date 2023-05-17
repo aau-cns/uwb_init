@@ -105,6 +105,13 @@ void UwbInitializer::clear_solutions()
   nls_sols_.clear();
 }
 
+// [TODO] temporary
+void UwbInitializer::clear_solutions_except_ls()
+{
+  opt_wps_.clear();
+  nls_sols_.clear();
+}
+
 void UwbInitializer::reset()
 {
   clear_buffers();
@@ -386,6 +393,17 @@ bool UwbInitializer::refine_anchors()
 
   // Refinement complete
   logger_->info("UwbInitializer: Refinement complete");
+
+  // [TODO] Remove this is temporary,
+  // the situation when we want multiple refinement starting from a previous nonlinear solution needs to be handled
+  // better for example redesigning the whole data structure exploiting polymorphism
+  for (auto& [id, ls] : ls_sols_)
+  {
+    ls.anchor_ = nls_sols_.at(id).anchor_;
+    ls.gamma_ = nls_sols_.at(id).gamma_;
+    ls.cov_ = nls_sols_.at(id).cov_.block(0, 0, 4, 4);
+  }
+
   return refine_successful;
 }
 

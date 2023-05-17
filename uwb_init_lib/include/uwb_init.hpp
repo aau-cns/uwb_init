@@ -96,6 +96,7 @@ public:
   /// \brief clear clears all the solutions
   ///
   void clear_solutions();
+  void clear_solutions_except_ls();
 
   ///
   /// \brief reset resets the initializer and clean all its buffers
