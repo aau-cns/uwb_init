@@ -29,7 +29,7 @@ UwbInitRos::UwbInitRos(const ros::NodeHandle& nh, UwbInitRosOptions&& options)
               std::move(options_.nls_solver_options_), std::move(options_.planner_options_))
 {
   // Subscribers
-  estimated_pose_sub_ = nh_.subscribe(options_.estimated_pose_topic_, 1, &UwbInitRos::callbackPose, this);
+  estimated_pose_sub_ = nh_.subscribe(options_.estimated_pose_topic_, 1, &UwbInitRos::callbackPoseWithCov, this);
   uwb_range_sub_ = nh_.subscribe(options_.uwb_range_topic_, 1, &UwbInitRos::callbackUwbRanges, this);
 
   // Publishers
@@ -54,6 +54,40 @@ void UwbInitRos::callbackPose(const geometry_msgs::PoseStamped::ConstPtr& msg)
   Eigen::Vector3d p_IinG(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z);
   Eigen::Quaterniond q_GI(msg->pose.orientation.w, msg->pose.orientation.x, msg->pose.orientation.y,
                           msg->pose.orientation.z);
+
+  // Compute position of UWB module in Global frame
+  p_UinG_ = p_IinG + q_GI.toRotationMatrix() * options_.p_UinI_;
+
+  // Feed p_UinG
+  if (collect_measurements_)
+  {
+    uwb_init_.feed_position(msg->header.stamp.toSec(), p_UinG_);
+  }
+}
+
+void UwbInitRos::callbackPoseWithCov(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg)
+{
+  // Get pose
+  Eigen::Vector3d p_IinG(msg->pose.pose.position.x, msg->pose.pose.position.y, msg->pose.pose.position.z);
+  Eigen::Quaterniond q_GI(msg->pose.pose.orientation.w, msg->pose.pose.orientation.x, msg->pose.pose.orientation.y,
+                          msg->pose.pose.orientation.z);
+
+  // Compute position of UWB module in Global frame
+  p_UinG_ = p_IinG + q_GI.toRotationMatrix() * options_.p_UinI_;
+
+  // Feed p_UinG
+  if (collect_measurements_)
+  {
+    uwb_init_.feed_position(msg->header.stamp.toSec(), p_UinG_);
+  }
+}
+
+void UwbInitRos::callbackTransform(const geometry_msgs::TransformStamped::ConstPtr& msg)
+{
+  // Get pose
+  Eigen::Vector3d p_IinG(msg->transform.translation.x, msg->transform.translation.y, msg->transform.translation.z);
+  Eigen::Quaterniond q_GI(msg->transform.rotation.w, msg->transform.rotation.x, msg->transform.rotation.y,
+                          msg->transform.rotation.z);
 
   // Compute position of UWB module in Global frame
   p_UinG_ = p_IinG + q_GI.toRotationMatrix() * options_.p_UinI_;
@@ -100,6 +134,9 @@ void UwbInitRos::callbackUwbRanges(const mdek_uwb_driver::UwbConstPtr& msg)
 bool UwbInitRos::callbackServiceStart(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
 {
   ROS_INFO("Start service called.");
+  // [TODO] Check if this needs to be done
+  uwb_init_.clear_buffers();
+  uwb_init_.clear_solutions_except_ls();
   collect_measurements_ = true;
   return true;
 }
@@ -238,7 +275,8 @@ bool UwbInitRos::initializeAnchors()
     anchors_msg_.header.frame_id = "global";
   }
 
-  uwb_anchors_pub_.publish(anchors_msg_);
+  // [TODO] Disabled, this shhould be done by parameter option
+  // uwb_anchors_pub_.publish(anchors_msg_);
 
   return true;
 }
@@ -271,7 +309,9 @@ bool UwbInitRos::computeWaypoints()
 
   ++waypoints_msg_.header.seq;
   waypoints_msg_.header.stamp = ros::Time::now();
-  waypoints_msg_.header.frame_id = "global";
+  waypoints_msg_.header.frame_id = "local";
+  waypoints_msg_.is_global = false;  // Set to false to use local coordinates
+  waypoints_msg_.action = mission_sequencer::MissionWaypointArray::CLEAR;
 
   waypoints_pub_.publish(waypoints_msg_);
 

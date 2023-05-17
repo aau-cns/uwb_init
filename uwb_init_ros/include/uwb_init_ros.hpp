@@ -17,19 +17,21 @@
 #ifndef UWB_INIT_ROS_H
 #define UWB_INIT_ROS_H
 
-#include <ros/ros.h>
-#include <Eigen/Eigen>
-
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <geometry_msgs/TransformStamped.h>
 #include <mdek_uwb_driver/Uwb.h>
-#include <std_srvs/Empty.h>
-#include <uwb_init_lib/include/uwb_init.hpp>
 #include <mission_sequencer/MissionWaypointArray.h>
-#include "uwb_init_ros/UwbAnchor.h"
-#include "uwb_init_ros/UwbAnchorArrayStamped.h"
+#include <ros/ros.h>
+#include <std_srvs/Empty.h>
+
+#include <Eigen/Eigen>
+#include <uwb_init_lib/include/uwb_init.hpp>
 
 #include "options.hpp"
 #include "utilities.hpp"
+#include "uwb_init_ros/UwbAnchor.h"
+#include "uwb_init_ros/UwbAnchorArrayStamped.h"
 
 namespace uwb_init_ros
 {
@@ -50,6 +52,8 @@ private:
    * @param msg
    */
   void callbackPose(const geometry_msgs::PoseStamped::ConstPtr& msg);
+  void callbackPoseWithCov(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg);
+  void callbackTransform(const geometry_msgs::TransformStamped::ConstPtr& msg);
 
   /**
    * @brief uwb ranges callback
@@ -151,7 +155,6 @@ private:
 
   /// Last registered position of UWB tag in Global frame of reference
   Eigen::Vector3d p_UinG_;
-
 };
 }  // namespace uwb_init_ros
 

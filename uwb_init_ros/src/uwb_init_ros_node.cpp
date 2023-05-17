@@ -34,55 +34,55 @@ int main(int argc, char** argv)
   if (!nh.getParam("estimated_pose_topic", opts.estimated_pose_topic_))
   {
     ROS_ERROR("Missing estimated_pose_topic parameter");
-    EXIT_FAILURE;
+    std::exit(EXIT_FAILURE);
   }
   if (!nh.getParam("uwb_range_topic", opts.uwb_range_topic_))
   {
     ROS_ERROR("Missing uwb_range_topic parameter");
-    EXIT_FAILURE;
+    std::exit(EXIT_FAILURE);
   }
 
   // Get services names
   if (!nh.getParam("start_service", opts.service_start_))
   {
     ROS_ERROR("Missing start_service parameter");
-    EXIT_FAILURE;
+    std::exit(EXIT_FAILURE);
   }
 
   if (!nh.getParam("reset_service", opts.service_reset_))
   {
     ROS_ERROR("Missing reset_service parameter");
-    EXIT_FAILURE;
+    std::exit(EXIT_FAILURE);
   }
 
   if (!nh.getParam("initialization_service", opts.service_init_))
   {
     ROS_ERROR("Missing initialization_service parameter");
-    EXIT_FAILURE;
+    std::exit(EXIT_FAILURE);
   }
 
   if (!nh.getParam("planner_service", opts.service_wps_))
   {
     ROS_ERROR("Missing planner_service parameter");
-    EXIT_FAILURE;
+    std::exit(EXIT_FAILURE);
   }
 
   if (!nh.getParam("refine_service", opts.service_refine_))
   {
     ROS_ERROR("Missing refine_service parameter");
-    EXIT_FAILURE;
+    std::exit(EXIT_FAILURE);
   }
 
   // Get topics to publish to from parameter server
   if (!nh.getParam("uwb_anchors_topic", opts.uwb_anchors_topic_))
   {
     ROS_ERROR("Missing uwb_anchors_topic parameter");
-    EXIT_FAILURE;
+    std::exit(EXIT_FAILURE);
   }
   if (!nh.getParam("waypoints_topic", opts.waypoints_topic_))
   {
     ROS_ERROR("Missing waypoints_topic parameter");
-    EXIT_FAILURE;
+    std::exit(EXIT_FAILURE);
   }
 
   // Get init options from parameter server
@@ -102,7 +102,7 @@ int main(int argc, char** argv)
   else
   {
     ROS_ERROR("Invalidmethod! Please use single or double");
-    EXIT_FAILURE;
+    std::exit(EXIT_FAILURE);
   }
   if (bias_type == "unbiased")
   {
@@ -115,7 +115,7 @@ int main(int argc, char** argv)
   else
   {
     ROS_ERROR("Invalid bias type! Please use unbiased or constant");
-    EXIT_FAILURE;
+    std::exit(EXIT_FAILURE);
   }
 
   // Get minimum number of anchors from parameter server
@@ -140,7 +140,7 @@ int main(int argc, char** argv)
 
   // Get waypoint generation options from parameter server
   int cell_len, pop_size, itr_num, x_n, y_n, z_n;
-  double opt_pc, opt_pm, opt_side_x, opt_side_y, opt_side_z, opt_z_min;
+  double opt_pc, opt_pm, opt_side_x, opt_side_y, opt_side_z, opt_z_min, opt_C_e_x, opt_C_e_y;
   nh.param<int>("cell_len", cell_len, 10);
   uint opt_cell_len = static_cast<uint>(cell_len);
   nh.param<int>("pop_size", pop_size, 10);
@@ -159,6 +159,8 @@ int main(int argc, char** argv)
   nh.param<double>("side_y_length", opt_side_y, 5);
   nh.param<double>("side_z_length", opt_side_z, 6);
   nh.param<double>("min_z", opt_z_min, 1);
+  nh.param<double>("C_e_x", opt_C_e_x, 0);
+  nh.param<double>("C_e_y", opt_C_e_y, 0);
 
   // Get logger level from parameter server
   std::string logger_level;
@@ -192,7 +194,7 @@ int main(int argc, char** argv)
   else
   {
     ROS_ERROR("Invalid logger level! Please use full, info, warning, error or inactive");
-    EXIT_FAILURE;
+    std::exit(EXIT_FAILURE);
   }
 
   // Get calibration UWB tag -> IMU
@@ -212,9 +214,9 @@ int main(int argc, char** argv)
   opts.ls_solver_options_ = std::make_unique<uwb_init::LsSolverOptions>(opt_sigma_pos, opt_sigma_mes);
   opts.nls_solver_options_ = std::make_unique<uwb_init::NlsSolverOptions>(opt_lambda, opt_lambda_scale_factor,
                                                                           opt_step_cond, opt_res_cond, opt_max_iter);
-  opts.planner_options_ =
-      std::make_unique<uwb_init::PlannerOptions>(opt_cell_len, opt_pop_size, opt_itr_num, opt_pc, opt_pm, opt_x_n,
-                                                 opt_y_n, opt_z_n, opt_side_x, opt_side_y, opt_side_z, opt_z_min);
+  opts.planner_options_ = std::make_unique<uwb_init::PlannerOptions>(
+      opt_cell_len, opt_pop_size, opt_itr_num, opt_pc, opt_pm, opt_x_n, opt_y_n, opt_z_n, opt_side_x, opt_side_y,
+      opt_side_z, opt_z_min, opt_C_e_x, opt_C_e_y);
 
   // Instanciate UwbInitRos
   uwb_init_ros::UwbInitRos UwbInitRos(nh, std::move(opts));

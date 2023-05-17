@@ -66,6 +66,12 @@ struct PlannerOptions
   /// Minimum distance from the ground (defualt suggested value: 1)
   double z_min_;
 
+  /// x-coordinate of the centroid of the environment
+  double C_e_x_;
+
+  /// y-coordinate of the centroid of the environment
+  double C_e_y_;
+
   /// x-side length of each small cell (side_x / x_n)
   double x_s_;
 
@@ -83,7 +89,7 @@ struct PlannerOptions
 
   PlannerOptions(const uint& cell_len, const uint& pop_size, const uint& itr_num, const double& pc, const double& pm,
                  const uint& x_n, const uint& y_n, const uint& z_n, const double& side_x, const double& side_y,
-                 const double& side_z, const double& z_min)
+                 const double& side_z, const double& z_min, const double& C_e_x, const double& C_e_y)
     : cell_len_(cell_len)
     , pop_size_(pop_size)
     , itr_num_(itr_num)
@@ -96,8 +102,10 @@ struct PlannerOptions
     , side_y_(side_y)
     , side_z_(side_z)
     , z_min_(z_min)
+    , C_e_x_(C_e_x)
+    , C_e_y_(C_e_y)
   {
-    C_e_ << 0, 0, side_z_ / 2 + z_min_;
+    C_e_ << C_e_x_, C_e_y_, side_z_ / 2 + z_min_;
     x_s_ = side_x_ / x_n_;
     y_s_ = side_y_ / y_n_;
     z_s_ = side_z_ / z_n_;

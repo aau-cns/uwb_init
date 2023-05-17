@@ -2,7 +2,7 @@
 <launch>
 
   <!-- topic parameters -->
-  <arg name="estimated_pose_topic"      default="/twins_itec/vrpn_client/raw_pose" /> <!-- /mavros/vision_pose/pose -->
+  <arg name="estimated_pose_topic"      default="/uvio/poseimu" />
   <arg name="uwb_range_topic"           default="/uwb_driver_node/uwb" />
   <arg name="start_service"             default="/uwb_init/start" />
   <arg name="reset_service"             default="/uwb_init/reset" />
@@ -14,7 +14,7 @@
   <arg name="waypoints_topic"           default="/uwb_init/wps" />
 
   <!-- calibration -->
-  <arg name="calib_p_UinI"              default="[0.065, 0.12, -0.02]" /> <!-- /[0.03, -0.04, -0.03] -->
+  <arg name="calib_p_UinI"              default="[0.01, -0.01, -0.05]" />
 
   <!-- node parameters -->
   <arg name="method"                    default="double" />
@@ -23,7 +23,7 @@
   
   <!-- ls solver parameters -->
   <arg name="position_std"              default="0.03" />
-  <arg name="uwb_range_std"             default="0.1" />
+  <arg name="uwb_range_std"             default="0.2" />
 
   <!-- nls solver parameters -->
   <arg name="levenberg_marquardt_lambda"    default="0.001" />
@@ -42,13 +42,15 @@
   <arg name="y_grid"                            default="2" />
   <arg name="z_grid"                            default="4" />
   <arg name="side_x_length"                     default="4" />
-  <arg name="side_y_length"                     default="5" />
+  <arg name="side_y_length"                     default="6.5" />
   <arg name="side_z_length"                     default="6" />
   <arg name="min_z"                             default="1" />
+  <arg name="C_e_x"                             default="0" />
+  <arg name="C_e_y"                             default="-0.75" />
 
   <!-- waypoint flight parameters -->
   <arg name="wp_yaw"                            default="0.0" />
-  <arg name="wp_holdtime"                       default="1.0" />
+  <arg name="wp_holdtime"                       default="0.0" />
 
   <!-- debug -->
   <arg name="enable_gdb"                        default="false"/>
@@ -101,6 +103,8 @@
     <param name="side_y_length"                     type="double"   value="$(arg side_y_length)" />
     <param name="side_z_length"                     type="double"   value="$(arg side_z_length)" />
     <param name="min_z"                             type="double"   value="$(arg min_z)" />
+    <param name="C_e_x"                             type="double"   value="$(arg C_e_x)" />
+    <param name="C_e_y"                             type="double"   value="$(arg C_e_y)" />
 
     <!-- waypoint flight parameters -->
     <param name="wp_yaw"                             type="double"   value="$(arg wp_yaw)" />
@@ -154,6 +158,8 @@
     <param name="side_y_length"                     type="double"   value="$(arg side_y_length)" />
     <param name="side_z_length"                     type="double"   value="$(arg side_z_length)" />
     <param name="min_z"                             type="double"   value="$(arg min_z)" />
+    <param name="C_e_x"                             type="double"   value="$(arg C_e_x)" />
+    <param name="C_e_y"                             type="double"   value="$(arg C_e_y)" />
 
     <!-- waypoint flight parameters -->
     <param name="wp_yaw"                             type="double"   value="$(arg wp_yaw)" />
