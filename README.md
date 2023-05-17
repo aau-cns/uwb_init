@@ -40,19 +40,28 @@ These software components are needed on your platform to run this ROS node.
 1. Clone the required ROS packeges to your workspace
     ```[bash]
     cd src
-    git clone git@gitlab.aau.at:aau-cns/evb1000_driver.git
+    git clone git@gitlab.aau.at:aau-cns/ros_pkgs/mdek_uwb_driver.git
     git clone git@gitlab.aau.at:aau-cns/ros_pkgs/amaze_mission_sequencer.git
     git clone git@gitlab.aau.at:aau-cns/ros_pkgs/uwb_init_cpp.git
     ```
 
 ### Build
 
-1. Compile using `catkin build`:
+1. Build and install the library
+    ```[bash]
+    cd uwb_init_lib
+    mkdir build && cd build
+    cmake ../
+    cmake --build .
+    sudo cmake --install .
+    ```
+
+2. Compile using `catkin build`:
     ```[bash]
     cd catkin_ws/src && catkin build uwb_init_cpp
     ```
 
-## Usage
+<!-- ## Usage
 
 This rosnode can be launched with the provided launchfile by running
 
@@ -219,13 +228,14 @@ The provided launchfile and node allows the setting of the following parameters.
 ```
 
 </p>
-</details>
+</details> -->
 
 ## Reporting Issues
 
-In case of issues, feature requests, or other questions please open a [New Issue](https://gitlab.aau.at/aau-cns/ros_pkgs/uwb_init_cpp/issues/new?issue) or contact the authors via [email](mailto:martin.scheiber@ieee.org?cc=alessandro.fornasier@ieee.org&subject=[GitLab]%20uwb_init_cpp:%20).
+In case of issues, feature requests, or other questions please open a [New Issue](https://gitlab.aau.at/aau-cns/ros_pkgs/uwb_init_cpp/issues/new?issue) or contact the authors via email.
 
 ## Authors
 
 * Martin Scheiber ([email](mailto:martin.scheiber@ieee.org?subject=[UWB%20Init]))
 * Alessandro Fornasier ([email](mailto:alessandro.fornasier@ieee.org?subject=[UWB%20Init]))
+* Giulio Delama ([email](mailto:giulio.delama@aau.at?subject=[UWB%20Init]))

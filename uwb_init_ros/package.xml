@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>uwb_init_ros</name>
+  <version>0.0.1</version>
+  <description>The uwb_init package</description>
+
+  <!-- One maintainer tag required, multiple allowed, one person per tag -->
+  <maintainer email="alessandro.fornasier@aau.at">Alessandro Fornasier</maintainer>
+
+  <!-- One license tag required, multiple allowed, one license per tag -->
+  <license>LICENSE</license>
+
+  <!-- Url tags are optional, but multiple are allowed, one per tag -->
+  <!-- <url type="website">http://wiki.ros.org/$camera_downsample</url> -->
+  <!-- <url type="repository">http://github.com/$camera_downsample</url> -->
+
+  <!-- Author tags are optional, multiple are allowed, one per tag -->
+  <author email="alessandro.fornasier@aau.at">Alessandro Fornasier</author>
+
+  <!-- The *depend tags are used to specify dependencies -->
+  <!-- Dependencies can be catkin packages or system dependencies -->
+  <!-- Use depend as a shortcut for packages that are both build and exec dependencies -->
+  <!-- Use build_depend for packages you need at compile time: -->
+  <!-- Use build_export_depend for packages you need in order to build against this package: -->
+  <!-- Use buildtool_depend for build tool packages: -->
+  <!-- Use exec_depend for packages you need at runtime: -->
+  <!-- Use test_depend for packages you need only for testing: -->
+  <!-- Use doc_depend for packages you need only for building documentation: -->
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>roscpp</depend>
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>dynamic_reconfigure</depend>
+  <depend>mdek_uwb_driver</depend>
+  <!-- <build_depend>message_generation</build_depend>
+  <exec_depend>message_runtime</exec_Depend> -->
+
+  <!-- The export tag contains other, unspecified, tags -->
+  <export>
+    <!-- Other tools can request additional information be placed here -->
+  </export>
+
+</package>

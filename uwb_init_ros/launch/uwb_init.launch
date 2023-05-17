@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+
+  <!-- topic parameters -->
+  <arg name="estimated_pose_topic"      default="/uvio/poseimu" />
+  <arg name="uwb_range_topic"           default="/uwb_driver_node/uwb" />
+  <arg name="start_service"             default="/uwb_init/start" />
+  <arg name="reset_service"             default="/uwb_init/reset" />
+  <arg name="initialization_service"    default="/uwb_init/initialize" />
+  <arg name="planner_service"           default="/uwb_init/compute_wps" />
+  <arg name="refine_service"            default="/uwb_init/refine" />
+  <arg name="logger_level"              default="info" />
+  <arg name="uwb_anchors_topic"         default="/uwb_init/uwb_anchors" />
+  <arg name="waypoints_topic"           default="/uwb_init/wps" />
+
+  <!-- calibration -->
+  <arg name="calib_p_UinI"              default="[0.01, -0.01, -0.05]" />
+
+  <!-- node parameters -->
+  <arg name="method"                    default="double" />
+  <arg name="bias_type"                 default="constant" />
+  <arg name="min_num_anchors"           default="4" />
+  
+  <!-- ls solver parameters -->
+  <arg name="position_std"              default="0.03" />
+  <arg name="uwb_range_std"             default="0.2" />
+
+  <!-- nls solver parameters -->
+  <arg name="levenberg_marquardt_lambda"    default="0.001" />
+  <arg name="lambda_scale_factor"           default="10" />
+  <arg name="step_norm_stop_condition"      default="0.000001" />
+  <arg name="residual_mse_stop_condition"   default="0.000001" />
+  <arg name="max_iterations"            		default="1000" />
+
+  <!-- waypoint generator parameters -->
+  <arg name="cell_len"                          default="10" />
+  <arg name="pop_size"                          default="10" />
+  <arg name="generations_n"            		      default="3000" />
+  <arg name="crossover_probability"             default="0.5" />
+  <arg name="mutation_probability"              default="0.2" />
+  <arg name="x_grid"                            default="2" />
+  <arg name="y_grid"                            default="2" />
+  <arg name="z_grid"                            default="4" />
+  <arg name="side_x_length"                     default="4" />
+  <arg name="side_y_length"                     default="6.5" />
+  <arg name="side_z_length"                     default="6" />
+  <arg name="min_z"                             default="1" />
+  <arg name="C_e_x"                             default="0" />
+  <arg name="C_e_y"                             default="-0.75" />
+
+  <!-- waypoint flight parameters -->
+  <arg name="wp_yaw"                            default="0.0" />
+  <arg name="wp_holdtime"                       default="0.0" />
+
+  <!-- debug -->
+  <arg name="enable_gdb"                        default="false"/>
+  <arg name="launchprefix"                      default="gdbserver localhost:10000"/>
+
+  <!-- MASTER NODE -->
+  <node name="uwb_init" pkg="uwb_init_ros" type="uwb_init" args="" output="screen" respawn="false" launch-prefix="$(arg launchprefix)" if="$(arg enable_gdb)">
+
+    <!-- topics remaps -->
+    <param name="estimated_pose_topic"      type="str"  value="$(arg estimated_pose_topic)" />
+    <param name="uwb_range_topic"           type="str"  value="$(arg uwb_range_topic)" />
+    <param name="start_service"             type="str"  value="$(arg start_service)" />
+    <param name="reset_service"             type="str"  value="$(arg reset_service)" />
+    <param name="initialization_service"    type="str"  value="$(arg initialization_service)" />
+    <param name="planner_service"           type="str"  value="$(arg planner_service)" />
+    <param name="refine_service"            type="str"  value="$(arg refine_service)" />
+    <param name="logger_level"              type="str"  value="$(arg logger_level)" />
+    <param name="uwb_anchors_topic"         type="str"  value="$(arg uwb_anchors_topic)" />
+    <param name="waypoints_topic"           type="str"  value="$(arg waypoints_topic)" />
+
+    <!-- calibration -->
+    <rosparam param="p_ItoU"                subst_value="True">$(arg calib_p_UinI)</rosparam>
+
+    <!-- node parameters -->
+    <param name="method"                    type="str"  value="$(arg method)" />
+    <param name="bias_type"                 type="str"  value="$(arg bias_type)" />
+    <param name="min_num_anchors"           type="int"  value="$(arg min_num_anchors)" />
+
+    <!-- ls solver parameters -->
+    <param name="position_std"              type="double"  value="$(arg position_std)" />
+    <param name="uwb_range_std"             type="double"  value="$(arg uwb_range_std)" />
+
+    <!-- nls solver parameters -->
+    <param name="levenberg_marquardt_lambda"        type="double"   value="$(arg levenberg_marquardt_lambda)" />
+    <param name="lambda_scale_factor"               type="double"   value="$(arg lambda_scale_factor)" />
+    <param name="step_norm_stop_condition"          type="double"   value="$(arg step_norm_stop_condition)" />
+    <param name="residual_mse_stop_condition"       type="double"   value="$(arg residual_mse_stop_condition)" />
+    <param name="max_iterations"                    type="int"      value="$(arg max_iterations)" />
+
+    <!-- waypoint generation parameters -->
+    <param name="cell_len"                          type="int"      value="$(arg cell_len)" />
+    <param name="pop_size"                          type="int"      value="$(arg pop_size)" />
+    <param name="generations_n"                     type="int"      value="$(arg generations_n)" />
+    <param name="crossover_probability"             type="double"   value="$(arg crossover_probability)" />
+    <param name="mutation_probability"              type="double"   value="$(arg mutation_probability)" />
+    <param name="x_grid"                            type="int"      value="$(arg x_grid)" />
+    <param name="y_grid"                            type="int"      value="$(arg y_grid)" />
+    <param name="z_grid"                            type="int"      value="$(arg z_grid)" />
+    <param name="side_x_length"                     type="double"   value="$(arg side_x_length)" />
+    <param name="side_y_length"                     type="double"   value="$(arg side_y_length)" />
+    <param name="side_z_length"                     type="double"   value="$(arg side_z_length)" />
+    <param name="min_z"                             type="double"   value="$(arg min_z)" />
+    <param name="C_e_x"                             type="double"   value="$(arg C_e_x)" />
+    <param name="C_e_y"                             type="double"   value="$(arg C_e_y)" />
+
+    <!-- waypoint flight parameters -->
+    <param name="wp_yaw"                             type="double"   value="$(arg wp_yaw)" />
+    <param name="wp_holdtime"                        type="double"   value="$(arg wp_holdtime)" />
+
+  </node>
+
+  <node name="uwb_init" pkg="uwb_init_ros" type="uwb_init" args="" output="screen" respawn="false" unless="$(arg enable_gdb)">
+
+    <!-- topics remaps -->
+    <param name="estimated_pose_topic"      type="str"  value="$(arg estimated_pose_topic)" />
+    <param name="uwb_range_topic"           type="str"  value="$(arg uwb_range_topic)" />
+    <param name="start_service"             type="str"  value="$(arg start_service)" />
+    <param name="reset_service"             type="str"  value="$(arg reset_service)" />
+    <param name="initialization_service"    type="str"  value="$(arg initialization_service)" />
+    <param name="planner_service"           type="str"  value="$(arg planner_service)" />
+    <param name="refine_service"            type="str"  value="$(arg refine_service)" />
+    <param name="logger_level"              type="str"  value="$(arg logger_level)" />
+    <param name="uwb_anchors_topic"         type="str"  value="$(arg uwb_anchors_topic)" />
+    <param name="waypoints_topic"           type="str"  value="$(arg waypoints_topic)" />
+
+    <!-- calibration -->
+    <rosparam param="p_ItoU"                subst_value="True">$(arg calib_p_UinI)</rosparam>
+
+    <!-- node parameters -->
+    <param name="method"                    type="str"  value="$(arg method)" />
+    <param name="bias_type"                 type="str"  value="$(arg bias_type)" />
+    <param name="min_num_anchors"           type="int"  value="$(arg min_num_anchors)" />
+
+    <!-- ls solver parameters -->
+    <param name="position_std"              type="double"  value="$(arg position_std)" />
+    <param name="uwb_range_std"             type="double"  value="$(arg uwb_range_std)" />
+
+    <!-- nls solver parameters -->
+    <param name="levenberg_marquardt_lambda"        type="double"   value="$(arg levenberg_marquardt_lambda)" />
+    <param name="lambda_scale_factor"               type="double"   value="$(arg lambda_scale_factor)" />
+    <param name="step_norm_stop_condition"          type="double"   value="$(arg step_norm_stop_condition)" />
+    <param name="residual_mse_stop_condition"       type="double"   value="$(arg residual_mse_stop_condition)" />
+    <param name="max_iterations"                    type="int"      value="$(arg max_iterations)" />
+
+    <!-- waypoint generation parameters -->
+    <param name="cell_len"                          type="int"      value="$(arg cell_len)" />
+    <param name="pop_size"                          type="int"      value="$(arg pop_size)" />
+    <param name="generations_n"                     type="int"      value="$(arg generations_n)" />
+    <param name="crossover_probability"             type="double"   value="$(arg crossover_probability)" />
+    <param name="mutation_probability"              type="double"   value="$(arg mutation_probability)" />
+    <param name="x_grid"                            type="int"      value="$(arg x_grid)" />
+    <param name="y_grid"                            type="int"      value="$(arg y_grid)" />
+    <param name="z_grid"                            type="int"      value="$(arg z_grid)" />
+    <param name="side_x_length"                     type="double"   value="$(arg side_x_length)" />
+    <param name="side_y_length"                     type="double"   value="$(arg side_y_length)" />
+    <param name="side_z_length"                     type="double"   value="$(arg side_z_length)" />
+    <param name="min_z"                             type="double"   value="$(arg min_z)" />
+    <param name="C_e_x"                             type="double"   value="$(arg C_e_x)" />
+    <param name="C_e_y"                             type="double"   value="$(arg C_e_y)" />
+
+    <!-- waypoint flight parameters -->
+    <param name="wp_yaw"                             type="double"   value="$(arg wp_yaw)" />
+    <param name="wp_holdtime"                        type="double"   value="$(arg wp_holdtime)" />
+
+  </node>
+
+</launch>
