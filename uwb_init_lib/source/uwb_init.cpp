@@ -69,7 +69,7 @@ const LSSolutions& UwbInitializer::get_ls_solutions() const
 {
   if (ls_sols_.empty())
   {
-    throw std::runtime_error("UwbInitializer::get_ls_solutions(): Required empty vector");
+    throw std::runtime_error("UwbInitializer::get_ls_solutions(): Required empty vector.");
   }
   return ls_sols_;
 }
@@ -78,16 +78,25 @@ const NLSSolutions& UwbInitializer::get_nls_solutions() const
 {
   if (nls_sols_.empty())
   {
-    throw std::runtime_error("UwbInitializer::get_nls_solutions(): Required empty vector");
+    throw std::runtime_error("UwbInitializer::get_nls_solutions(): Required empty vector.");
   }
   return nls_sols_;
+}
+
+const NLSSolutions& UwbInitializer::get_refined_solutions() const
+{
+  if (refined_sols_.empty())
+  {
+    throw std::runtime_error("UwbInitializer::get_refined_solutions(): Required empty vector.");
+  }
+  return refined_sols_;
 }
 
 const Waypoints& UwbInitializer::get_waypoints() const
 {
   if (opt_wps_.empty())
   {
-    throw std::runtime_error("UwbInitializer::get_waypoints(): Required empty vector");
+    throw std::runtime_error("UwbInitializer::get_waypoints(): Required empty vector.");
   }
   return opt_wps_;
 }
@@ -96,26 +105,29 @@ void UwbInitializer::clear_buffers()
 {
   uwb_data_buffer_.clear();
   p_UinG_buffer_.clear();
+
+  // Logging
+  logger_->debug("UwbInitializer::clear_buffers(): Buffers cleared");
 }
 
 void UwbInitializer::clear_solutions()
 {
   ls_sols_.clear();
-  opt_wps_.clear();
   nls_sols_.clear();
-}
+  refined_sols_.clear();
+  opt_wps_.clear();
 
-// [TODO] temporary
-void UwbInitializer::clear_solutions_except_ls()
-{
-  opt_wps_.clear();
-  nls_sols_.clear();
+  // Logging
+  logger_->debug("UwbInitializer::clear_solutions(): Solutions cleared");
 }
 
 void UwbInitializer::reset()
 {
   clear_buffers();
   clear_solutions();
+
+  // Logging
+  logger_->debug("UwbInitializer::reset(): Reset completed");
 }
 
 void UwbInitializer::feed_uwb(const double timestamp, const std::vector<UwbData> uwb_measurements)
@@ -168,47 +180,36 @@ bool UwbInitializer::init_anchors()
   // Logging
   logger_->info("UwbInitializer: Performing uwb anchors initialization");
 
-  // Check if position buffer is empty
+  // Clear already existing solutions
+  clear_solutions();
+
+  // If position buffer is empty return false
   if (p_UinG_buffer_.empty())
   {
     logger_->err("UwbInitializer: Initialization FAILED (position buffer is empty)");
     return false;
   }
 
-  // Variable for keeping track if at least one anchor has been correctly initialized
-  bool init_successful = false;
-
   // For each uwb ID extract uwb buffer
   for (const auto& uwb_data : uwb_data_buffer_)
   {
-    // Check if uwb buffer is empty
+    // If uwb buffer is empty return false
     if (uwb_data.second.empty())
     {
       logger_->err("Anchor[" + std::to_string(uwb_data.first) + "]: Initialization FAILED (uwb buffer is empty)");
-      continue;
+      return false;
     }
 
-    // Check if a solution is already present
-    if (ls_sols_.find(uwb_data.first) != ls_sols_.end())
-    {
-      logger_->info("Anchor[" + std::to_string(uwb_data.first) + "]: Already initialized");
-      std::stringstream ss;
-      ss << "Anchor[" << uwb_data.first << "]\n"
-         << "p_AinG = " << ls_sols_.at(uwb_data.first).anchor_.p_AinG_.transpose() << '\n'
-         << "Covariance = \n"
-         << ls_sols_.at(uwb_data.first).cov_ << '\n'
-         << "gamma = " << ls_sols_.at(uwb_data.first).gamma_;
-      logger_->debug(ss.str());
-      init_successful = true;
-      continue;
-    }
-
-    // Initialize solution and covariance
+    // Initialize LS solution and covariance
     Eigen::VectorXd lsSolution;
-    Eigen::MatrixXd cov;
+    Eigen::MatrixXd lsCov;
 
-    // Solve ls problem and initialize anchor
-    if (ls_solver_.solve_ls(uwb_data.second, p_UinG_buffer_, lsSolution, cov))
+    // Initialize NLS solution and covariance
+    Eigen::VectorXd nlsSolution = Eigen::VectorXd::Zero(5);
+    Eigen::MatrixXd nlsCov;
+
+    // Try to solve LS problem
+    if (ls_solver_.solve_ls(uwb_data.second, p_UinG_buffer_, lsSolution, lsCov))
     {
       // Assign values to parameters
       Eigen::Vector3d p_AinG = lsSolution.head(3);
@@ -222,42 +223,81 @@ bool UwbInitializer::init_anchors()
 
       // Initialize anchor and solution
       UwbAnchor new_anchor(uwb_data.first, p_AinG);
-      LSSolution ls_sol(new_anchor, const_bias, cov);
+      LSSolution ls_sol(new_anchor, const_bias, lsCov);
 
       // Add solution to vector
       ls_sols_.emplace(std::make_pair(uwb_data.first, ls_sol));
 
+      // Initial guess (p_AinG, gamma, beta)
+      nlsSolution << ls_sol.anchor_.p_AinG_, ls_sol.gamma_, 1.0;
+
+      logger_->info("Anchor[" + std::to_string(uwb_data.first) + "]: Coarse solution found");
+    }
+    // If LS fails assign empty solution
+    else
+    {
+      logger_->warn("Anchor[" + std::to_string(uwb_data.first) +
+                    "]: Coarse initialization FAILED. Assigning empty "
+                    "solution");
+
+      // Initialize anchor and solution
+      UwbAnchor new_anchor(uwb_data.first, Eigen::Vector3d::Zero());
+      Eigen::MatrixXd cov = 0.1 * Eigen::MatrixXd::Identity(3, 3);
+      LSSolution ls_sol(new_anchor, 0.0, lsCov);
+      ls_sols_.emplace(std::make_pair(uwb_data.first, ls_sol));
+
+      // Initial guess (p_AinG, gamma, beta)
+      nlsSolution << ls_sol.anchor_.p_AinG_, ls_sol.gamma_, 1.0;
+    }
+
+    // Perform nonlinear optimization
+    if (nls_solver_.levenbergMarquardt(uwb_data.second, p_UinG_buffer_, nlsSolution, nlsCov))
+    {
+      // Initialize anchor and solution
+      UwbAnchor new_anchor(uwb_data.first, nlsSolution.head(3));
+      NLSSolution nls_sol(new_anchor, nlsSolution(3), nlsSolution(4), nlsCov);
+
+      // Compute standard deviation
+      Eigen::VectorXd std_dev = nls_sol.cov_.diagonal().cwiseSqrt();
+
+      // Add solution to vector
+      nls_sols_.emplace(std::make_pair(uwb_data.first, nls_sol));
+
+      // Refine successful
       logger_->info("Anchor[" + std::to_string(uwb_data.first) + "]: Correctly initialized");
       std::stringstream ss;
       ss << "Anchor[" << uwb_data.first << "]\n"
-         << "p_AinG = " << ls_sols_.at(uwb_data.first).anchor_.p_AinG_.transpose() << '\n'
+         << "p_AinG = " << nls_sols_.at(uwb_data.first).anchor_.p_AinG_.transpose() << '\n'
          << "Covariance = \n"
-         << ls_sols_.at(uwb_data.first).cov_ << '\n'
-         << "gamma = " << ls_sols_.at(uwb_data.first).gamma_;
+         << nls_sols_.at(uwb_data.first).cov_ << '\n'
+         << "gamma = " << nls_sols_.at(uwb_data.first).gamma_ << '\n'
+         << "beta = " << nls_sols_.at(uwb_data.first).beta_ << '\n'
+         << "Standard deviation = " << std_dev.transpose();
       logger_->debug(ss.str());
-      init_successful = true;
     }
-    // Can not initialize
+    // If NLS fails return false
     else
     {
-      logger_->err("Anchor[" + std::to_string(uwb_data.first) + "]: Can not be initialized");
+      logger_->err("Anchor[" + std::to_string(uwb_data.first) + "]: Initialization FAILED");
+      return false;
     }
   }
 
   // Initialization finished
-  logger_->info("UwbInitializer: Initialization complete");
-  return init_successful;
-}
+  logger_->info("UwbInitializer: Initialization SUCCESSFUL");
+  return true;
+
+}  // namespace uwb_init
 
 bool UwbInitializer::compute_waypoints(const Eigen::Vector3d pos_k)
 {
   // Logging
   logger_->info("UwbInitializer: Calculating optimal waypoints");
 
-  // Check if solution vector is empty
-  if (ls_sols_.empty())
+  // If no anchors have been initialized return false
+  if (nls_sols_.empty())
   {
-    logger_->err("UwbInitializer: Anchors must be initialized before computing optimal waypoints");
+    logger_->err("UwbInitializer: Anchors are not initialized. Perform initialization first");
     return false;
   }
 
@@ -271,9 +311,9 @@ bool UwbInitializer::compute_waypoints(const Eigen::Vector3d pos_k)
   // Construct the map of the uwb anchors (matrix Nx3)
   Eigen::MatrixXd map = Eigen::MatrixXd::Zero(ls_sols_.size(), 3);
   uint idx = 0;
-  for (const auto& ls_sol : ls_sols_)
+  for (const auto& nls_sol : nls_sols_)
   {
-    map.row(idx) << ls_sol.second.anchor_.p_AinG_.transpose();
+    map.row(idx) << nls_sol.second.anchor_.p_AinG_.transpose();
     idx += 1;
   }
 
@@ -315,96 +355,69 @@ bool UwbInitializer::refine_anchors()
   // Logging
   logger_->info("UwbInitializer: Performing anchors refinement");
 
-  // Check if pose buffer is empty
+  // If position buffer is empty return false
   if (p_UinG_buffer_.empty())
   {
     logger_->err("UwbInitializer: Refinement FAILED (position buffer is empty)");
     return false;
   }
 
-  // Variable for keeping track if at least one anchor has been correctly refined
-  bool refine_successful = false;
+  // Clear Refinement solutions
+  refined_sols_.clear();
 
-  // For each uwb ID extract LS solution
-  for (const auto& ls_sol : ls_sols_)
+  // For each uwb ID extract uwb buffer
+  for (const auto& nls_sol : nls_sols_)
   {
-    // Check if uwb buffer is empty
-    if (uwb_data_buffer_.at(ls_sol.first).empty())
+    // If uwb buffer is empty return false
+    if (uwb_data_buffer_.at(nls_sol.first).empty())
     {
-      logger_->err("Anchor[" + std::to_string(ls_sol.first) + "]: Refinement FAILED (uwb buffer is empty)");
-      continue;
+      logger_->err("Anchor[" + std::to_string(nls_sol.first) + "]: Refinement FAILED (uwb buffer is empty)");
+      return false;
     }
 
-    // Check if a solution is already present
-    if (nls_sols_.find(ls_sol.first) != nls_sols_.end())
-    {
-      logger_->info("Anchor[" + std::to_string(ls_sol.first) + "]: Already refined");
-      std::stringstream ss;
-      ss << "Anchor[" << ls_sol.first << "]\n"
-         << "p_AinG = " << nls_sols_.at(ls_sol.first).anchor_.p_AinG_.transpose() << '\n'
-         << "Covariance = \n"
-         << nls_sols_.at(ls_sol.first).cov_ << '\n'
-         << "gamma = " << nls_sols_.at(ls_sol.first).gamma_ << '\n'
-         << "beta = " << nls_sols_.at(ls_sol.first).beta_;
-      logger_->debug(ss.str());
-      refine_successful = true;
-      continue;
-    }
-
-    // Initialize solution and covariance
+    // Initialize NLS solution and covariance
     Eigen::VectorXd theta = Eigen::VectorXd::Zero(5);
     Eigen::MatrixXd cov;
 
-    // Theta0 (p_AinG, gamma, beta)
-    theta << ls_sol.second.anchor_.p_AinG_, ls_sol.second.gamma_, 1.0;
+    // Initial guess (p_AinG, gamma, beta)
+    theta << nls_sol.second.anchor_.p_AinG_, nls_sol.second.gamma_, nls_sol.second.beta_;
 
     // Perform nonlinear optimization
-    if (nls_solver_.levenbergMarquardt(uwb_data_buffer_.at(ls_sol.first), p_UinG_buffer_, theta, cov))
+    if (nls_solver_.levenbergMarquardt(uwb_data_buffer_.at(nls_sol.first), p_UinG_buffer_, theta, cov))
     {
       // Initialize anchor and solution
-      UwbAnchor new_anchor(ls_sol.first, theta.head(3));
-      NLSSolution nls_sol(new_anchor, theta(3), theta(4), cov);
+      UwbAnchor new_anchor(nls_sol.first, theta.head(3));
+      NLSSolution refined_sol(new_anchor, theta(3), theta(4), cov);
 
       // Compute standard deviation
-      Eigen::VectorXd std_dev = nls_sol.cov_.diagonal().cwiseSqrt();
+      Eigen::VectorXd std_dev = refined_sol.cov_.diagonal().cwiseSqrt();
 
       // Add solution to vector
-      nls_sols_.emplace(std::make_pair(ls_sol.first, nls_sol));
+      refined_sols_.emplace(std::make_pair(nls_sol.first, refined_sol));
 
       // Refine successful
-      logger_->info("Anchor[" + std::to_string(ls_sol.first) + "]: Correctly refined");
+      logger_->info("Anchor[" + std::to_string(nls_sol.first) + "]: Correctly refined");
       std::stringstream ss;
-      ss << "Anchor[" << ls_sol.first << "]\n"
-         << "p_AinG = " << nls_sols_.at(ls_sol.first).anchor_.p_AinG_.transpose() << '\n'
+      ss << "Anchor[" << nls_sol.first << "]\n"
+         << "p_AinG = " << refined_sols_.at(nls_sol.first).anchor_.p_AinG_.transpose() << '\n'
          << "Covariance = \n"
-         << nls_sols_.at(ls_sol.first).cov_ << '\n'
-         << "gamma = " << nls_sols_.at(ls_sol.first).gamma_ << '\n'
-         << "beta = " << nls_sols_.at(ls_sol.first).beta_ << '\n'
+         << refined_sols_.at(nls_sol.first).cov_ << '\n'
+         << "gamma = " << refined_sols_.at(nls_sol.first).gamma_ << '\n'
+         << "beta = " << refined_sols_.at(nls_sol.first).beta_ << '\n'
          << "Standard deviation = " << std_dev.transpose();
       logger_->debug(ss.str());
-      refine_successful = true;
     }
-    // Can not refine
+    // If NLS fails return false
     else
     {
-      logger_->err("Anchor[" + std::to_string(ls_sol.first) + "]: Can not be refined");
+      logger_->err("Anchor[" + std::to_string(nls_sol.first) + "]: Refinement FAILED");
+      return false;
     }
   }
 
-  // Refinement complete
-  logger_->info("UwbInitializer: Refinement complete");
-
-  // [TODO] Remove this is temporary,
-  // the situation when we want multiple refinement starting from a previous nonlinear solution needs to be handled
-  // better for example redesigning the whole data structure exploiting polymorphism
-  for (auto& [id, ls] : ls_sols_)
-  {
-    ls.anchor_ = nls_sols_.at(id).anchor_;
-    ls.gamma_ = nls_sols_.at(id).gamma_;
-    ls.cov_ = nls_sols_.at(id).cov_.block(0, 0, 4, 4);
-  }
-
-  return refine_successful;
+  // Refinement finished
+  logger_->info("UwbInitializer: Refinement SUCCESSFUL");
+  return true;
 }
 
 }  // namespace uwb_init
