@@ -11,7 +11,7 @@ int main()
 
   std::shared_ptr<Logger> logger = std::make_shared<Logger>(LoggerLevel::FULL);
   std::unique_ptr<PlannerOptions> options =
-      std::make_unique<PlannerOptions>(10, 10, 3000, 0.5, 0.2, 2, 2, 4, 4, 5, 6, 1);
+      std::make_unique<PlannerOptions>(10, 10, 3000, 0.5, 0.2, 2, 2, 4, 4, 5, 6, 1, 0, 0);
 
   OptWpsGenerator wps_gen(logger, std::move(options));
   Eigen::MatrixXd final_p_optimal = wps_gen.generate_wps(UWBs, p_k);

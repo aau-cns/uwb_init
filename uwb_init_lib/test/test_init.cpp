@@ -35,7 +35,7 @@ int main()
   init_options = std::make_shared<UwbInitOptions>(InitMethod::DOUBLE, BiasType::CONST_BIAS);
   ls_options = std::make_unique<LsSolverOptions>(0.05, 0.1);
   nls_options = std::make_unique<NlsSolverOptions>(1e-2, 10, 1e-6, 1e-6, 1e3);
-  planner_options = std::make_unique<PlannerOptions>(10, 10, 3000, 0.5, 0.2, 2, 2, 4, 4, 5, 6, 1);
+  planner_options = std::make_unique<PlannerOptions>(10, 10, 3000, 0.5, 0.2, 2, 2, 4, 4, 5, 6, 1, 0, 0);
 
   // Test initialization
   UwbInitializer uwb_init(LoggerLevel::FULL, std::move(init_options), std::move(ls_options), std::move(nls_options),
@@ -205,6 +205,7 @@ int main()
   if (uwb_init.init_anchors())
   {
     LSSolutions ls_sols = uwb_init.get_ls_solutions();
+    NLSSolutions nls_sols = uwb_init.get_nls_solutions();
   }
 
   if (uwb_init.compute_waypoints(Eigen::Vector3d::Zero()))
@@ -214,7 +215,7 @@ int main()
 
   if (uwb_init.refine_anchors())
   {
-    NLSSolutions nls_sols = uwb_init.get_nls_solutions();
+    NLSSolutions refined_sols = uwb_init.get_refined_solutions();
   }
 
   return 0;
