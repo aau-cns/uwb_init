@@ -24,14 +24,14 @@
 #include <mission_sequencer/MissionWaypointArray.h>
 #include <ros/ros.h>
 #include <std_srvs/Empty.h>
+#include <uwb_init_ros/UwbAnchor.h>
+#include <uwb_init_ros/UwbAnchorArrayStamped.h>
 
 #include <Eigen/Eigen>
-#include <uwb_init_lib/include/uwb_init.hpp>
+#include <uwb_init.hpp>
 
 #include "options.hpp"
 #include "utilities.hpp"
-#include "uwb_init_ros/UwbAnchor.h"
-#include "uwb_init_ros/UwbAnchorArrayStamped.h"
 
 namespace uwb_init_ros
 {

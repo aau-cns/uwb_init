@@ -49,6 +49,7 @@ struct UwbInitRosOptions
 
   /// Minimum number of anchors required to complete the initialization
   uint min_num_anchors_;
+  bool publish_first_solution_;
 
   /// Position of the UWB module expressed in IMU frame
   Eigen::Vector3d p_UinI_;

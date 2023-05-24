@@ -20,6 +20,7 @@
   <arg name="method"                    default="double" />
   <arg name="bias_type"                 default="constant" />
   <arg name="min_num_anchors"           default="4" />
+  <arg name="publish_first_solution"    default="false" />
   
   <!-- ls solver parameters -->
   <arg name="position_std"              default="0.03" />
@@ -57,7 +58,7 @@
   <arg name="launchprefix"                      default="gdbserver localhost:10000"/>
 
   <!-- MASTER NODE -->
-  <node name="uwb_init" pkg="uwb_init_ros" type="uwb_init" args="" output="screen" respawn="false" launch-prefix="$(arg launchprefix)" if="$(arg enable_gdb)">
+  <node name="uwb_init_ros" pkg="uwb_init_ros" type="uwb_init_ros" args="" output="screen" respawn="false" launch-prefix="$(arg launchprefix)" if="$(arg enable_gdb)">
 
     <!-- topics remaps -->
     <param name="estimated_pose_topic"      type="str"  value="$(arg estimated_pose_topic)" />
@@ -78,6 +79,7 @@
     <param name="method"                    type="str"  value="$(arg method)" />
     <param name="bias_type"                 type="str"  value="$(arg bias_type)" />
     <param name="min_num_anchors"           type="int"  value="$(arg min_num_anchors)" />
+    <param name="publish_first_solution"    type="bool" value="$(arg publish_first_solution)" />
 
     <!-- ls solver parameters -->
     <param name="position_std"              type="double"  value="$(arg position_std)" />
@@ -112,7 +114,7 @@
 
   </node>
 
-  <node name="uwb_init" pkg="uwb_init_ros" type="uwb_init" args="" output="screen" respawn="false" unless="$(arg enable_gdb)">
+  <node name="uwb_init_ros" pkg="uwb_init_ros" type="uwb_init_ros" args="" output="screen" respawn="false" unless="$(arg enable_gdb)">
 
     <!-- topics remaps -->
     <param name="estimated_pose_topic"      type="str"  value="$(arg estimated_pose_topic)" />
@@ -133,6 +135,7 @@
     <param name="method"                    type="str"  value="$(arg method)" />
     <param name="bias_type"                 type="str"  value="$(arg bias_type)" />
     <param name="min_num_anchors"           type="int"  value="$(arg min_num_anchors)" />
+    <param name="publish_first_solution"    type="bool" value="$(arg publish_first_solution)" />
 
     <!-- ls solver parameters -->
     <param name="position_std"              type="double"  value="$(arg position_std)" />
