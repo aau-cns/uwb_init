@@ -106,6 +106,18 @@ private:
   bool callbackServiceRefine(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
 
   /**
+   * @brief Publish anchors
+   * @param sol
+   */
+  void publishAnchors(const uwb_init::NLSSolutions& sol);
+
+  /**
+   * @brief Publish waypoints
+   * @param wps
+   */
+  void publishWaypoints(const uwb_init::Waypoints& wps);
+
+  /**
    * @brief Refine anchors with data collected so far
    *
    * @return true if at least one anchor has been correctly refined

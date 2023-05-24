@@ -162,129 +162,12 @@ bool UwbInitRos::callbackServiceRefine(std_srvs::Empty::Request& req, std_srvs::
   return refineAnchors();
 }
 
-bool UwbInitRos::initializeAnchors()
+void UwbInitRos::publishAnchors(const uwb_init::NLSSolutions& sol)
 {
-  ROS_INFO("Performing anchor inizalization...");
-
-  // Initialize anchors
-  if (!uwb_init_.init_anchors())
-  {
-    ROS_WARN("Initialization of anchor failed. Please collect additional data and repeat.");
-
-    if (!collect_measurements_)
-    {
-      ROS_WARN_STREAM("Call " << options_.service_start_ << " to start collecting measurements.");
-    }
-    return false;
-  }
-
-  // Add a check for the number of anchors initialized and ask if the user wants to continue
-  if (uwb_init_.get_nls_solutions().size() < options_.min_num_anchors_)
-  {
-    ROS_WARN("Number of anchors initialized is less than the minimum required. Please collect additional data and "
-             "repeat.");
-    return false;
-  }
-
-  // Stop collecting measurements
-  ROS_INFO("Anchor initialization completed. Stopping data collection.");
-  collect_measurements_ = false;
-
-  // Display and publish anchors that have been sucessufully initialized
+  // Create message
   uwb_init_ros::UwbAnchorArrayStamped anchors_msg_;
 
-  for (const auto& it : uwb_init_.get_nls_solutions())
-  {
-    ROS_INFO("Anchor [%d]: p_AinG = [%f, %f, %f] | const_bias = %f | dist_bias = %f", it.first,
-             it.second.anchor_.p_AinG_.x(), it.second.anchor_.p_AinG_.y(), it.second.anchor_.p_AinG_.z(),
-             it.second.gamma_, it.second.beta_);
-
-    // Anchor message
-    uwb_init_ros::UwbAnchor anchor;
-    anchor.id = it.first;
-    anchor.position.x = it.second.anchor_.p_AinG_.x();
-    anchor.position.y = it.second.anchor_.p_AinG_.y();
-    anchor.position.z = it.second.anchor_.p_AinG_.z();
-    anchor.gamma = it.second.gamma_;
-    anchor.beta = it.second.beta_;
-
-    // Store covarinace upper simmetric part only
-    int index = 0;
-    for (int i = 0; i < it.second.cov_.rows(); i++)
-    {
-      for (int j = i; j < it.second.cov_.cols(); j++)
-      {
-        anchor.covariance.at(index++) = it.second.cov_(i, j);
-      }
-    }
-
-    anchors_msg_.anchors.push_back(anchor);
-    ++anchors_msg_.header.seq;
-    anchors_msg_.header.stamp = ros::Time::now();
-    anchors_msg_.header.frame_id = "global";
-  }
-
-  // If enabled, publish anchors
-  if (options_.publish_first_solution_)
-  {
-    uwb_anchors_pub_.publish(anchors_msg_);
-  }
-
-  return true;
-}  // namespace uwb_init_ros
-
-bool UwbInitRos::computeWaypoints()
-{
-  ROS_INFO("Computing optimal waypoints...");
-
-  // Compute waypoints passing last registerd UWB tag position
-  if (!uwb_init_.compute_waypoints(p_UinG_))
-  {
-    ROS_WARN("Optimal waipoints computation. Please make sure that the UWB anchors have been correctly initialized.");
-    return false;
-  }
-
-  // Display and publish waypoints
-  mission_sequencer::MissionWaypointArray waypoints_msg_;
-  for (const auto& it : uwb_init_.get_waypoints())
-  {
-    ROS_INFO("Waypoint at [%f, %f, %f]", it.x_, it.y_, it.z_);
-
-    mission_sequencer::MissionWaypoint wp;
-    wp.x = it.x_;
-    wp.y = it.y_;
-    wp.z = it.z_;
-    wp.yaw = options_.wp_yaw_;
-    wp.holdtime = options_.wp_holdtime_;
-    waypoints_msg_.waypoints.push_back(wp);
-  }
-
-  ++waypoints_msg_.header.seq;
-  waypoints_msg_.header.stamp = ros::Time::now();
-  waypoints_msg_.header.frame_id = "local";
-  waypoints_msg_.is_global = false;  // Set to false to use local coordinates
-  waypoints_msg_.action = mission_sequencer::MissionWaypointArray::CLEAR;
-
-  // Publish waypoints
-  waypoints_pub_.publish(waypoints_msg_);
-
-  return true;
-}
-
-bool UwbInitRos::refineAnchors()
-{
-  ROS_INFO("Performing anchor refinement...");
-
-  // Refine anchors
-  if (!uwb_init_.refine_anchors())
-  {
-    ROS_WARN("Refinement of anchor failed. Please collect additional data and repeat.");
-    return false;
-  }
-
-  // Display and publish anchors that have been sucessufully refined
-  uwb_init_ros::UwbAnchorArrayStamped anchors_msg_;
-  for (const auto& it : uwb_init_.get_refined_solutions())
+  for (const auto& it : sol)
   {
     ROS_INFO("Anchor [%d] succesfully refined at [%f, %f, %f]", it.first, it.second.anchor_.p_AinG_.x(),
              it.second.anchor_.p_AinG_.y(), it.second.anchor_.p_AinG_.z());
@@ -316,6 +199,102 @@ bool UwbInitRos::refineAnchors()
 
   // Publish anchors
   uwb_anchors_pub_.publish(anchors_msg_);
+}
+
+void UwbInitRos::publishWaypoints(const uwb_init::Waypoints& wps)
+{
+  // Create message
+  mission_sequencer::MissionWaypointArray waypoints_msg_;
+  for (const auto& it : wps)
+  {
+    ROS_INFO("Waypoint at [%f, %f, %f]", it.x_, it.y_, it.z_);
+
+    mission_sequencer::MissionWaypoint wp;
+    wp.x = it.x_;
+    wp.y = it.y_;
+    wp.z = it.z_;
+    wp.yaw = options_.wp_yaw_;
+    wp.holdtime = options_.wp_holdtime_;
+    waypoints_msg_.waypoints.push_back(wp);
+  }
+
+  ++waypoints_msg_.header.seq;
+  waypoints_msg_.header.stamp = ros::Time::now();
+  waypoints_msg_.header.frame_id = "local";
+  waypoints_msg_.is_global = false;  // Set to false to use local coordinates
+  waypoints_msg_.action = mission_sequencer::MissionWaypointArray::CLEAR;
+
+  // Publish waypoints
+  waypoints_pub_.publish(waypoints_msg_);
+}
+
+bool UwbInitRos::initializeAnchors()
+{
+  ROS_INFO("Performing anchor inizalization...");
+
+  // Initialize anchors
+  if (!uwb_init_.init_anchors())
+  {
+    ROS_WARN("Initialization of anchor failed. Please collect additional data and repeat.");
+
+    if (!collect_measurements_)
+    {
+      ROS_WARN_STREAM("Call " << options_.service_start_ << " to start collecting measurements.");
+    }
+    return false;
+  }
+
+  // Add a check for the number of anchors initialized and ask if the user wants to continue
+  if (uwb_init_.get_nls_solutions().size() < options_.min_num_anchors_)
+  {
+    ROS_WARN("Number of anchors initialized is less than the minimum required. Please collect additional data and "
+             "repeat.");
+    return false;
+  }
+
+  // Stop collecting measurements
+  ROS_INFO("Anchor initialization completed. Stopping data collection.");
+  collect_measurements_ = false;
+
+  // If enabled, publish anchors
+  if (options_.publish_first_solution_)
+  {
+    publishAnchors(uwb_init_.get_nls_solutions());
+  }
+
+  return true;
+}  // namespace uwb_init_ros
+
+bool UwbInitRos::computeWaypoints()
+{
+  ROS_INFO("Computing optimal waypoints...");
+
+  // Compute waypoints passing last registerd UWB tag position
+  if (!uwb_init_.compute_waypoints(p_UinG_))
+  {
+    ROS_WARN("Optimal waipoints computation. Please make sure that the UWB anchors have been correctly initialized.");
+    return false;
+  }
+
+  // Display and publish waypoints
+  publishWaypoints(uwb_init_.get_waypoints());
+
+  return true;
+}
+
+bool UwbInitRos::refineAnchors()
+{
+  ROS_INFO("Performing anchor refinement...");
+
+  // Refine anchors
+  if (!uwb_init_.refine_anchors())
+  {
+    ROS_WARN("Refinement of anchor failed. Please collect additional data and repeat.");
+    return false;
+  }
+
+  // Display and publish anchors that have been sucessufully refined
+  publishAnchors(uwb_init_.get_refined_solutions());
 
   return true;
 }
