@@ -22,6 +22,8 @@
   <arg name="min_num_anchors"           default="4" />
   <arg name="publish_first_solution"    default="true" />
   <arg name="anchors_file_path"         default="$(find uwb_init_ros)/config/uwb_anchors.yaml" />
+  <arg name="frame_id"                  default="global" />
+  <arg name="publish_anchors_tf"        default="true" />
   
   <!-- ls solver parameters -->
   <arg name="position_std"              default="0.03" />
@@ -82,6 +84,8 @@
     <param name="min_num_anchors"           type="int"  value="$(arg min_num_anchors)" />
     <param name="publish_first_solution"    type="bool" value="$(arg publish_first_solution)" />
     <param name="anchors_file_path"         type="str"  value="$(arg anchors_file_path)" />
+    <param name="frame_id"                  type="str"  value="$(arg frame_id)" />
+    <param name="publish_anchors_tf"        type="bool" value="$(arg publish_anchors_tf)" />
 
     <!-- ls solver parameters -->
     <param name="position_std"              type="double"  value="$(arg position_std)" />
@@ -139,6 +143,8 @@
     <param name="min_num_anchors"           type="int"  value="$(arg min_num_anchors)" />
     <param name="publish_first_solution"    type="bool" value="$(arg publish_first_solution)" />
     <param name="anchors_file_path"         type="str"  value="$(arg anchors_file_path)" />
+    <param name="frame_id"                  type="str"  value="$(arg frame_id)" />
+    <param name="publish_anchors_tf"        type="bool" value="$(arg publish_anchors_tf)" />
 
     <!-- ls solver parameters -->
     <param name="position_std"              type="double"  value="$(arg position_std)" />

@@ -162,12 +162,12 @@ bool UwbInitRos::callbackServiceRefine(std_srvs::Empty::Request& req, std_srvs::
   return refineAnchors();
 }
 
-void UwbInitRos::publishAnchors(const uwb_init::NLSSolutions& sol)
+void UwbInitRos::publishAnchors(const uwb_init::NLSSolutions& sols)
 {
   // Create message
   uwb_init_ros::UwbAnchorArrayStamped anchors_msg_;
 
-  for (const auto& it : sol)
+  for (const auto& it : sols)
   {
     ROS_INFO("Anchor [%d] succesfully refined at [%f, %f, %f]", it.first, it.second.anchor_.p_AinG_.x(),
              it.second.anchor_.p_AinG_.y(), it.second.anchor_.p_AinG_.z());
@@ -228,16 +228,16 @@ void UwbInitRos::publishWaypoints(const uwb_init::Waypoints& wps)
   waypoints_pub_.publish(waypoints_msg_);
 }
 
-void UwbInitRos::saveAnchors(const uwb_init::NLSSolutions& sol)
+void UwbInitRos::saveAnchors(const uwb_init::NLSSolutions& sols)
 {
   // Create YAML emitter
   YAML::Emitter emitter;
 
   // Convert sol to vector of pairs
-  std::vector<std::pair<uint, uwb_init::NLSSolution>> solVector(sol.begin(), sol.end());
+  std::vector<std::pair<uint, uwb_init::NLSSolution>> solsVector(sols.begin(), sols.end());
 
   // Sort the vector by the determinant of cov_
-  std::sort(solVector.begin(), solVector.end(),
+  std::sort(solsVector.begin(), solsVector.end(),
             [](const std::pair<uint, uwb_init::NLSSolution>& a, const std::pair<uint, uwb_init::NLSSolution>& b) {
               return a.second.cov_.determinant() < b.second.cov_.determinant();
             });
@@ -248,7 +248,7 @@ void UwbInitRos::saveAnchors(const uwb_init::NLSSolutions& sol)
   // Anchors map
   emitter << YAML::BeginMap;
 
-  for (const auto& it : solVector)
+  for (const auto& it : solsVector)
   {
     emitter << YAML::Key << "anchor" + std::to_string(i);
 
@@ -291,6 +291,12 @@ void UwbInitRos::saveAnchors(const uwb_init::NLSSolutions& sol)
     // End anchor map
     emitter << YAML::EndMap;
 
+    // Publish anchor tf if requested
+    if (options_.publish_anchors_tf_)
+    {
+      publishAnchorTf(it.second.anchor_, "anchor" + std::to_string(i));
+    }
+
     // Increment counter
     i++;
   }
@@ -316,6 +322,20 @@ void UwbInitRos::saveAnchors(const uwb_init::NLSSolutions& sol)
 
   // Close the file
   file.close();
+}
+
+void UwbInitRos::publishAnchorTf(const uwb_init::UwbAnchor& anchor, const std::string& anchor_name)
+{
+  // Create transform
+  tf::StampedTransform anchor_tf;
+  anchor_tf.frame_id_ = options_.frame_id_;
+  anchor_tf.child_frame_id_ = anchor_name;
+  anchor_tf.stamp_ = ros::Time::now();
+  anchor_tf.setOrigin(tf::Vector3(anchor.p_AinG_.x(), anchor.p_AinG_.y(), anchor.p_AinG_.z()));
+  anchor_tf.setRotation(tf::Quaternion(0, 0, 0, 1));
+
+  // Publish transform
+  tf_broadcaster_.sendTransform(anchor_tf);
 }
 
 bool UwbInitRos::initializeAnchors()
