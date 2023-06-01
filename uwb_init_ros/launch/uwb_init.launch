@@ -20,7 +20,8 @@
   <arg name="method"                    default="double" />
   <arg name="bias_type"                 default="constant" />
   <arg name="min_num_anchors"           default="4" />
-  <arg name="publish_first_solution"    default="false" />
+  <arg name="publish_first_solution"    default="true" />
+  <arg name="anchors_file_path"         default="$(find uwb_init_ros)/config/uwb_anchors.yaml" />
   
   <!-- ls solver parameters -->
   <arg name="position_std"              default="0.03" />
@@ -80,6 +81,7 @@
     <param name="bias_type"                 type="str"  value="$(arg bias_type)" />
     <param name="min_num_anchors"           type="int"  value="$(arg min_num_anchors)" />
     <param name="publish_first_solution"    type="bool" value="$(arg publish_first_solution)" />
+    <param name="anchors_file_path"         type="str"  value="$(arg anchors_file_path)" />
 
     <!-- ls solver parameters -->
     <param name="position_std"              type="double"  value="$(arg position_std)" />
@@ -136,6 +138,7 @@
     <param name="bias_type"                 type="str"  value="$(arg bias_type)" />
     <param name="min_num_anchors"           type="int"  value="$(arg min_num_anchors)" />
     <param name="publish_first_solution"    type="bool" value="$(arg publish_first_solution)" />
+    <param name="anchors_file_path"         type="str"  value="$(arg anchors_file_path)" />
 
     <!-- ls solver parameters -->
     <param name="position_std"              type="double"  value="$(arg position_std)" />

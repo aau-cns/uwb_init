@@ -122,6 +122,13 @@ int main(int argc, char** argv)
   // Get publishing options from parameter server
   nh.param<bool>("publish_first_solution", opts.publish_first_solution_, false);
 
+  // Get anchors file path from parameter server
+  if (!nh.getParam("anchors_file_path", opts.anchors_file_path_))
+  {
+    ROS_ERROR("Missing anchors_file_path parameter");
+    std::exit(EXIT_FAILURE);
+  }
+
   // Get LS solver options from parameter server
   double opt_sigma_pos, opt_sigma_mes;
   nh.param<double>("position_std", opt_sigma_pos, 0.05);

@@ -228,6 +228,96 @@ void UwbInitRos::publishWaypoints(const uwb_init::Waypoints& wps)
   waypoints_pub_.publish(waypoints_msg_);
 }
 
+void UwbInitRos::saveAnchors(const uwb_init::NLSSolutions& sol)
+{
+  // Create YAML emitter
+  YAML::Emitter emitter;
+
+  // Convert sol to vector of pairs
+  std::vector<std::pair<uint, uwb_init::NLSSolution>> solVector(sol.begin(), sol.end());
+
+  // Sort the vector by the determinant of cov_
+  std::sort(solVector.begin(), solVector.end(),
+            [](const std::pair<uint, uwb_init::NLSSolution>& a, const std::pair<uint, uwb_init::NLSSolution>& b) {
+              return a.second.cov_.determinant() < b.second.cov_.determinant();
+            });
+
+  // Counter
+  int i = 0;
+
+  // Anchors map
+  emitter << YAML::BeginMap;
+
+  for (const auto& it : solVector)
+  {
+    emitter << YAML::Key << "anchor" + std::to_string(i);
+
+    // Anchor map
+    emitter << YAML::BeginMap;
+    emitter << YAML::Key << "id" << YAML::Value << it.first;
+
+    // Set the "fix" parameter to "true" for the first two anchors
+    if (i < 2)
+    {
+      emitter << YAML::Key << "fix" << YAML::Value << "true";
+    }
+    else
+    {
+      emitter << YAML::Key << "fix" << YAML::Value << "false";
+    }
+
+    // Write p_AinG as a vector
+    emitter << YAML::Key << "p_AinG" << YAML::Value << YAML::Flow << YAML::BeginSeq << it.second.anchor_.p_AinG_.x()
+            << it.second.anchor_.p_AinG_.y() << it.second.anchor_.p_AinG_.z() << YAML::EndSeq;
+
+    // Write bias parameters
+    emitter << YAML::Key << "const_bias" << YAML::Value << it.second.gamma_;
+    emitter << YAML::Key << "dist_bias" << YAML::Value << it.second.beta_ - 1;
+
+    // Write prior p_AinG covariance as the mean of the first 3 elements of the diagonal of cov_
+    double prior_p_AinG_cov =
+        (std::sqrt(it.second.cov_(0, 0)) + std::sqrt(it.second.cov_(1, 1)) + std::sqrt(it.second.cov_(2, 2))) / 3;
+    emitter << YAML::Key << "prior_p_AinG_cov" << YAML::Value << prior_p_AinG_cov;
+
+    // Write prior bias covariance as the last two elements of the diagonal of cov_
+    double prior_const_bias_cov = std::sqrt(it.second.cov_(3, 3));
+    double prior_dist_bias_cov = std::sqrt(it.second.cov_(4, 4));
+    emitter << YAML::Key << "prior_const_bias_cov" << YAML::Value << prior_const_bias_cov;
+    emitter << YAML::Key << "prior_dist_bias_cov" << YAML::Value << prior_dist_bias_cov;
+
+    // Add blank line between anchors in the YAML file
+    emitter << YAML::Newline;
+
+    // End anchor map
+    emitter << YAML::EndMap;
+
+    // Increment counter
+    i++;
+  }
+
+  // End anchors map
+  emitter << YAML::EndMap;
+
+  // Generate YAML file into the options_.anchors_file_path_
+  std::ofstream file(options_.anchors_file_path_);
+
+  // If the file is not open, print an error message and return
+  if (!file.is_open())
+  {
+    ROS_ERROR_STREAM("Unable to open file " << options_.anchors_file_path_);
+    return;
+  }
+
+  // Write the %YAML:1.0 directive directly to the file stream
+  file << "%YAML:1.0\n\n";
+
+  // Write the YAML emitter to the file stream
+  file << emitter.c_str();
+
+  // Close the file
+  file.close();
+}
+
 bool UwbInitRos::initializeAnchors()
 {
   ROS_INFO("Performing anchor inizalization...");
@@ -256,10 +346,11 @@ bool UwbInitRos::initializeAnchors()
   ROS_INFO("Anchor initialization completed. Stopping data collection.");
   collect_measurements_ = false;
 
-  // If enabled, publish anchors
+  // If enabled, publish and save anchors
   if (options_.publish_first_solution_)
   {
     publishAnchors(uwb_init_.get_nls_solutions());
+    saveAnchors(uwb_init_.get_nls_solutions());
   }
 
   return true;
@@ -293,8 +384,9 @@ bool UwbInitRos::refineAnchors()
     return false;
   }
 
-  // Display and publish anchors that have been sucessufully refined
+  // Publish and save refined anchors
   publishAnchors(uwb_init_.get_refined_solutions());
+  saveAnchors(uwb_init_.get_refined_solutions());
 
   return true;
 }

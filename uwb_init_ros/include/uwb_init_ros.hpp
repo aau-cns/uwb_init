@@ -26,8 +26,10 @@
 #include <std_srvs/Empty.h>
 #include <uwb_init_ros/UwbAnchor.h>
 #include <uwb_init_ros/UwbAnchorArrayStamped.h>
+#include <yaml-cpp/yaml.h>
 
 #include <Eigen/Eigen>
+#include <fstream>
 #include <uwb_init.hpp>
 
 #include "options.hpp"
@@ -116,6 +118,12 @@ private:
    * @param wps
    */
   void publishWaypoints(const uwb_init::Waypoints& wps);
+
+  /**
+   * @brief Save anchors to yaml file
+   * @param sol
+   */
+  void saveAnchors(const uwb_init::NLSSolutions& sol);
 
   /**
    * @brief Refine anchors with data collected so far
