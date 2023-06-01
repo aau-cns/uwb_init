@@ -195,6 +195,12 @@ void UwbInitRos::publishAnchors(const uwb_init::NLSSolutions& sols)
     ++anchors_msg_.header.seq;
     anchors_msg_.header.stamp = ros::Time::now();
     anchors_msg_.header.frame_id = "global";
+
+    // Publish anchor tf if requested
+    if (options_.publish_anchors_tf_)
+    {
+      publishAnchorTf(it.second.anchor_, "anchor[" + std::to_string(it.first) + "]");
+    }
   }
 
   // Publish anchors
@@ -290,12 +296,6 @@ void UwbInitRos::saveAnchors(const uwb_init::NLSSolutions& sols)
 
     // End anchor map
     emitter << YAML::EndMap;
-
-    // Publish anchor tf if requested
-    if (options_.publish_anchors_tf_)
-    {
-      publishAnchorTf(it.second.anchor_, "anchor" + std::to_string(i));
-    }
 
     // Increment counter
     i++;
