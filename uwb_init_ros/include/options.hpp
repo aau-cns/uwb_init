@@ -60,6 +60,9 @@ struct UwbInitRosOptions
   double wp_yaw_;
   double wp_holdtime_;
 
+  // Waypoint Options
+  uint wp_nav_type_;  //!< see mission_sequencer::WaypointArrayStamped for further information
+
   /// Constructors (implicitly deleted copy constructor)
   UwbInitRosOptions() = default;
   UwbInitRosOptions(UwbInitRosOptions&&) = default;

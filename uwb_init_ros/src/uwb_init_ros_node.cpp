@@ -96,6 +96,31 @@ int main(int argc, char** argv)
     ROS_INFO("Missing frame_id_waypoint parameter, using %s", opts.frame_id_waypoints_);
   }
 
+  // parse waypoint nav type
+  std::string wp_nav_type_str;
+  if (!nh.getParam("waypoint_nav_type", wp_nav_type_str))
+  {
+    ROS_ERROR("Missing waypoint_nav_type parameter");
+    std::exit(EXIT_FAILURE);
+  }
+  else
+  {
+    if (wp_nav_type_str == "global")
+      opts.wp_nav_type_ = (uint)mission_sequencer::MissionWaypointArray::GLOBAL;
+    else if (wp_nav_type_str == "local")
+      opts.wp_nav_type_ = (uint)mission_sequencer::MissionWaypointArray::LOCAL;
+    else if (wp_nav_type_str == "position" || wp_nav_type_str == "pos" || wp_nav_type_str == "cur_pos")
+      opts.wp_nav_type_ = (uint)mission_sequencer::MissionWaypointArray::CUR_POS;
+    else if (wp_nav_type_str == "pose" || wp_nav_type_str == "cur_pose")
+      opts.wp_nav_type_ = (uint)mission_sequencer::MissionWaypointArray::CUR_POSE;
+    else
+    {
+      ROS_ERROR("Unknown waypoint_nav_type type '%s'.", wp_nav_type_str);
+      ROS_INFO("  Pleas use either 'global', 'local', 'position' (current), or 'pose' (current).", wp_nav_type_str);
+      std::exit(EXIT_FAILURE);
+    }
+  }
+
   // Get init options from parameter server
   std::string method, bias_type;
   nh.param<std::string>("method", method, "double");

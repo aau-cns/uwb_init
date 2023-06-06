@@ -24,6 +24,7 @@
   <arg name="anchors_file_path"         default="$(find uwb_init_ros)/config/uwb_anchors.yaml" /> <!-- path where to save uwb_anchors.yaml -->
   <arg name="frame_id_anchor"           default="global" />
   <arg name="frame_id_waypoint"         default="$(arg frame_id_anchor)" />
+  <arg name="waypoint_nav_type"         default="local" /> <!-- see mission_sequencer msg definition, use local for vision! -->
   <arg name="publish_anchors_tf"        default="true" />
   
   <!-- ls solver parameters -->
@@ -87,6 +88,7 @@
     <param name="anchors_file_path"         type="str"  value="$(arg anchors_file_path)" />
     <param name="frame_id_anchor"           type="str"  value="$(arg frame_id_anchor)" />
     <param name="frame_id_waypoint"         type="str"  value="$(arg frame_id_waypoint)" />
+    <param name="waypoint_nav_type"         type="str"  value="$(arg waypoint_nav_type)" />
     <param name="publish_anchors_tf"        type="bool" value="$(arg publish_anchors_tf)" />
 
     <!-- ls solver parameters -->
@@ -147,6 +149,7 @@
     <param name="anchors_file_path"         type="str"  value="$(arg anchors_file_path)" />
     <param name="frame_id_anchor"           type="str"  value="$(arg frame_id_anchor)" />
     <param name="frame_id_waypoint"         type="str"  value="$(arg frame_id_waypoint)" />
+    <param name="waypoint_nav_type"         type="str"  value="$(arg waypoint_nav_type)" />
     <param name="publish_anchors_tf"        type="bool" value="$(arg publish_anchors_tf)" />
 
     <!-- ls solver parameters -->

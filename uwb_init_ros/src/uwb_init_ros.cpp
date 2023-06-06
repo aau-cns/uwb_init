@@ -227,8 +227,11 @@ void UwbInitRos::publishWaypoints(const uwb_init::Waypoints& wps)
   ++waypoints_msg_.header.seq;
   waypoints_msg_.header.stamp = ros::Time::now();
   waypoints_msg_.header.frame_id = options_.frame_id_waypoints_;
-  waypoints_msg_.is_global = false;  // Set to false to use local coordinates
+  waypoints_msg_.reference = options_.wp_nav_type_;
   waypoints_msg_.action = mission_sequencer::MissionWaypointArray::CLEAR;
+
+  // INFO(scm): is_global is deprecated and will be removed soon, use reference above instead!
+  // waypoints_msg_.is_global = false;  // Set to false to use local coordinates
 
   // Publish waypoints
   waypoints_pub_.publish(waypoints_msg_);
