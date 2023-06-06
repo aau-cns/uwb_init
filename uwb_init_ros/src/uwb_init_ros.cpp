@@ -194,12 +194,12 @@ void UwbInitRos::publishAnchors(const uwb_init::NLSSolutions& sols)
     anchors_msg_.anchors.push_back(anchor);
     ++anchors_msg_.header.seq;
     anchors_msg_.header.stamp = ros::Time::now();
-    anchors_msg_.header.frame_id = "global";
+    anchors_msg_.header.frame_id = options_.frame_id_anchors_;
 
     // Publish anchor tf if requested
     if (options_.publish_anchors_tf_)
     {
-      publishAnchorTf(it.second.anchor_, "anchor[" + std::to_string(it.first) + "]");
+      publishAnchorTf(it.second.anchor_, "anchor_" + std::to_string(it.first));
     }
   }
 
@@ -226,7 +226,7 @@ void UwbInitRos::publishWaypoints(const uwb_init::Waypoints& wps)
 
   ++waypoints_msg_.header.seq;
   waypoints_msg_.header.stamp = ros::Time::now();
-  waypoints_msg_.header.frame_id = "local";
+  waypoints_msg_.header.frame_id = options_.frame_id_waypoints_;
   waypoints_msg_.is_global = false;  // Set to false to use local coordinates
   waypoints_msg_.action = mission_sequencer::MissionWaypointArray::CLEAR;
 
@@ -328,7 +328,7 @@ void UwbInitRos::publishAnchorTf(const uwb_init::UwbAnchor& anchor, const std::s
 {
   // Create transform
   tf::StampedTransform anchor_tf;
-  anchor_tf.frame_id_ = options_.frame_id_;
+  anchor_tf.frame_id_ = options_.frame_id_anchors_;
   anchor_tf.child_frame_id_ = anchor_name;
   anchor_tf.stamp_ = ros::Time::now();
   anchor_tf.setOrigin(tf::Vector3(anchor.p_AinG_.x(), anchor.p_AinG_.y(), anchor.p_AinG_.z()));

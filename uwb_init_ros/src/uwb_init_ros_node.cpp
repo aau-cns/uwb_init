@@ -84,10 +84,16 @@ int main(int argc, char** argv)
   }
 
   // Get frame ids from parameter server
-  if (!nh.getParam("frame_id", opts.frame_id_))
+  if (!nh.getParam("frame_id_anchor", opts.frame_id_anchors_))
   {
-    ROS_ERROR("Missing frame_id parameter");
+    ROS_ERROR("Missing frame_id_anchor parameter");
     std::exit(EXIT_FAILURE);
+  }
+  if (!nh.getParam("frame_id_waypoint", opts.frame_id_waypoints_))
+  {
+    // in case no frame_id for waypoints is given, assume the same frame_id for both
+    opts.frame_id_waypoints_ = opts.frame_id_anchors_;
+    ROS_INFO("Missing frame_id_waypoint parameter, using %s", opts.frame_id_waypoints_);
   }
 
   // Get init options from parameter server

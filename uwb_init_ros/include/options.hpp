@@ -46,7 +46,8 @@ struct UwbInitRosOptions
   std::string service_refine_;
   std::string uwb_anchors_topic_;
   std::string waypoints_topic_;
-  std::string frame_id_;
+  std::string frame_id_anchors_;    //!< frame ID of the anchors, by default global
+  std::string frame_id_waypoints_;  //!< frame ID of the waypoints used, can differ to global if vision flight e.g.
 
   /// Anchors initialization options
   uint min_num_anchors_;
