@@ -24,14 +24,17 @@
 #include <mission_sequencer/MissionWaypointArray.h>
 #include <ros/ros.h>
 #include <std_srvs/Empty.h>
+#include <tf/transform_broadcaster.h>
+#include <uwb_init_ros/UwbAnchor.h>
+#include <uwb_init_ros/UwbAnchorArrayStamped.h>
+#include <yaml-cpp/yaml.h>
 
 #include <Eigen/Eigen>
-#include <uwb_init_lib/include/uwb_init.hpp>
+#include <fstream>
+#include <uwb_init.hpp>
 
 #include "options.hpp"
 #include "utilities.hpp"
-#include "uwb_init_ros/UwbAnchor.h"
-#include "uwb_init_ros/UwbAnchorArrayStamped.h"
 
 namespace uwb_init_ros
 {
@@ -106,6 +109,29 @@ private:
   bool callbackServiceRefine(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
 
   /**
+   * @brief Publish anchors
+   * @param sol
+   */
+  void publishAnchors(const uwb_init::NLSSolutions& sols);
+
+  /**
+   * @brief Publish waypoints
+   * @param wps
+   */
+  void publishWaypoints(const uwb_init::Waypoints& wps);
+
+  /**
+   * @brief Save anchors to yaml file
+   * @param sol
+   */
+  void saveAnchors(const uwb_init::NLSSolutions& sols);
+
+  /**
+   * @brief Publish anchor transform
+   */
+  void publishAnchorTf(const uwb_init::UwbAnchor& anchor, const std::string& anchor_name);
+
+  /**
    * @brief Refine anchors with data collected so far
    *
    * @return true if at least one anchor has been correctly refined
@@ -139,6 +165,9 @@ private:
   /// Publishers
   ros::Publisher uwb_anchors_pub_;
   ros::Publisher waypoints_pub_;
+
+  /// Transform Broadcaster
+  tf::TransformBroadcaster tf_broadcaster_;
 
   /// Options
   UwbInitRosOptions options_;

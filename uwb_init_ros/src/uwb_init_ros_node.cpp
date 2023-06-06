@@ -14,10 +14,6 @@
 // You can contact the author at <alessandro.fornasier@aau.at> and
 // <giulio.delama@aau.at>
 
-#include <ros/ros.h>
-
-#include <Eigen/Eigen>
-
 #include "uwb_init_ros.hpp"
 
 // Main function
@@ -36,6 +32,7 @@ int main(int argc, char** argv)
     ROS_ERROR("Missing estimated_pose_topic parameter");
     std::exit(EXIT_FAILURE);
   }
+
   if (!nh.getParam("uwb_range_topic", opts.uwb_range_topic_))
   {
     ROS_ERROR("Missing uwb_range_topic parameter");
@@ -79,9 +76,17 @@ int main(int argc, char** argv)
     ROS_ERROR("Missing uwb_anchors_topic parameter");
     std::exit(EXIT_FAILURE);
   }
+
   if (!nh.getParam("waypoints_topic", opts.waypoints_topic_))
   {
     ROS_ERROR("Missing waypoints_topic parameter");
+    std::exit(EXIT_FAILURE);
+  }
+
+  // Get frame ids from parameter server
+  if (!nh.getParam("frame_id", opts.frame_id_))
+  {
+    ROS_ERROR("Missing frame_id parameter");
     std::exit(EXIT_FAILURE);
   }
 
@@ -122,6 +127,19 @@ int main(int argc, char** argv)
   int opt_min_num_anchors;
   nh.param<int>("min_num_anchors_", opt_min_num_anchors, 4);
   opts.min_num_anchors_ = uint(opt_min_num_anchors);
+
+  // Get publishing options from parameter server
+  nh.param<bool>("publish_first_solution", opts.publish_first_solution_, false);
+
+  // Get anchors file path from parameter server
+  if (!nh.getParam("anchors_file_path", opts.anchors_file_path_))
+  {
+    ROS_ERROR("Missing anchors_file_path parameter");
+    std::exit(EXIT_FAILURE);
+  }
+
+  // Get publish_anchors_tf option from parameter server
+  nh.param<bool>("publish_anchors_tf", opts.publish_anchors_tf_, true);
 
   // Get LS solver options from parameter server
   double opt_sigma_pos, opt_sigma_mes;

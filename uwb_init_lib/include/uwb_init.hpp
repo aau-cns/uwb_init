@@ -80,6 +80,15 @@ public:
   const NLSSolutions& get_nls_solutions() const;
 
   ///
+  /// \brief Get the refined solution of the nonlinear least square formulation of the
+  /// initialization problem
+  ///
+  /// \return the actual solution of the least square problem as a constant reference
+  /// to NLSSolutions.
+  ///
+  const NLSSolutions& get_refined_solutions() const;
+
+  ///
   /// \brief Get optimal waypoints
   ///
   /// \return the optimal waypoints computed by generate_waypoints as a constant reference
@@ -167,6 +176,7 @@ private:
   // Solutions handling
   LSSolutions ls_sols_;
   NLSSolutions nls_sols_;
+  NLSSolutions refined_sols_;
 
   // Optimal Waypoints
   Waypoints opt_wps_;

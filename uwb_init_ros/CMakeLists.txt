@@ -1,7 +1,52 @@
-cmake_minimum_required(VERSION 3.0.2)
-project(uwb_init_ros)
+cmake_minimum_required(VERSION 3.13)
 
-## Try to compile with newer versions of C++
+project(
+    uwb_init_ros
+    VERSION 1.0
+    DESCRIPTION "Library for automatic, robust, and accurate Ultra-Wide-Band (UWB) anchors initialization"
+    LANGUAGES CXX
+)
+
+#############
+## Library ##
+#############
+
+## Include and set up external libraries
+include(FetchContent)
+
+# Eigen
+FetchContent_Declare(
+    Eigen
+    GIT_REPOSITORY  https://gitlab.com/libeigen/eigen.git
+    GIT_TAG         3.4.0
+    GIT_SHALLOW     TRUE
+    GIT_PROGRESS    TRUE
+)
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+set(EIGEN_BUILD_DOC OFF)
+set(EIGEN_BUILD_PKGCONFIG OFF)
+list(APPEND external Eigen)
+list(APPEND include_dirs ${EIGEN3_INCLUDE_DIR})
+list(APPEND libs Eigen3::Eigen ${EIGEN3_LIBRARIES})
+
+# YamlCPP
+FetchContent_Declare(
+    yaml-cpp
+    GIT_REPOSITORY  https://github.com/jbeder/yaml-cpp.git
+    GIT_TAG         master
+    GIT_SHALLOW     TRUE
+    GIT_PROGRESS    TRUE
+)
+list(APPEND external yaml-cpp)
+list(APPEND include_dirs ${YAML_CPP_INCLUDE_DIR})
+list(APPEND libs yaml-cpp::yaml-cpp ${YAML_CPP_LIBRARIES})
+
+FetchContent_MakeAvailable(${external})
+
+message(STATUS "Eigen:    " ${EIGEN3_VERSION})
+message(STATUS "Yaml-cpp: " ${YAML_CPP})
+
+## Try to compile with C++ 17 (make sure GCC>=7, clang>=5, MSVC>=19.12)
 include(CheckCXXCompilerFlag)
 CHECK_CXX_COMPILER_FLAG("-std=c++17" COMPILER_SUPPORTS_CXX17)
 if(COMPILER_SUPPORTS_CXX17)
@@ -13,36 +58,41 @@ endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 message(STATUS "Set compiler ${CMAKE_CXX_COMPILER}.")
 
-## enforcing cleaner code by adding -Wall and -Werror, the compiler will not ignore warnings anymore
-add_definitions(-Wall -Werror)
+## Define build type, Release by default
+if (NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Release")
+endif()
+message(STATUS "CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE}.")
 
-# Enable compile optimizations
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -fsee -fomit-frame-pointer -fno-signed-zeros -fno-math-errno -funroll-loops")
+# Set CMAKE compile flags
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O3 -fsee -fomit-frame-pointer -fno-signed-zeros -fno-math-errno -funroll-loops -fno-unsafe-math-optimizations")
+set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g3 -Wall -Wextra -Werror -Wuninitialized -Wmaybe-uninitialized -pedantic -fno-omit-frame-pointer -fsanitize=undefined")
+message(STATUS "CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS}.")
 
-## Display compiler flags
-message(STATUS "CMAKE_CXX_FLAGES: ${CMAKE_CXX_FLAGS}")
+
+## List library source files
+list(
+    APPEND lib_sources
+    ../uwb_init_lib/source/uwb_init.cpp
+    ../uwb_init_lib/source/solvers/linear/ls_solver.cpp
+    ../uwb_init_lib/source/solvers/nonlinear/nls_solver.cpp
+    ../uwb_init_lib/source/planners/wps_gen.cpp
+)
+
+## Declare a C++ library
+add_library(uwb_init_lib STATIC ${lib_sources})
+target_link_libraries(uwb_init_lib ${libs})
+
+## Define includes
+list(APPEND include_dirs ../uwb_init_lib/include)
+include_directories(${include_dirs})
+
+#########
+## ROS ##
+#########
 
 ## Find catkin macros and libraries
-## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
-## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp dynamic_reconfigure message_generation std_msgs nav_msgs sensor_msgs geometry_msgs mdek_uwb_driver mission_sequencer)
-
-## System dependencies are found with CMake's conventions
-find_package(Eigen3 3.4 REQUIRED)
-find_package(uwb_init_lib REQUIRED)
-
-## Display packages version
-message(STATUS "EIGEN VERSION: " ${Eigen3_VERSION})
-message(STATUS "uwb_init_lib VERSION: " ${uwb_init_lib_VERSION})
-
-## Uncomment this if the package has a setup.py. This macro ensures
-## modules and global scripts declared therein get installed
-## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
-# catkin_python_setup()
-
-################################################
-## Declare ROS messages, services and actions ##
-################################################
+find_package(catkin REQUIRED COMPONENTS roscpp rosbag tf dynamic_reconfigure message_generation std_msgs nav_msgs sensor_msgs geometry_msgs mdek_uwb_driver mission_sequencer)
 
 ## Generate messages in the 'msg' folder
 add_message_files(DIRECTORY msg
@@ -51,35 +101,11 @@ add_message_files(DIRECTORY msg
     UwbAnchorArrayStamped.msg
 )
 
-## Generate services in the 'srv' folder
-# add_service_files(
-#  DIRECTORY srv
-#  FILES Service1.srv Service2.srv
-# )
-
-## Generate actions in the 'action' folder
-# add_action_files(
-#  DIRECTORY act
-#  FILES Action1.action Action2.action
-# )
-
 ## Generate added messages and services with any dependencies listed here
 generate_messages(
   DEPENDENCIES std_msgs nav_msgs sensor_msgs geometry_msgs
 )
 
-################################################
-## Declare ROS dynamic reconfigure parameters ##
-################################################
-
-## Generate dynamic reconfigure parameters in the 'cfg' folder
-# generate_dynamic_reconfigure_options(
-#  cfg/DynReconf1.cfg cfg/DynReconf2.cfg
-# )
-
-###################################
-## catkin specific configuration ##
-###################################
 ## The catkin_package macro generates cmake config files for your package
 ## Declare things to be passed to dependent projects
 ## INCLUDE_DIRS: uncomment this if your package contains header files
@@ -88,109 +114,22 @@ generate_messages(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-  CATKIN_DEPENDS std_msgs nav_msgs sensor_msgs geometry_msgs mdek_uwb_driver #message_runtime
-  LIBRARIES custom_libraries
-  DEPENDS uwb_init_lib
-)
-
-###########
-## Build ##
-###########
-
-## Specify additional locations of header files
-## Your package locations should be listed before other locations
-include_directories(
-  include 
-  ${catkin_INCLUDE_DIRS} 
-  ${EIGEN3_INCLUDE_DIRS} 
-  /usr/local/include/uwb_init_lib/include/
-)
-
-## List third party libraries used by all binaries
-list(
-  APPEND thirdparty_libraries 
-  ${catkin_LIBRARIES}
+  CATKIN_DEPENDS roscpp rosbag tf std_msgs nav_msgs sensor_msgs geometry_msgs mdek_uwb_driver
+  LIBRARIES uwb_init_lib
 )
 
 ## List custom libraries inside lib folder
 list(
-  APPEND custom_libraries_sources 
+  APPEND ros1_lib_sources
   src/uwb_init_ros.cpp
 )
 
 ## Declare a C++ library
-add_library(custom_libraries SHARED ${custom_libraries_sources})
-add_dependencies(custom_libraries ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_generate_messages_cpp)
+add_library(ros1_lib STATIC ${ros1_lib_sources})
+add_dependencies(ros1_lib ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_generate_messages_cpp)
+target_link_libraries(ros1_lib uwb_init_lib)
+target_include_directories(ros1_lib PUBLIC ${include_dirs} ${catkin_INCLUDE_DIRS} include)
 
 ## Declare a C++ executable
-## With catkin_make all packages are built within a single CMake context
-## The recommended prefix ensures that target names across packages don't collide
-add_executable(${PROJECT_NAME} src/uwb_init_ros_node.cpp ${custom_libraries_sources})
-
-## Rename C++ executable without prefix
-## The above recommended prefix causes long target names, the following renames the
-## target back to the shorter version for ease of user use
-## e.g. "rosrun someones_pkg node" instead of "rosrun someones_pkg someones_pkg_node"
-set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME uwb_init PREFIX "")
-
-## Add cmake target dependencies of the executable
-## same as for the library above
-add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_generate_messages_cpp)
-
-## Specify libraries to link a library or executable target against
-target_link_libraries(${PROJECT_NAME} ${thirdparty_libraries} ${custom_libraries} uwb_init_lib)
-
-#############
-## Install ##
-#############
-
-# all install targets should use catkin DESTINATION variables
-# See http://ros.org/doc/api/catkin/html/adv_user_guide/variables.html
-
-## Mark executable scripts (Python etc.) for installation
-## in contrast to setup.py, you can choose the destination
-# catkin_install_python(PROGRAMS
-#   scripts/my_python_script
-#   DESTINATION \${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
-
-## Mark executables for installation
-## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html
-# install(TARGETS \${PROJECT_NAME}_node
-#   RUNTIME DESTINATION \${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
-
-## Mark libraries for installation
-## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_libraries.html
-# install(TARGETS \${PROJECT_NAME}
-#   ARCHIVE DESTINATION \${CATKIN_PACKAGE_LIB_DESTINATION}
-#   LIBRARY DESTINATION \${CATKIN_PACKAGE_LIB_DESTINATION}
-#   RUNTIME DESTINATION \${CATKIN_GLOBAL_BIN_DESTINATION}
-# )
-
-## Mark cpp header files for installation
-# install(DIRECTORY include/\${PROJECT_NAME}/
-#   DESTINATION \${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-#   FILES_MATCHING PATTERN "*.h"
-#   PATTERN ".svn" EXCLUDE
-# )
-
-## Mark other files for installation (e.g. launch and bag files, etc.)
-# install(FILES
-#   # myfile1
-#   # myfile2
-#   DESTINATION \${CATKIN_PACKAGE_SHARE_DESTINATION}
-# )
-
-#############
-## Testing ##
-#############
-
-## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(\${PROJECT_NAME}-test test/test_tmp_project.cpp)
-# if(TARGET \${PROJECT_NAME}-test)
-#   target_link_libraries(\${PROJECT_NAME}-test \${PROJECT_NAME})
-# endif()
-
-## Add folders to be run by python nosetests
-# catkin_add_nosetests(test)
+add_executable(${PROJECT_NAME} src/uwb_init_ros_node.cpp)
+target_link_libraries(${PROJECT_NAME} ros1_lib ${catkin_LIBRARIES})
