@@ -307,6 +307,19 @@ void UwbInitRos::saveAnchors(const uwb_init::NLSSolutions& sols)
   // End anchors map
   emitter << YAML::EndMap;
 
+  // Check if path to file exists
+  std::filesystem::path filepath = std::filesystem::path(options_.anchors_file_path_).parent_path();
+  if (!std::filesystem::is_directory(filepath))
+  {
+    // create directory
+    ROS_WARN_STREAM("Path to file does not exist, creating " << filepath);
+    if (!std::filesystem::create_directories(filepath))
+    {
+      ROS_ERROR_STREAM("Unable to create path " << filepath);
+      return;
+    }
+  }
+
   // Generate YAML file into the options_.anchors_file_path_
   std::ofstream file(options_.anchors_file_path_);
 
