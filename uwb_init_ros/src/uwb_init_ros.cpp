@@ -111,8 +111,11 @@ void UwbInitRos::callbackUwbRanges(const mdek_uwb_driver::UwbConstPtr& msg)
       uint id;
       sstream >> id;
 
+      // Valid is true if the range is greater than threshold (0.0)
+      double valid = it.distance > 0.0;
+
       // Fill vector
-      data.emplace_back(uwb_init::UwbData(true, it.distance, id));
+      data.emplace_back(uwb_init::UwbData(valid, it.distance, id));
     }
     else
     {
