@@ -54,6 +54,8 @@ struct UwbInitRosOptions
   bool publish_first_solution_;
   std::string anchors_file_path_;
   bool publish_anchors_tf_;
+  double const_bias_prior_cov_;
+  double dist_bias_prior_cov_;
 
   /// Position of the UWB module expressed in IMU frame
   Eigen::Vector3d p_UinI_;

@@ -2,23 +2,23 @@
 <launch>
 
   <!-- topic parameters -->
-  <arg name="estimated_pose_topic"      default="uvio/poseimu" />
-  <arg name="uwb_range_topic"           default="uwb_driver_node/uwb" />
-  <arg name="start_service"             default="uwb_init/start" />
-  <arg name="reset_service"             default="uwb_init/reset" />
-  <arg name="initialization_service"    default="uwb_init/initialize" />
-  <arg name="planner_service"           default="uwb_init/compute_wps" />
-  <arg name="refine_service"            default="uwb_init/refine" />
+  <arg name="estimated_pose_topic"      default="/uvio/poseimu" />
+  <arg name="uwb_range_topic"           default="/uwb_driver_node/uwb" />
+  <arg name="start_service"             default="/uwb_init/start" />
+  <arg name="reset_service"             default="/uwb_init/reset" />
+  <arg name="initialization_service"    default="/uwb_init/initialize" />
+  <arg name="planner_service"           default="/uwb_init/compute_wps" />
+  <arg name="refine_service"            default="/uwb_init/refine" />
   <arg name="logger_level"              default="info" />     <!-- full, info, warning, error, inactive -->
-  <arg name="uwb_anchors_topic"         default="uwb_init/uwb_anchors" />
-  <arg name="waypoints_topic"           default="uwb_init/wps" />
+  <arg name="uwb_anchors_topic"         default="/uwb_init/uwb_anchors" />
+  <arg name="waypoints_topic"           default="/uwb_init/wps" />
 
   <!-- calibration -->
   <arg name="calib_p_UinI"              default="[0.01, -0.01, -0.05]" />
 
   <!-- node parameters -->
-  <arg name="method"                    default="double" />   <!-- single, double -->
-  <arg name="bias_type"                 default="constant" /> <!-- unbiased, constant -->
+  <arg name="method"                    default="double" />   <!-- single, double (suggestion: always use 'double')-->
+  <arg name="bias_type"                 default="unbiased" /> <!-- unbiased, constant, all (suggestion: use 'unbiased' if optimal waypoints are not computed)-->
   <arg name="min_num_anchors"           default="4" />        <!-- expected number of uwb anchors to initialize -->
   <arg name="publish_first_solution"    default="true" />     <!-- publish first solution after initialization without optimal WPs refinement -->
   <arg name="anchors_file_path"         default="$(find uwb_init_ros)/config/uwb_anchors.yaml" /> <!-- path where to save uwb_anchors.yaml -->
@@ -26,6 +26,8 @@
   <arg name="frame_id_waypoint"         default="$(arg frame_id_anchor)" />
   <arg name="waypoint_nav_type"         default="local" /> <!-- see mission_sequencer msg definition, use local for vision! -->
   <arg name="publish_anchors_tf"        default="true" />
+  <arg name="const_bias_proior_cov"     default="0.01" />   <!-- constant bias prior covariance, used if not estimated (unbiased)-->
+  <arg name="dist_bias_proior_cov"      default="0.01" />  <!-- distance bias prior covariance, used if not estimated (unbiased or constant) -->
   
   <!-- ls solver parameters -->
   <arg name="position_std"              default="0.03" />
@@ -90,6 +92,8 @@
     <param name="frame_id_waypoint"         type="str"  value="$(arg frame_id_waypoint)" />
     <param name="waypoint_nav_type"         type="str"  value="$(arg waypoint_nav_type)" />
     <param name="publish_anchors_tf"        type="bool" value="$(arg publish_anchors_tf)" />
+    <param name="const_bias_proior_cov"     type="double"  value="$(arg const_bias_proior_cov)" />
+    <param name="dist_bias_proior_cov"      type="double"  value="$(arg dist_bias_proior_cov)" />
 
     <!-- ls solver parameters -->
     <param name="position_std"              type="double"  value="$(arg position_std)" />
@@ -151,6 +155,8 @@
     <param name="frame_id_waypoint"         type="str"  value="$(arg frame_id_waypoint)" />
     <param name="waypoint_nav_type"         type="str"  value="$(arg waypoint_nav_type)" />
     <param name="publish_anchors_tf"        type="bool" value="$(arg publish_anchors_tf)" />
+    <param name="const_bias_proior_cov"     type="double"  value="$(arg const_bias_proior_cov)" />
+    <param name="dist_bias_proior_cov"      type="double"  value="$(arg dist_bias_proior_cov)" />
 
     <!-- ls solver parameters -->
     <param name="position_std"              type="double"  value="$(arg position_std)" />
