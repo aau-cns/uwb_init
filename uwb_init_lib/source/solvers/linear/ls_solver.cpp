@@ -18,8 +18,6 @@
 // You can contact the authors at <alessandro.fornasier@aau.at> and
 // <giulio.delama@aau.at>
 
-#include <assert.h>
-
 #include "solvers/linear/ls_solver.hpp"
 
 namespace uwb_init
@@ -60,6 +58,11 @@ void LsSolver::configure(const std::shared_ptr<UwbInitOptions>& init_options)
           ls_problem = std::bind(&LsSolver::ls_single_const_bias, this, std::placeholders::_1, std::placeholders::_2,
                                  std::placeholders::_3, std::placeholders::_4, std::placeholders::_5);
           break;
+        // Constant bias measurement model (distance and constant bias)
+        case BiasType::ALL_BIAS:
+          ls_problem = std::bind(&LsSolver::ls_single_const_bias, this, std::placeholders::_1, std::placeholders::_2,
+                                 std::placeholders::_3, std::placeholders::_4, std::placeholders::_5);
+          break;
       }
       break;
     // Double measurements initialization method
@@ -74,6 +77,11 @@ void LsSolver::configure(const std::shared_ptr<UwbInitOptions>& init_options)
         // Constant bias measurement model (distance and constant bias)
         case BiasType::CONST_BIAS:
           ls_problem = std::bind(&LsSolver::ls_double_const_bias, this, std::placeholders::_1, std::placeholders::_2,
+                                 std::placeholders::_3, std::placeholders::_4, std::placeholders::_5);
+          break;
+        // Constant bias measurement model (distance and constant bias)
+        case BiasType::ALL_BIAS:
+          ls_problem = std::bind(&LsSolver::ls_single_const_bias, this, std::placeholders::_1, std::placeholders::_2,
                                  std::placeholders::_3, std::placeholders::_4, std::placeholders::_5);
           break;
       }
