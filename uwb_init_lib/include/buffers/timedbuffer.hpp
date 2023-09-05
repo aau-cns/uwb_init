@@ -61,7 +61,7 @@ public:
    * @brief Return the size of the buffer
    * @return Size of buffer
    */
-  inline const size_t size() const
+  inline size_t size() const
   {
     return buffer_.size();
   }
