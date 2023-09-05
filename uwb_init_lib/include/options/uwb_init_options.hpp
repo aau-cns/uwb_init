@@ -48,7 +48,7 @@ constexpr const char* InitMethodString(InitMethod e)
     default:
       return "InitMethod::UNKNOWN";
   }
-};
+}
 
 ///
 /// \brief The BiasType enum describes the type of biase used in the measurement model
@@ -76,7 +76,7 @@ constexpr const char* BiasTypeString(BiasType e)
     default:
       return "";
   }
-};
+}
 
 ///
 /// \brief The UwbInitOptions struct is an object containing all 'static' parameters used.
