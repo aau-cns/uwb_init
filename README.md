@@ -54,8 +54,9 @@ These software components are needed on your platform to run the ROS node.
     ```[bash]
     cd src
     git clone git@gitlab.aau.at:aau-cns/ros_pkgs/mdek_uwb_driver.git
-    git clone git@gitlab.aau.at:aau-cns/ros_pkgs/amaze_mission_sequencer.git
+    git@github.com:aau-cns/mission_sequencer.git
     git clone git@gitlab.aau.at:aau-cns/ros_pkgs/uwb_init_cpp.git
+    git clone git@gitlab.aau.at:aau-cns/ros_pkgs/uwb_msgs.git
     ```
 
 ### Build

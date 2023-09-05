@@ -4,11 +4,12 @@
   <!-- topic parameters -->
   <arg name="estimated_pose_topic"      default="/uvio/poseimu" />
   <arg name="uwb_range_topic"           default="/uwb_driver_node/uwb" />
-  <arg name="start_service"             default="start" />
-  <arg name="reset_service"             default="reset" />
-  <arg name="initialization_service"    default="initialize" />
-  <arg name="planner_service"           default="compute_wps" />
-  <arg name="refine_service"            default="refine" />
+  <arg name="uwb_twr_topic"             default="/uwb_driver_node/twr" />
+  <arg name="start_service"             default="/uwb_init/start" />
+  <arg name="reset_service"             default="/uwb_init/reset" />
+  <arg name="initialization_service"    default="/uwb_init/initialize" />
+  <arg name="planner_service"           default="/uwb_init/compute_wps" />
+  <arg name="refine_service"            default="/uwb_init/refine" />
   <arg name="logger_level"              default="info" />     <!-- full, info, warning, error, inactive -->
   <arg name="uwb_anchors_topic"         default="uwb_anchors" />
   <arg name="waypoints_topic"           default="wps" />
@@ -76,6 +77,7 @@
     <!-- topics remaps -->
     <param name="estimated_pose_topic"      type="str"  value="$(arg estimated_pose_topic)" />
     <param name="uwb_range_topic"           type="str"  value="$(arg uwb_range_topic)" />
+    <param name="uwb_twr_topic"             type="str"  value="$(arg uwb_twr_topic)" />
     <param name="start_service"             type="str"  value="$(arg start_service)" />
     <param name="reset_service"             type="str"  value="$(arg reset_service)" />
     <param name="initialization_service"    type="str"  value="$(arg initialization_service)" />
@@ -145,6 +147,8 @@
     <!-- topics remaps -->
     <param name="estimated_pose_topic"      type="str"  value="$(arg estimated_pose_topic)" />
     <param name="uwb_range_topic"           type="str"  value="$(arg uwb_range_topic)" />
+    <param name="uwb_twr_topic"             type="str"  value="$(arg uwb_twr_topic)" />
+
     <param name="start_service"             type="str"  value="$(arg start_service)" />
     <param name="reset_service"             type="str"  value="$(arg reset_service)" />
     <param name="initialization_service"    type="str"  value="$(arg initialization_service)" />

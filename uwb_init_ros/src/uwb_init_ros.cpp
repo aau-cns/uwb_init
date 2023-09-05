@@ -27,6 +27,7 @@ UwbInitRos::UwbInitRos(const ros::NodeHandle& nh, UwbInitRosOptions&& options)
   // Subscribers
   estimated_pose_sub_ = nh_.subscribe(options_.estimated_pose_topic_, 1, &UwbInitRos::callbackPoseWithCov, this);
   uwb_range_sub_ = nh_.subscribe(options_.uwb_range_topic_, 1, &UwbInitRos::callbackUwbRanges, this);
+  uwb_twr_sub_ = nh_.subscribe(options_.uwb_twr_topic_, 1, &UwbInitRos::callbackUwbTwoWayRanges, this);
 
   // Publishers
   uwb_anchors_pub_ = nh_.advertise<uwb_init_ros::UwbAnchorArrayStamped>(options_.uwb_anchors_topic_, 1);
@@ -97,35 +98,46 @@ void UwbInitRos::callbackTransform(const geometry_msgs::TransformStamped::ConstP
 
 void UwbInitRos::callbackUwbRanges(const mdek_uwb_driver::UwbConstPtr& msg)
 {
-  // Parse message into correct data structure
-  std::vector<uwb_init::UwbData> data;
-
-  // Fill data
-  for (const auto& it : msg->ranges)
+  // Feed measurements
+  if (collect_measurements_)
   {
-    // Check if the id is valid (contains only numbers)
-    if (!containsChar(it.id))
+    // Parse message into correct data structure
+    std::vector<uwb_init::UwbData> data;
+    // Fill data
+    for (const auto& it : msg->ranges)
     {
-      // Convert id
-      std::stringstream sstream(it.id);
-      uint id;
-      sstream >> id;
+      // Check if the id is valid (contains only numbers)
+      if (!containsChar(it.id))
+      {
+        // Convert id
+        std::stringstream sstream(it.id);
+        uint id;
+        sstream >> id;
 
-      // Valid is true if the range is within the specified range
-      double valid = ((it.distance >= options_.uwb_min_range_) && (it.distance <= options_.uwb_max_range_));
-
-      // Fill vector
-      data.emplace_back(uwb_init::UwbData(valid, it.distance, id));
+        // Valid is true if the range is within the specified range
+        double valid = ((it.distance >= options_.uwb_min_range_) && (it.distance <= options_.uwb_max_range_));
+        // Fill vector
+        data.emplace_back(uwb_init::UwbData(valid, it.distance, id));
+      }
+      else
+      {
+        ROS_WARN("Received UWB message containing characters in the id field. Measurement discarded");
+      }
     }
-    else
-    {
-      ROS_WARN("Received UWB message containing characters in the id field. Measurement discarded");
-    }
+    uwb_init_.feed_uwb(msg->header.stamp.toSec(), data);
   }
+}
 
+void UwbInitRos::callbackUwbTwoWayRanges(const uwb_msgs::TwoWayRangeStampedConstPtr& msg)
+{
   // Feed measurements
   if (collect_measurements_ && !(data.empty()) && (msg->header.stamp.toSec() > 0.0))
   {
+    // Parse message into correct data structure
+    // Valid is true if the range is greater than threshold (0.0)
+    bool valid = (msg->range_raw >= options_.uwb_min_range_) && (msg->range_raw <= options_.uwb_max_range_);
+    std::vector<uwb_init::UwbData> data({ uwb_init::UwbData(valid, msg->range_raw, msg->UWB_ID2) });
+
     uwb_init_.feed_uwb(msg->header.stamp.toSec(), data);
   }
 }

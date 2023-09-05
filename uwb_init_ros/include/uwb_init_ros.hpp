@@ -27,6 +27,7 @@
 #include <tf/transform_broadcaster.h>
 #include <uwb_init_ros/UwbAnchor.h>
 #include <uwb_init_ros/UwbAnchorArrayStamped.h>
+#include <uwb_msgs/TwoWayRangeStamped.h>
 #include <yaml-cpp/yaml.h>
 
 #include <Eigen/Eigen>
@@ -66,6 +67,13 @@ private:
    * @param msg
    */
   void callbackUwbRanges(const mdek_uwb_driver::UwbConstPtr& msg);
+
+  /**
+   * @brief UWB two-way-ranges callback
+   *
+   * @param msg
+   */
+  void callbackUwbTwoWayRanges(const uwb_msgs::TwoWayRangeStampedConstPtr& msg);
 
   /**
    * @brief Starting service callback
@@ -162,6 +170,7 @@ private:
 
   /// Subscribers
   ros::Subscriber uwb_range_sub_;
+  ros::Subscriber uwb_twr_sub_;
   ros::Subscriber estimated_pose_sub_;
 
   /// Publishers

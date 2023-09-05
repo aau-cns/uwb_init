@@ -36,6 +36,7 @@
   <depend>sensor_msgs</depend>
   <depend>dynamic_reconfigure</depend>
   <depend>mdek_uwb_driver</depend>
+  <depend>uwb_msgs</depend>
   <!-- <build_depend>message_generation</build_depend>
   <exec_depend>message_runtime</exec_Depend> -->
 

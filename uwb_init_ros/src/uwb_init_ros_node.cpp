@@ -33,9 +33,20 @@ int main(int argc, char** argv)
     std::exit(EXIT_FAILURE);
   }
 
-  if (!nh.getParam("uwb_range_topic", opts.uwb_range_topic_))
+  // at least one uwb topic needs to be provided:
+  bool uwb_topic_set = false;
+  if (nh.getParam("uwb_range_topic", opts.uwb_range_topic_))
   {
-    ROS_ERROR("Missing uwb_range_topic parameter");
+    uwb_topic_set = true;
+  }
+  if (nh.getParam("uwb_twr_topic", opts.uwb_twr_topic_))
+  {
+    uwb_topic_set = true;
+  }
+
+  if (!uwb_topic_set)
+  {
+    ROS_ERROR("Missing uwb_range_topic or uwb_twr_topic parameter");
     std::exit(EXIT_FAILURE);
   }
 
