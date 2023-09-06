@@ -26,9 +26,16 @@ int main(int argc, char** argv)
   // Instantiate options
   uwb_init_ros::UwbInitRosOptions opts;
 
+  // at least one uwb topic needs to be provided:
+  bool pose_topic_set = false;
   // Get topics to subscribe to from parameter server
-  if (!nh.getParam("estimated_pose_topic", opts.estimated_pose_topic_))
-  {
+  if (nh.getParam("estimated_pose_cov_topic", opts.estimated_pose_cov_topic_)
+      || nh.getParam("estimated_pose_topic", opts.estimated_pose_topic_)
+      || nh.getParam("estimated_transform_topic", opts.estimated_transform_topic_)) {
+    pose_topic_set = true;
+  }
+
+  if (!pose_topic_set) {
     ROS_ERROR("Missing estimated_pose_topic parameter");
     std::exit(EXIT_FAILURE);
   }
@@ -285,6 +292,17 @@ int main(int argc, char** argv)
   Eigen::Vector3d p_UinI(p_ItoU.data());
   opts.p_UinI_ = p_UinI;
   ROS_INFO_STREAM("Calibration p_UinI = " << p_UinI.transpose());
+
+  // Get black list of UWB anchors
+  std::vector<double> uwb_id_black_list_default;
+  nh.param<std::vector<double>>("uwb_id_black_list", uwb_id_black_list_default);
+
+  std::stringstream ss_id;
+  for (auto const& id : uwb_id_black_list_default) {
+    opts.uwb_id_black_list.push_back(static_cast<size_t>(id));
+    ss_id << id << ",";
+  }
+  ROS_INFO_STREAM("UWB IDs on black list: = " << ss_id.str());
 
   // Get waypoint flight options from parameter server
   nh.param<double>("wp_yaw", opts.wp_yaw_, 0.0);

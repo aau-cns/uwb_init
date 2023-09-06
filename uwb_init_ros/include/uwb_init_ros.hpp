@@ -162,6 +162,7 @@ private:
    */
   [[nodiscard]] bool refineAnchors();
 
+  bool uwb_id_on_black_list(size_t const id);
   // Flags
   bool collect_measurements_ = false;
 
@@ -172,6 +173,8 @@ private:
   ros::Subscriber uwb_range_sub_;
   ros::Subscriber uwb_twr_sub_;
   ros::Subscriber estimated_pose_sub_;
+  ros::Subscriber estimated_pose_cov_sub_;
+  ros::Subscriber estimated_transform_sub_;
 
   /// Publishers
   ros::Publisher uwb_anchors_pub_;

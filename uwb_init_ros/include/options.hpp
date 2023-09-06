@@ -37,7 +37,10 @@ struct UwbInitRosOptions
   std::unique_ptr<uwb_init::PlannerOptions> planner_options_ = nullptr;
 
   /// ROS options
-  std::string estimated_pose_topic_;
+  std::string estimated_pose_cov_topic_{""};
+  std::string estimated_pose_topic_{""};
+  std::string estimated_transform_topic_{""};
+
   std::string uwb_range_topic_;
   std::string uwb_twr_topic_;
 
@@ -60,6 +63,10 @@ struct UwbInitRosOptions
 
   /// Position of the UWB module expressed in IMU frame
   Eigen::Vector3d p_UinI_;
+
+  /// IDs that are rejected
+  std::vector<size_t> uwb_id_black_list;
+
   double wp_yaw_;
   double wp_holdtime_;
 

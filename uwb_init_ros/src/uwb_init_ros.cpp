@@ -24,18 +24,29 @@ UwbInitRos::UwbInitRos(const ros::NodeHandle& nh, UwbInitRosOptions&& options)
   , uwb_init_(options_.level_, std::move(options_.init_options_), std::move(options_.ls_solver_options_),
               std::move(options_.nls_solver_options_), std::move(options_.planner_options_))
 {
+  size_t const queue_sz = 10;
   // Subscribers
-  estimated_pose_sub_ = nh_.subscribe(options_.estimated_pose_topic_, 1, &UwbInitRos::callbackPoseWithCov, this);
-  uwb_range_sub_ = nh_.subscribe(options_.uwb_range_topic_, 1, &UwbInitRos::callbackUwbRanges, this);
-  uwb_twr_sub_ = nh_.subscribe(options_.uwb_twr_topic_, 1, &UwbInitRos::callbackUwbTwoWayRanges, this);
+  if (!options_.estimated_pose_cov_topic_.empty()) {
+    estimated_pose_cov_sub_
+      = nh_.subscribe(options_.estimated_pose_cov_topic_, queue_sz, &UwbInitRos::callbackPoseWithCov, this);
+  }
+  if (!options_.estimated_pose_topic_.empty()) {
+    estimated_pose_sub_ = nh_.subscribe(options_.estimated_pose_topic_, queue_sz, &UwbInitRos::callbackPose, this);
+  }
+  if (!options.estimated_transform_topic_.empty()) {
+    estimated_transform_sub_
+      = nh_.subscribe(options_.estimated_transform_topic_, queue_sz, &UwbInitRos::callbackTransform, this);
+  }
+  uwb_range_sub_ = nh_.subscribe(options_.uwb_range_topic_, queue_sz, &UwbInitRos::callbackUwbRanges, this);
+  uwb_twr_sub_ = nh_.subscribe(options_.uwb_twr_topic_, queue_sz, &UwbInitRos::callbackUwbTwoWayRanges, this);
 
   // Publishers
   uwb_anchors_pub_ = nh_.advertise<uwb_init_ros::UwbAnchorArrayStamped>(options_.uwb_anchors_topic_, 1);
   waypoints_pub_ = nh_.advertise<mission_sequencer::MissionWaypointArray>(options_.waypoints_topic_, 1);
 
   // Print topics where we are subscribing to
-  ROS_INFO("Subsribing to %s", estimated_pose_sub_.getTopic().c_str());
-  ROS_INFO("Subsribing to %s", uwb_range_sub_.getTopic().c_str());
+  // ROS_INFO("Subsribing to %s", estimated_pose_cov_sub_.getTopic().c_str());
+  // ROS_INFO("Subsribing to %s", uwb_range_sub_.getTopic().c_str());
 
   // Services
   start_srv_ = nh_.advertiseService(options_.service_start_, &UwbInitRos::callbackServiceStart, this);
@@ -116,8 +127,11 @@ void UwbInitRos::callbackUwbRanges(const mdek_uwb_driver::UwbConstPtr& msg)
 
         // Valid is true if the range is within the specified range
         double valid = ((it.distance >= options_.uwb_min_range_) && (it.distance <= options_.uwb_max_range_));
-        // Fill vector
-        data.emplace_back(uwb_init::UwbData(valid, it.distance, id));
+
+        if (!uwb_id_on_black_list(id)) {
+          // Fill vector
+          data.emplace_back(uwb_init::UwbData(valid, it.distance, id));
+        }
       }
       else
       {
@@ -131,8 +145,7 @@ void UwbInitRos::callbackUwbRanges(const mdek_uwb_driver::UwbConstPtr& msg)
 void UwbInitRos::callbackUwbTwoWayRanges(const uwb_msgs::TwoWayRangeStampedConstPtr& msg)
 {
   // Feed measurements
-  if (collect_measurements_ && !(data.empty()) && (msg->header.stamp.toSec() > 0.0))
-  {
+  if (collect_measurements_ && !uwb_id_on_black_list(msg->UWB_ID2)) {
     // Parse message into correct data structure
     // Valid is true if the range is greater than threshold (0.0)
     bool valid = (msg->range_raw >= options_.uwb_min_range_) && (msg->range_raw <= options_.uwb_max_range_);
@@ -450,6 +463,15 @@ bool UwbInitRos::refineAnchors()
   saveAnchors(uwb_init_.get_refined_solutions());
 
   return true;
+}
+
+bool UwbInitRos::uwb_id_on_black_list(const size_t id) {
+  for (auto const& id_ : options_.uwb_id_black_list) {
+    if (id_ == id) {
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace uwb_init_ros
