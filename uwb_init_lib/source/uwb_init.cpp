@@ -357,7 +357,6 @@ bool UwbInitializer::init_anchors()
 
   // Return true if at least min_num_anchors_ have been initialized
   return true;
-
 }  // namespace uwb_init
 
 bool UwbInitializer::compute_waypoints(const Eigen::Vector3d pos_k)
