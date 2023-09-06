@@ -29,9 +29,13 @@ int main(int argc, char** argv)
   // at least one uwb topic needs to be provided:
   bool pose_topic_set = false;
   // Get topics to subscribe to from parameter server
-  if (nh.getParam("estimated_pose_cov_topic", opts.estimated_pose_cov_topic_)
-      || nh.getParam("estimated_pose_topic", opts.estimated_pose_topic_)
-      || nh.getParam("estimated_transform_topic", opts.estimated_transform_topic_)) {
+  if (nh.getParam("estimated_pose_cov_topic", opts.estimated_pose_cov_topic_)) {
+    pose_topic_set = true;
+  }
+  if (nh.getParam("estimated_pose_topic", opts.estimated_pose_topic_)) {
+    pose_topic_set = true;
+  }
+  if (nh.getParam("estimated_transform_topic", opts.estimated_transform_topic_)) {
     pose_topic_set = true;
   }
 
@@ -111,7 +115,7 @@ int main(int argc, char** argv)
   {
     // in case no frame_id for waypoints is given, assume the same frame_id for both
     opts.frame_id_waypoints_ = opts.frame_id_anchors_;
-    ROS_INFO("Missing frame_id_waypoint parameter, using %s", opts.frame_id_waypoints_);
+    ROS_INFO("Missing frame_id_waypoint parameter, using %s", opts.frame_id_waypoints_.c_str());
   }
 
   // parse waypoint nav type
@@ -133,8 +137,8 @@ int main(int argc, char** argv)
       opts.wp_nav_type_ = (uint)mission_sequencer::MissionWaypointArray::CUR_POSE;
     else
     {
-      ROS_ERROR("Unknown waypoint_nav_type type '%s'.", wp_nav_type_str);
-      ROS_INFO("  Pleas use either 'global', 'local', 'position' (current), or 'pose' (current).", wp_nav_type_str);
+      ROS_ERROR("Unknown waypoint_nav_type type '%s'.", wp_nav_type_str.c_str());
+      ROS_INFO("  Pleas use either 'global', 'local', 'position' (current), or 'pose' (current)");
       std::exit(EXIT_FAILURE);
     }
   }

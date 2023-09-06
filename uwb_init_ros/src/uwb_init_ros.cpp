@@ -29,24 +29,31 @@ UwbInitRos::UwbInitRos(const ros::NodeHandle& nh, UwbInitRosOptions&& options)
   if (!options_.estimated_pose_cov_topic_.empty()) {
     estimated_pose_cov_sub_
       = nh_.subscribe(options_.estimated_pose_cov_topic_, queue_sz, &UwbInitRos::callbackPoseWithCov, this);
+    ROS_INFO("Subsribing to %s", estimated_pose_cov_sub_.getTopic().c_str());
   }
   if (!options_.estimated_pose_topic_.empty()) {
     estimated_pose_sub_ = nh_.subscribe(options_.estimated_pose_topic_, queue_sz, &UwbInitRos::callbackPose, this);
+    ROS_INFO("Subsribing to %s", estimated_pose_sub_.getTopic().c_str());
   }
-  if (!options.estimated_transform_topic_.empty()) {
+  if (!options_.estimated_transform_topic_.empty()) {
     estimated_transform_sub_
       = nh_.subscribe(options_.estimated_transform_topic_, queue_sz, &UwbInitRos::callbackTransform, this);
+    ROS_INFO("Subsribing to %s", estimated_transform_sub_.getTopic().c_str());
   }
-  uwb_range_sub_ = nh_.subscribe(options_.uwb_range_topic_, queue_sz, &UwbInitRos::callbackUwbRanges, this);
-  uwb_twr_sub_ = nh_.subscribe(options_.uwb_twr_topic_, queue_sz, &UwbInitRos::callbackUwbTwoWayRanges, this);
+
+  if (!options_.uwb_range_topic_.empty()) {
+    uwb_range_sub_ = nh_.subscribe(options_.uwb_range_topic_, queue_sz, &UwbInitRos::callbackUwbRanges, this);
+    ROS_INFO("Subsribing to %s", uwb_range_sub_.getTopic().c_str());
+  }
+
+  if (!options_.uwb_twr_topic_.empty()) {
+    uwb_twr_sub_ = nh_.subscribe(options_.uwb_twr_topic_, queue_sz, &UwbInitRos::callbackUwbTwoWayRanges, this);
+    ROS_INFO("Subsribing to %s", uwb_twr_sub_.getTopic().c_str());
+  }
 
   // Publishers
   uwb_anchors_pub_ = nh_.advertise<uwb_init_ros::UwbAnchorArrayStamped>(options_.uwb_anchors_topic_, 1);
   waypoints_pub_ = nh_.advertise<mission_sequencer::MissionWaypointArray>(options_.waypoints_topic_, 1);
-
-  // Print topics where we are subscribing to
-  // ROS_INFO("Subsribing to %s", estimated_pose_cov_sub_.getTopic().c_str());
-  // ROS_INFO("Subsribing to %s", uwb_range_sub_.getTopic().c_str());
 
   // Services
   start_srv_ = nh_.advertiseService(options_.service_start_, &UwbInitRos::callbackServiceStart, this);
@@ -293,8 +300,7 @@ void UwbInitRos::saveAnchors(const uwb_init::NLSSolutions& sols)
   // Anchors map
   emitter << YAML::BeginMap;
 
-  for (const auto& it : solsVector)
-  {
+  for (const auto& it : solsVector) {
     emitter << YAML::Key << "anchor" + std::to_string(i);
 
     // Anchor map
