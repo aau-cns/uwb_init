@@ -117,7 +117,7 @@ generate_messages(
 catkin_package(
   INCLUDE_DIRS include
   CATKIN_DEPENDS roscpp rosbag tf std_msgs nav_msgs sensor_msgs geometry_msgs mdek_uwb_driver
-  LIBRARIES uwb_init_lib
+  LIBRARIES
 )
 
 ## List custom libraries inside lib folder
@@ -135,3 +135,21 @@ target_include_directories(ros1_lib PUBLIC ${include_dirs} ${catkin_INCLUDE_DIRS
 ## Declare a C++ executable
 add_executable(${PROJECT_NAME} src/uwb_init_ros_node.cpp)
 target_link_libraries(${PROJECT_NAME} ros1_lib ${catkin_LIBRARIES})
+
+
+install(TARGETS ${PROJECT_NAME}
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+# Mark cpp header files for installation
+install(DIRECTORY include/
+DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+  FILES_MATCHING PATTERN "*.h*"
+  PATTERN ".svn" EXCLUDE
+)
+install(FILES
+  launch/default.launch
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
+)
