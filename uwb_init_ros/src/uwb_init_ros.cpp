@@ -280,8 +280,7 @@ void UwbInitRos::publishWaypoints(const uwb_init::Waypoints& wps)
   waypoints_pub_.publish(waypoints_msg_);
 }
 
-void UwbInitRos::saveAnchors(const uwb_init::NLSSolutions& sols)
-{
+void UwbInitRos::saveAnchors(const uwb_init::NLSSolutions& sols) {
   // Create YAML emitter
   YAML::Emitter emitter;
 
@@ -424,7 +423,10 @@ bool UwbInitRos::initializeAnchors()
   {
     ROS_INFO("Publishing and saving solution...");
     publishAnchors(uwb_init_.get_nls_solutions());
-    saveAnchors(uwb_init_.get_nls_solutions());
+
+    if (!options_.anchors_file_path_.empty()) {
+      saveAnchors(uwb_init_.get_nls_solutions());
+    }
   }
 
   return true;
@@ -466,7 +468,9 @@ bool UwbInitRos::refineAnchors()
   // Publish and save refined anchors
   ROS_INFO("Publishing and saving refined solution...");
   publishAnchors(uwb_init_.get_refined_solutions());
-  saveAnchors(uwb_init_.get_refined_solutions());
+  if (!options_.anchors_file_path_.empty()) {
+    saveAnchors(uwb_init_.get_refined_solutions());
+  }
 
   return true;
 }
