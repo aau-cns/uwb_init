@@ -214,14 +214,16 @@ bool UwbInitializer::init_anchors()
     Eigen::MatrixXd lsCov;
 
     // Initialize NLS solution and covariance
-    Eigen::VectorXd nlsSolution;
+    Eigen::VectorXd nlsSolution = Eigen::VectorXd::Zero(5);
+    ;
     Eigen::MatrixXd nlsCov;
 
     // Try to solve LS problem
-    if (init_options_->enable_ls_ && ls_solver_.solve_ls(uwb_data.second, p_UinG_buffer_, lsSolution, lsCov))
+    if (init_options_->enable_ls_ && ls_solver_.solve_ls(uwb_data.second, p_UinG_buffer_, lsSolution, lsCov) && lsSolution.size() >= 3)
     {
       // Logging
       logger_->info("Anchor[" + std::to_string(uwb_data.first) + "]: Coarse solution found");
+
 
       // Initialize new anchor
       UwbAnchor new_anchor(uwb_data.first, lsSolution.head(3));
