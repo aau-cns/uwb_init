@@ -63,7 +63,7 @@ public:
   void set_init_method(const InitMethod& method);
 
   ///
-  /// \brief Get solution of the leas square formulation of the initialization problem
+  /// \brief Get solution of the least square formulation of the initialization problem
   ///
   /// \return the actual solution of the least square problem as a constant reference
   /// to LSSolutions.
