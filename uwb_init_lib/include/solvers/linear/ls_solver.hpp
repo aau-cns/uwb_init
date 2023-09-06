@@ -21,6 +21,8 @@
 #ifndef LS_SOLVER_HPP_
 #define LS_SOLVER_HPP_
 
+#include <assert.h>
+
 #include "logger/logger.hpp"
 #include "options/ls_solver_options.hpp"
 #include "options/uwb_init_options.hpp"

@@ -148,9 +148,13 @@ int main(int argc, char** argv)
   {
     opt_bias_type = uwb_init::BiasType::CONST_BIAS;
   }
+  else if (bias_type == "all")
+  {
+    opt_bias_type = uwb_init::BiasType::ALL_BIAS;
+  }
   else
   {
-    ROS_ERROR("Invalid bias type! Please use unbiased or constant");
+    ROS_ERROR("Invalid bias type! Please use unbiased, constant or all");
     std::exit(EXIT_FAILURE);
   }
 
@@ -171,6 +175,11 @@ int main(int argc, char** argv)
 
   // Get publish_anchors_tf option from parameter server
   nh.param<bool>("publish_anchors_tf", opts.publish_anchors_tf_, true);
+
+  // Get biases pror covariances from parameter server
+  double opt_const_bias_prior_cov, opt_dist_bias_prior_cov;
+  nh.param<double>("const_bias_prior_cov", opt_const_bias_prior_cov, 0.01);
+  nh.param<double>("dist_bias_prior_cov", opt_dist_bias_prior_cov, 0.01);
 
   // Get LS solver options from parameter server
   double opt_sigma_pos, opt_sigma_mes;
@@ -259,7 +268,8 @@ int main(int argc, char** argv)
   nh.param<double>("wp_holdtime", opts.wp_holdtime_, 1.0);
 
   // Make options
-  opts.init_options_ = std::make_shared<uwb_init::UwbInitOptions>(opt_init_method, opt_bias_type);
+  opts.init_options_ = std::make_shared<uwb_init::UwbInitOptions>(opt_init_method, opt_bias_type,
+                                                                  opt_const_bias_prior_cov, opt_dist_bias_prior_cov);
   opts.ls_solver_options_ = std::make_unique<uwb_init::LsSolverOptions>(opt_sigma_pos, opt_sigma_mes);
   opts.nls_solver_options_ = std::make_unique<uwb_init::NlsSolverOptions>(opt_lambda, opt_lambda_scale_factor,
                                                                           opt_step_cond, opt_res_cond, opt_max_iter);
