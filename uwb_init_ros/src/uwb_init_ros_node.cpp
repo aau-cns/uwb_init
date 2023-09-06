@@ -197,6 +197,8 @@ int main(int argc, char** argv)
   {
     ROS_ERROR("Missing anchors_file_path parameter");
     std::exit(EXIT_FAILURE);
+  } else {
+    ROS_INFO_STREAM("* anchors_file_path =" << opts.anchors_file_path_);
   }
 
   // Get publish_anchors_tf option from parameter server
@@ -299,14 +301,14 @@ int main(int argc, char** argv)
 
   // Get black list of UWB anchors
   std::vector<double> uwb_id_black_list_default;
-  nh.param<std::vector<double>>("uwb_id_black_list", uwb_id_black_list_default);
+  nh.param<std::vector<double>>("uwb_id_black_list", uwb_id_black_list_default, uwb_id_black_list_default);
 
   std::stringstream ss_id;
   for (auto const& id : uwb_id_black_list_default) {
     opts.uwb_id_black_list.push_back(static_cast<size_t>(id));
     ss_id << id << ",";
   }
-  ROS_INFO_STREAM("UWB IDs on black list: = " << ss_id.str());
+  ROS_INFO_STREAM("UWB IDs on black list: " << ss_id.str());
 
   // Get waypoint flight options from parameter server
   nh.param<double>("wp_yaw", opts.wp_yaw_, 0.0);
