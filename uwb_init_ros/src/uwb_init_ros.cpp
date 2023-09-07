@@ -205,8 +205,7 @@ bool UwbInitRos::callbackServiceRefine(std_srvs::Empty::Request& req, std_srvs::
   return refineAnchors();
 }
 
-void UwbInitRos::publishAnchors(const uwb_init::NLSSolutions& sols)
-{
+void UwbInitRos::publishAnchors(const uwb_init::NLSSolutions& sols) {
   // Create message
   uwb_init_ros::UwbAnchorArrayStamped anchors_msg_;
 
@@ -218,6 +217,7 @@ void UwbInitRos::publishAnchors(const uwb_init::NLSSolutions& sols)
     // Anchor message
     uwb_init_ros::UwbAnchor anchor;
     anchor.id = it.first;
+    anchor.ref_id = it.second.ref_id_;
     anchor.position.x = it.second.anchor_.p_AinG_.x();
     anchor.position.y = it.second.anchor_.p_AinG_.y();
     anchor.position.z = it.second.anchor_.p_AinG_.z();
