@@ -93,20 +93,34 @@ include_directories(${include_dirs})
 ## ROS ##
 #########
 
+set(ros_packages
+  roscpp
+  rosbag
+  tf
+  dynamic_reconfigure
+  std_msgs
+  nav_msgs
+  sensor_msgs
+  geometry_msgs
+  mdek_uwb_driver
+  uwb_msgs
+  mission_sequencer
+)
+
 ## Find catkin macros and libraries
-find_package(catkin REQUIRED COMPONENTS roscpp rosbag tf dynamic_reconfigure message_generation std_msgs nav_msgs sensor_msgs geometry_msgs mdek_uwb_driver uwb_msgs mission_sequencer)
+find_package(catkin REQUIRED COMPONENTS ${ros_packages})
 
 ## Generate messages in the 'msg' folder
-add_message_files(DIRECTORY msg
-    FILES
-    UwbAnchor.msg
-    UwbAnchorArrayStamped.msg
-)
+#add_message_files(DIRECTORY msg
+#    FILES
+#    UwbAnchor.msg
+#    UwbAnchorArrayStamped.msg
+#)
 
 ## Generate added messages and services with any dependencies listed here
-generate_messages(
-  DEPENDENCIES std_msgs nav_msgs sensor_msgs geometry_msgs
-)
+#generate_messages(
+#  DEPENDENCIES std_msgs nav_msgs sensor_msgs geometry_msgs
+#)
 
 ## The catkin_package macro generates cmake config files for your package
 ## Declare things to be passed to dependent projects
@@ -116,7 +130,7 @@ generate_messages(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-  CATKIN_DEPENDS roscpp rosbag tf std_msgs nav_msgs sensor_msgs geometry_msgs mdek_uwb_driver
+  CATKIN_DEPENDS ${ros_packages}
   LIBRARIES
 )
 
@@ -128,7 +142,7 @@ list(
 
 ## Declare a C++ library
 add_library(ros1_lib STATIC ${ros1_lib_sources})
-add_dependencies(ros1_lib ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_generate_messages_cpp)
+add_dependencies(ros1_lib ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(ros1_lib uwb_init_lib)
 target_include_directories(ros1_lib PUBLIC ${include_dirs} ${catkin_INCLUDE_DIRS} include)
 

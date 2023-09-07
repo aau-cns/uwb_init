@@ -52,7 +52,7 @@ UwbInitRos::UwbInitRos(const ros::NodeHandle& nh, UwbInitRosOptions&& options)
   }
 
   // Publishers
-  uwb_anchors_pub_ = nh_.advertise<uwb_init_ros::UwbAnchorArrayStamped>(options_.uwb_anchors_topic_, 1);
+  uwb_anchors_pub_ = nh_.advertise<uwb_msgs::UwbAnchorArrayStamped>(options_.uwb_anchors_topic_, 1);
   waypoints_pub_ = nh_.advertise<mission_sequencer::MissionWaypointArray>(options_.waypoints_topic_, 1);
 
   // Services
@@ -207,7 +207,7 @@ bool UwbInitRos::callbackServiceRefine(std_srvs::Empty::Request& req, std_srvs::
 
 void UwbInitRos::publishAnchors(const uwb_init::NLSSolutions& sols) {
   // Create message
-  uwb_init_ros::UwbAnchorArrayStamped anchors_msg_;
+  uwb_msgs::UwbAnchorArrayStamped anchors_msg_;
 
   for (const auto& it : sols)
   {
@@ -215,7 +215,7 @@ void UwbInitRos::publishAnchors(const uwb_init::NLSSolutions& sols) {
              it.second.anchor_.p_AinG_.y(), it.second.anchor_.p_AinG_.z());
 
     // Anchor message
-    uwb_init_ros::UwbAnchor anchor;
+    uwb_msgs::UwbAnchor anchor;
     anchor.id = it.first;
     anchor.ref_id = it.second.ref_id_;
     anchor.position.x = it.second.anchor_.p_AinG_.x();

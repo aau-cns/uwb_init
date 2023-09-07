@@ -37,6 +37,8 @@
   <depend>dynamic_reconfigure</depend>
   <depend>mdek_uwb_driver</depend>
   <depend>uwb_msgs</depend>
+  <depend>mission_sequencer</depend>
+
   <!-- <build_depend>message_generation</build_depend>
   <exec_depend>message_runtime</exec_Depend> -->
 
