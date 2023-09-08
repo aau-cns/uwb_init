@@ -73,10 +73,11 @@
 
   <!-- debug -->
   <arg name="enable_gdb"                        default="false"/>
-  <arg name="launchprefix"                      default="gdbserver localhost:10000"/>
+  <arg name="launch_prefix_dgb"                  default="gdbserver localhost:10000"/>
+  <arg name="launch_prefix"                      default=""/>
 
   <!-- MASTER NODE -->
-  <node name="uwb_init_ros" pkg="uwb_init_ros" type="uwb_init_ros" args="" output="screen" respawn="false" launch-prefix="$(arg launchprefix)" if="$(arg enable_gdb)">
+  <node name="uwb_init_ros" pkg="uwb_init_ros" type="uwb_init_ros" args="" output="screen" respawn="false" launch-prefix="$(arg launch_prefix_dgb)" if="$(arg enable_gdb)">
 
     <!-- topics remaps -->
     <param name="estimated_pose_cov_topic"  type="str"  value="$(arg estimated_pose_cov_topic)" />
@@ -151,7 +152,7 @@
 
   </node>
 
-  <node name="uwb_init_ros" pkg="uwb_init_ros" type="uwb_init_ros" args="" output="screen" respawn="false" unless="$(arg enable_gdb)">
+  <node name="uwb_init_ros" pkg="uwb_init_ros" type="uwb_init_ros" args="" launch-prefix="$(arg launch_prefix)" output="screen" respawn="false" unless="$(arg enable_gdb)">
 
     <!-- topics remaps -->
     <param name="estimated_pose_cov_topic"  type="str"  value="$(arg estimated_pose_cov_topic)" />
