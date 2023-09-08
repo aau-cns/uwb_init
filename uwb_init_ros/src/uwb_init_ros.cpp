@@ -153,6 +153,7 @@ void UwbInitRos::callbackUwbTwoWayRanges(const uwb_msgs::TwoWayRangeStampedConst
 {
   // Feed measurements
   if (collect_measurements_ && !uwb_id_on_black_list(msg->UWB_ID2)) {
+    options_.uwb_ref_id_ = msg->UWB_ID1;
     // Parse message into correct data structure
     // Valid is true if the range is greater than threshold (0.0)
     bool valid = (msg->range_raw >= options_.uwb_min_range_) && (msg->range_raw <= options_.uwb_max_range_);
@@ -217,7 +218,7 @@ void UwbInitRos::publishAnchors(const uwb_init::NLSSolutions& sols) {
     // Anchor message
     uwb_msgs::UwbAnchor anchor;
     anchor.id = it.first;
-    anchor.ref_id = it.second.ref_id_;
+    anchor.ref_id = options_.uwb_ref_id_;
     anchor.position.x = it.second.anchor_.p_AinG_.x();
     anchor.position.y = it.second.anchor_.p_AinG_.y();
     anchor.position.z = it.second.anchor_.p_AinG_.z();

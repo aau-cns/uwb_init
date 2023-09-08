@@ -60,11 +60,8 @@ struct LSSolution
   /// Covariance of the solution
   Eigen::MatrixXd cov_;
 
-  /// Id of the reference device
-  uint ref_id_;
-
-  LSSolution(const UwbAnchor& anchor, const double& gamma, const Eigen::MatrixXd& cov, uint const ref_id = 0)
-    : anchor_(anchor), gamma_(gamma), ref_id_(ref_id) {
+  LSSolution(const UwbAnchor& anchor, const double& gamma, const Eigen::MatrixXd& cov)
+    : anchor_(anchor), gamma_(gamma) {
     // Check if cov is either 3x3 or 4x4 and if it is semi positive definite
     if (!(cov.rows() == cov.cols() && cov.rows() <= 5 && isSPD(cov)))
     {
@@ -91,12 +88,8 @@ struct NLSSolution
   /// Covariance of the solution
   Eigen::MatrixXd cov_;
 
-  /// Id of the reference device
-  uint ref_id_;
-
-  NLSSolution(const UwbAnchor& anchor, const double& gamma, const double& beta, const Eigen::MatrixXd& cov,
-              uint const ref_id = 0)
-    : anchor_(anchor), gamma_(gamma), beta_(beta), ref_id_(ref_id) {
+  NLSSolution(const UwbAnchor& anchor, const double& gamma, const double& beta, const Eigen::MatrixXd& cov)
+    : anchor_(anchor), gamma_(gamma), beta_(beta) {
     // Check if cov is 5x5 and if it is semi positive definite
     if (!(cov.rows() == 5 && cov.cols() == 5 && isSPD(cov)))
     {
