@@ -30,16 +30,18 @@ list(APPEND include_dirs ${EIGEN3_INCLUDE_DIR})
 list(APPEND libs Eigen3::Eigen ${EIGEN3_LIBRARIES})
 
 # YamlCPP
-FetchContent_Declare(
-    yaml-cpp
-    GIT_REPOSITORY  https://github.com/jbeder/yaml-cpp.git
-    GIT_TAG         master
-    GIT_SHALLOW     TRUE
-    GIT_PROGRESS    TRUE
-)
-list(APPEND external yaml-cpp)
-list(APPEND include_dirs ${YAML_CPP_INCLUDE_DIR})
-list(APPEND libs yaml-cpp::yaml-cpp ${YAML_CPP_LIBRARIES})
+#FetchContent_Declare(
+#    yaml-cpp
+#    GIT_REPOSITORY  https://github.com/jbeder/yaml-cpp.git
+#    GIT_TAG         master
+#    GIT_SHALLOW     TRUE
+#    GIT_PROGRESS    TRUE
+#)
+find_package(yaml-cpp REQUIRED)
+list(APPEND libs yaml-cpp ${YAML_CPP_LIBRARIES})
+#list(APPEND external yaml-cpp)
+#list(APPEND include_dirs ${YAML_CPP_INCLUDE_DIR})
+#list(APPEND libs yaml-cpp::yaml-cpp ${YAML_CPP_LIBRARIES})
 
 FetchContent_MakeAvailable(${external})
 
@@ -65,7 +67,7 @@ endif()
 message(STATUS "CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE}.")
 
 # Set CMAKE compile flags
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O3 -fsee -fomit-frame-pointer -fno-signed-zeros -fno-math-errno -funroll-loops -fno-unsafe-math-optimizations")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O0 -fsee -fomit-frame-pointer -fno-signed-zeros -fno-math-errno -funroll-loops -fno-unsafe-math-optimizations")
 set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g3 -Wall -Wextra -Werror -Wuninitialized -Wmaybe-uninitialized -pedantic -fno-omit-frame-pointer -fsanitize=undefined")
 message(STATUS "CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS}.")
 
