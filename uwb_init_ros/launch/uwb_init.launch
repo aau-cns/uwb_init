@@ -2,16 +2,16 @@
 <launch>
 
   <!-- topic parameters -->
-  <arg name="estimated_pose_topic"      default="/uvio/poseimu" />
-  <arg name="uwb_range_topic"           default="/uwb_driver_node/uwb" />
-  <arg name="start_service"             default="/uwb_init/start" />
-  <arg name="reset_service"             default="/uwb_init/reset" />
-  <arg name="initialization_service"    default="/uwb_init/initialize" />
-  <arg name="planner_service"           default="/uwb_init/compute_wps" />
-  <arg name="refine_service"            default="/uwb_init/refine" />
+  <arg name="estimated_pose_topic"      default="uvio/poseimu" />
+  <arg name="uwb_range_topic"           default="uwb_driver_node/uwb" />
+  <arg name="start_service"             default="uwb_init/start" />
+  <arg name="reset_service"             default="uwb_init/reset" />
+  <arg name="initialization_service"    default="uwb_init/initialize" />
+  <arg name="planner_service"           default="uwb_init/compute_wps" />
+  <arg name="refine_service"            default="uwb_init/refine" />
   <arg name="logger_level"              default="info" />     <!-- full, info, warning, error, inactive -->
-  <arg name="uwb_anchors_topic"         default="/uwb_init/uwb_anchors" />
-  <arg name="waypoints_topic"           default="/uwb_init/wps" />
+  <arg name="uwb_anchors_topic"         default="uwb_init/uwb_anchors" />
+  <arg name="waypoints_topic"           default="uwb_init/wps" />
 
   <!-- calibration -->
   <arg name="calib_p_UinI"              default="[0.01, -0.01, -0.05]" />
