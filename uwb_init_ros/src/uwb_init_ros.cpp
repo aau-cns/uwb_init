@@ -382,7 +382,7 @@ bool UwbInitRos::initializeAnchors()
   }
 
   // Add a check for the number of anchors initialized and ask if the user wants to continue
-  if (uwb_init_.get_nls_solutions().size() < options_.min_num_anchors_)
+  if (uwb_init_.get_nls_solutions().size() < options_.init_options_->min_num_anchors_)
   {
     ROS_WARN("Number of anchors initialized is less than the minimum required. Please collect additional data and "
              "repeat.");

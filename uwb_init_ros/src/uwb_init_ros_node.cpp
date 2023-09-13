@@ -159,9 +159,10 @@ int main(int argc, char** argv)
   }
 
   // Get minimum number of anchors from parameter server
-  int opt_min_num_anchors;
-  nh.param<int>("min_num_anchors_", opt_min_num_anchors, 4);
-  opts.min_num_anchors_ = uint(opt_min_num_anchors);
+  int min_num_anchors;
+  uint opt_min_num_anchors;
+  nh.param<int>("min_num_anchors_", min_num_anchors, 4);
+  opt_min_num_anchors = uint(min_num_anchors);
 
   // Get publishing options from parameter server
   nh.param<bool>("publish_first_solution", opts.publish_first_solution_, false);
@@ -268,8 +269,8 @@ int main(int argc, char** argv)
   nh.param<double>("wp_holdtime", opts.wp_holdtime_, 1.0);
 
   // Make options
-  opts.init_options_ = std::make_shared<uwb_init::UwbInitOptions>(opt_init_method, opt_bias_type,
-                                                                  opt_const_bias_prior_cov, opt_dist_bias_prior_cov);
+  opts.init_options_ = std::make_shared<uwb_init::UwbInitOptions>(
+      opt_init_method, opt_bias_type, opt_const_bias_prior_cov, opt_dist_bias_prior_cov, opt_min_num_anchors);
   opts.ls_solver_options_ = std::make_unique<uwb_init::LsSolverOptions>(opt_sigma_pos, opt_sigma_mes);
   opts.nls_solver_options_ = std::make_unique<uwb_init::NlsSolverOptions>(opt_lambda, opt_lambda_scale_factor,
                                                                           opt_step_cond, opt_res_cond, opt_max_iter);

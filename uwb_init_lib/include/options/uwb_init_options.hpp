@@ -95,12 +95,16 @@ struct UwbInitOptions
   /// distance bias prior covariance
   double dist_bias_prior_cov_;
 
+  /// Minimum number of anchors to use for initialization
+  uint min_num_anchors_;
+
   UwbInitOptions(const InitMethod& method, const BiasType& bias_type, const double const_bias_prior_cov,
-                 const double dist_bias_prior_cov)
+                 const double dist_bias_prior_cov, const uint min_num_anchors)
     : init_method_(method)
     , bias_type_(bias_type)
     , const_bias_prior_cov_(const_bias_prior_cov)
     , dist_bias_prior_cov_(dist_bias_prior_cov)
+    , min_num_anchors_(min_num_anchors)
   {
   }
 

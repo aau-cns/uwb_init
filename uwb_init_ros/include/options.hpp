@@ -50,7 +50,6 @@ struct UwbInitRosOptions
   std::string frame_id_waypoints_;  //!< frame ID of the waypoints used, can differ to global if vision flight e.g.
 
   /// Anchors initialization options
-  uint min_num_anchors_;
   bool publish_first_solution_;
   std::string anchors_file_path_;
   bool publish_anchors_tf_;

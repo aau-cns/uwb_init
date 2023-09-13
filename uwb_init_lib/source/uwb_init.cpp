@@ -183,6 +183,9 @@ bool UwbInitializer::init_anchors()
   // Logging
   logger_->info("UwbInitializer: Performing uwb anchors initialization");
 
+  // Counter for initialized anchors
+  uint init_count = 0;
+
   // Clear already existing solutions
   clear_solutions();
 
@@ -196,11 +199,11 @@ bool UwbInitializer::init_anchors()
   // For each uwb ID extract uwb buffer
   for (const auto& uwb_data : uwb_data_buffer_)
   {
-    // If uwb buffer is empty return false
+    // If uwb buffer is empty try next anchor
     if (uwb_data.second.empty())
     {
-      logger_->err("Anchor[" + std::to_string(uwb_data.first) + "]: Initialization FAILED (uwb buffer is empty)");
-      return false;
+      logger_->warn("Anchor[" + std::to_string(uwb_data.first) + "]: Initialization FAILED (uwb buffer is empty)");
+      continue;
     }
 
     // Initialize LS solution and covariance
@@ -273,6 +276,9 @@ bool UwbInitializer::init_anchors()
     // Perform nonlinear optimization
     if (nls_solver_.levenbergMarquardt(uwb_data.second, p_UinG_buffer_, nlsSolution, nlsCov))
     {
+      // Increase counter
+      init_count += 1;
+
       // Initialize new anchor
       UwbAnchor new_anchor(uwb_data.first, nlsSolution.head(3));
 
@@ -323,14 +329,28 @@ bool UwbInitializer::init_anchors()
     // If NLS fails return false
     else
     {
-      logger_->err("Anchor[" + std::to_string(uwb_data.first) + "]: Initialization FAILED");
-      return false;
+      logger_->warn("Anchor[" + std::to_string(uwb_data.first) + "]: Initialization FAILED");
+      continue;
     }
   }
 
-  // Initialization finished
-  logger_->info("UwbInitializer: Initialization SUCCESSFUL");
-  return true;
+  // Logging initialization results
+  if (init_count == 0)
+  {
+    logger_->err("UwbInitializer: Initialization FAILED (no anchor initialized)");
+  }
+  else if (init_count < init_options_->min_num_anchors_)
+  {
+    logger_->err("UwbInitializer: Initialization FAILED (initialized " + std::to_string(init_count) +
+                 " anchors out of " + std::to_string(init_options_->min_num_anchors_) + "required)");
+  }
+  else
+  {
+    logger_->info("UwbInitializer: Initialization SUCCESSFUL (initialized " + std::to_string(init_count) + " anchors)");
+  }
+
+  // Return true if at least min_num_anchors_ have been initialized
+  return (init_count > init_options_->min_num_anchors_);
 
 }  // namespace uwb_init
 
