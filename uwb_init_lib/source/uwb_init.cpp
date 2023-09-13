@@ -350,7 +350,7 @@ bool UwbInitializer::init_anchors()
   }
 
   // Return true if at least min_num_anchors_ have been initialized
-  return (init_count > init_options_->min_num_anchors_);
+  return (init_count >= init_options_->min_num_anchors_);
 
 }  // namespace uwb_init
 
