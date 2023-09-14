@@ -344,19 +344,19 @@ bool UwbInitializer::init_anchors()
   if (init_count == 0)
   {
     logger_->err("UwbInitializer: Initialization FAILED (no anchor initialized)");
+    return false;
   }
   else if (init_count < init_options_->min_num_anchors_)
   {
     logger_->err("UwbInitializer: Initialization FAILED (initialized " + std::to_string(init_count) +
                  " anchors out of " + std::to_string(init_options_->min_num_anchors_) + "required)");
-  }
-  else
-  {
-    logger_->info("UwbInitializer: Initialization SUCCESSFUL (initialized " + std::to_string(init_count) + " anchors)");
+    return false;
   }
 
+  logger_->info("UwbInitializer: Initialization SUCCESSFUL (initialized " + std::to_string(init_count) + " anchors)");
+
   // Return true if at least min_num_anchors_ have been initialized
-  return (init_count >= init_options_->min_num_anchors_);
+  return true;
 
 }  // namespace uwb_init
 

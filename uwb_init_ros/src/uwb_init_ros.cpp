@@ -111,8 +111,8 @@ void UwbInitRos::callbackUwbRanges(const mdek_uwb_driver::UwbConstPtr& msg)
       uint id;
       sstream >> id;
 
-      // Valid is true if the range is greater than threshold (0.0)
-      double valid = it.distance > 0.0;
+      // Valid is true if the range is within the specified range
+      double valid = ((it.distance >= options_.uwb_min_range_) && (it.distance <= options_.uwb_max_range_));
 
       // Fill vector
       data.emplace_back(uwb_init::UwbData(valid, it.distance, id));
@@ -124,7 +124,7 @@ void UwbInitRos::callbackUwbRanges(const mdek_uwb_driver::UwbConstPtr& msg)
   }
 
   // Feed measurements
-  if (collect_measurements_)
+  if (collect_measurements_ && !(data.empty()) && (msg->header.stamp.toSec() > 0.0))
   {
     uwb_init_.feed_uwb(msg->header.stamp.toSec(), data);
   }
@@ -149,7 +149,11 @@ bool UwbInitRos::callbackServiceReset(std_srvs::Empty::Request& req, std_srvs::E
 
 bool UwbInitRos::callbackServiceInit(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
 {
-  ROS_INFO("Inizialization service called.");
+  // Stop collecting measurements
+  collect_measurements_ = false;
+
+  // Initialize anchors
+  ROS_INFO("Inizialization service called. Stopped data collection.");
   return initializeAnchors();
 }
 
@@ -161,6 +165,10 @@ bool UwbInitRos::callbackServiceWps(std_srvs::Empty::Request& req, std_srvs::Emp
 
 bool UwbInitRos::callbackServiceRefine(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
 {
+  // Stop collecting measurements
+  collect_measurements_ = false;
+
+  // Refine anchors
   ROS_INFO("Refinement service called.");
   return refineAnchors();
 }
@@ -373,21 +381,17 @@ bool UwbInitRos::initializeAnchors()
   if (!uwb_init_.init_anchors())
   {
     ROS_WARN("Initialization of anchor failed. Please collect additional data and repeat.");
-
-    if (!collect_measurements_)
-    {
-      ROS_WARN_STREAM("Call " << options_.service_start_ << " to start collecting measurements.");
-    }
+    ROS_WARN_STREAM("Call " << options_.service_start_ << " to start collecting measurements.");
     return false;
   }
 
   // Stop collecting measurements
-  ROS_INFO("Anchor initialization completed. Stopping data collection.");
-  collect_measurements_ = false;
+  ROS_INFO("Anchors initialization completed.");
 
   // If enabled, publish and save anchors
   if (options_.publish_first_solution_)
   {
+    ROS_INFO("Publishing and saving solution...");
     publishAnchors(uwb_init_.get_nls_solutions());
     saveAnchors(uwb_init_.get_nls_solutions());
   }
@@ -402,12 +406,16 @@ bool UwbInitRos::computeWaypoints()
   // Compute waypoints passing last registerd UWB tag position
   if (!uwb_init_.compute_waypoints(p_UinG_))
   {
-    ROS_WARN("Optimal waipoints computation. Please make sure that the UWB anchors have been correctly initialized.");
+    ROS_WARN("Optimal waipoints computation failed. Please make sure that the UWB anchors have been correctly "
+             "initialized.");
     return false;
   }
 
   // Display and publish waypoints
   publishWaypoints(uwb_init_.get_waypoints());
+
+  // Collect measurements for refinement
+  collect_measurements_ = true;
 
   return true;
 }
@@ -420,10 +428,12 @@ bool UwbInitRos::refineAnchors()
   if (!uwb_init_.refine_anchors())
   {
     ROS_WARN("Refinement of anchor failed. Please collect additional data and repeat.");
+    ROS_WARN_STREAM("Call " << options_.service_start_ << " to start collecting measurements.");
     return false;
   }
 
   // Publish and save refined anchors
+  ROS_INFO("Publishing and saving refined solution...");
   publishAnchors(uwb_init_.get_refined_solutions());
   saveAnchors(uwb_init_.get_refined_solutions());
 
