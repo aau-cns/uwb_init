@@ -323,15 +323,15 @@ bool UwbInitializer::init_anchors()
 
       // Refine successful
       logger_->info("Anchor[" + std::to_string(uwb_data.first) + "]: Correctly initialized");
-      std::stringstream ss;
-      ss << "Anchor[" << uwb_data.first << "]\n"
-         << "p_AinG = " << nls_sols_.at(uwb_data.first).anchor_.p_AinG_.transpose() << '\n'
-         << "Covariance = \n"
-         << nls_sols_.at(uwb_data.first).cov_ << '\n'
-         << "gamma = " << nls_sols_.at(uwb_data.first).gamma_ << '\n'
-         << "beta = " << nls_sols_.at(uwb_data.first).beta_ << '\n'
-         << "Standard deviation = " << std_dev.transpose();
-      logger_->debug(ss.str());
+      // std::stringstream ss;
+      // ss << "Anchor[" << uwb_data.first << "]\n"
+      //    << "p_AinG = " << nls_sols_.at(uwb_data.first).anchor_.p_AinG_.transpose() << '\n'
+      //    << "Covariance = \n"
+      //    << nls_sols_.at(uwb_data.first).cov_ << '\n'
+      //    << "gamma = " << nls_sols_.at(uwb_data.first).gamma_ << '\n'
+      //    << "beta = " << nls_sols_.at(uwb_data.first).beta_ << '\n'
+      //    << "Standard deviation = " << std_dev.transpose();
+      // logger_->debug(ss.str());
     }
     // If NLS fails continue with next anchor
     else
