@@ -177,6 +177,10 @@ int main(int argc, char** argv)
   // Get publish_anchors_tf option from parameter server
   nh.param<bool>("publish_anchors_tf", opts.publish_anchors_tf_, true);
 
+  // Get UWB range options from parameter server
+  nh.param<double>("uwb_min_range", opts.uwb_min_range_, 0.0);
+  nh.param<double>("uwb_max_range", opts.uwb_max_range_, 100.0);
+
   // Get biases pror covariances from parameter server
   double opt_const_bias_prior_cov, opt_dist_bias_prior_cov;
   nh.param<double>("const_bias_prior_cov", opt_const_bias_prior_cov, 0.01);

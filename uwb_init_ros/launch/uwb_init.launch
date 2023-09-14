@@ -28,6 +28,8 @@
   <arg name="publish_anchors_tf"        default="true" />
   <arg name="const_bias_proior_cov"     default="0.01" />   <!-- constant bias prior covariance, used if not estimated (unbiased)-->
   <arg name="dist_bias_proior_cov"      default="0.01" />  <!-- distance bias prior covariance, used if not estimated (unbiased or constant) -->
+  <arg name="uwb_min_range"             default="0.5" />    <!-- minimum uwb range to be considered for initialization -->
+  <arg name="uwb_max_range"             default="30.0" />   <!-- maximum uwb range to be considered for initialization -->
   
   <!-- ls solver parameters -->
   <arg name="position_std"              default="0.03" />
@@ -94,6 +96,8 @@
     <param name="publish_anchors_tf"        type="bool" value="$(arg publish_anchors_tf)" />
     <param name="const_bias_proior_cov"     type="double"  value="$(arg const_bias_proior_cov)" />
     <param name="dist_bias_proior_cov"      type="double"  value="$(arg dist_bias_proior_cov)" />
+    <param name="uwb_min_range"             type="double"  value="$(arg uwb_min_range)" />
+    <param name="uwb_max_range"             type="double"  value="$(arg uwb_max_range)" />
 
     <!-- ls solver parameters -->
     <param name="position_std"              type="double"  value="$(arg position_std)" />
@@ -157,6 +161,8 @@
     <param name="publish_anchors_tf"        type="bool" value="$(arg publish_anchors_tf)" />
     <param name="const_bias_proior_cov"     type="double"  value="$(arg const_bias_proior_cov)" />
     <param name="dist_bias_proior_cov"      type="double"  value="$(arg dist_bias_proior_cov)" />
+    <param name="uwb_min_range"             type="double"  value="$(arg uwb_min_range)" />
+    <param name="uwb_max_range"             type="double"  value="$(arg uwb_max_range)" />
 
     <!-- ls solver parameters -->
     <param name="position_std"              type="double"  value="$(arg position_std)" />
