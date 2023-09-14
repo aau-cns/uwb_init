@@ -199,6 +199,9 @@ bool UwbInitializer::init_anchors()
   // For each uwb ID extract uwb buffer
   for (const auto& uwb_data : uwb_data_buffer_)
   {
+    // Logging
+    logger_->info("Anchor[" + std::to_string(uwb_data.first) + "]: Starting initialization");
+
     // If uwb buffer is empty try next anchor
     if (uwb_data.second.empty())
     {
@@ -217,6 +220,9 @@ bool UwbInitializer::init_anchors()
     // Try to solve LS problem
     if (ls_solver_.solve_ls(uwb_data.second, p_UinG_buffer_, lsSolution, lsCov))
     {
+      // Logging
+      logger_->info("Anchor[" + std::to_string(uwb_data.first) + "]: Coarse solution found");
+
       // Initialize new anchor
       UwbAnchor new_anchor(uwb_data.first, lsSolution.head(3));
 
@@ -239,8 +245,6 @@ bool UwbInitializer::init_anchors()
 
       // Add solution to vector
       ls_sols_.emplace(std::make_pair(uwb_data.first, ls_sol));
-
-      logger_->info("Anchor[" + std::to_string(uwb_data.first) + "]: Coarse solution found");
     }
     else
     {
@@ -276,6 +280,9 @@ bool UwbInitializer::init_anchors()
     // Perform nonlinear optimization
     if (nls_solver_.levenbergMarquardt(uwb_data.second, p_UinG_buffer_, nlsSolution, nlsCov))
     {
+      // Logging
+      logger_->info("Anchor[" + std::to_string(uwb_data.first) + "]: Solutiuon refined");
+
       // Increase counter
       init_count += 1;
 
@@ -326,11 +333,10 @@ bool UwbInitializer::init_anchors()
          << "Standard deviation = " << std_dev.transpose();
       logger_->debug(ss.str());
     }
-    // If NLS fails return false
+    // If NLS fails continue with next anchor
     else
     {
       logger_->warn("Anchor[" + std::to_string(uwb_data.first) + "]: Initialization FAILED");
-      continue;
     }
   }
 
