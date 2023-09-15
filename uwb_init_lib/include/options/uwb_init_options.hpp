@@ -98,13 +98,22 @@ struct UwbInitOptions
   /// Minimum number of anchors to use for initialization
   uint min_num_anchors_;
 
+  // Enable LS computation
+  bool enable_ls_;
+
+  // Compute covariance
+  bool compute_covariance_;
+
   UwbInitOptions(const InitMethod& method, const BiasType& bias_type, const double const_bias_prior_cov,
-                 const double dist_bias_prior_cov, const uint min_num_anchors)
+                 const double dist_bias_prior_cov, const uint min_num_anchors, const bool enable_ls,
+                 const bool compute_covariance)
     : init_method_(method)
     , bias_type_(bias_type)
     , const_bias_prior_cov_(const_bias_prior_cov)
     , dist_bias_prior_cov_(dist_bias_prior_cov)
     , min_num_anchors_(min_num_anchors)
+    , enable_ls_(enable_ls)
+    , compute_covariance_(compute_covariance)
   {
   }
 

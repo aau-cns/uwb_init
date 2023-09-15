@@ -34,7 +34,11 @@ struct LsSolverOptions
   /// uwb uncertainty (default suggested value: 0.1)
   double sigma_meas_;
 
-  LsSolverOptions(const double& sigma_pos, const double& sigma_meas) : sigma_pos_(sigma_pos), sigma_meas_(sigma_meas)
+  /// check covariancee is SPD
+  bool check_cov_;
+
+  LsSolverOptions(const double& sigma_pos, const double& sigma_meas, const bool check_cov)
+    : sigma_pos_(sigma_pos), sigma_meas_(sigma_meas), check_cov_(check_cov)
   {
   }
 

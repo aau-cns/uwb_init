@@ -30,10 +30,13 @@
   <arg name="dist_bias_proior_cov"      default="0.01" />  <!-- distance bias prior covariance, used if not estimated (unbiased or constant) -->
   <arg name="uwb_min_range"             default="0.5" />    <!-- minimum uwb range to be considered for initialization -->
   <arg name="uwb_max_range"             default="30.0" />   <!-- maximum uwb range to be considered for initialization -->
+  <arg name="enable_ls"                 default="false" />  <!-- enable LS computation (may introduce errors if bad initialization data) -->
+  <arg name="compute_covariance"        default="false" />  <!-- compute covariance of the solutions (TODO not implemented yet!!!) -->
   
   <!-- ls solver parameters -->
   <arg name="position_std"              default="0.03" />
   <arg name="uwb_range_std"             default="0.2" />
+  <arg name="check_ls_cov_spd"          default="false" />  <!-- check Semi-Positive Definite covariance of the LS solutions -->  
 
   <!-- nls solver parameters -->
   <arg name="levenberg_marquardt_lambda"    default="0.001" />
@@ -41,6 +44,7 @@
   <arg name="step_norm_stop_condition"      default="0.000001" />
   <arg name="residual_mse_stop_condition"   default="0.000001" />
   <arg name="max_iterations"            		default="1000" />
+  <arg name="check_nls_cov_spd"             default="false" />  <!-- check Semi-Positive Definite covariance of the NLS solutions -->  
 
   <!-- waypoint generator parameters -->
   <arg name="cell_len"                          default="10" />
@@ -98,10 +102,13 @@
     <param name="dist_bias_proior_cov"      type="double"  value="$(arg dist_bias_proior_cov)" />
     <param name="uwb_min_range"             type="double"  value="$(arg uwb_min_range)" />
     <param name="uwb_max_range"             type="double"  value="$(arg uwb_max_range)" />
+    <param name="enable_ls"                 type="bool" value="$(arg enable_ls)" />
+    <param name="compute_covariance"        type="bool" value="$(arg compute_covariance)" />
 
     <!-- ls solver parameters -->
     <param name="position_std"              type="double"  value="$(arg position_std)" />
     <param name="uwb_range_std"             type="double"  value="$(arg uwb_range_std)" />
+    <param name="check_ls_cov_spd"          type="bool"  value="$(arg check_ls_cov_spd)" />
 
     <!-- nls solver parameters -->
     <param name="levenberg_marquardt_lambda"        type="double"   value="$(arg levenberg_marquardt_lambda)" />
@@ -109,6 +116,7 @@
     <param name="step_norm_stop_condition"          type="double"   value="$(arg step_norm_stop_condition)" />
     <param name="residual_mse_stop_condition"       type="double"   value="$(arg residual_mse_stop_condition)" />
     <param name="max_iterations"                    type="int"      value="$(arg max_iterations)" />
+    <param name="check_nls_cov_spd"                 type="bool"     value="$(arg check_nls_cov_spd)" />
 
     <!-- waypoint generation parameters -->
     <param name="cell_len"                          type="int"      value="$(arg cell_len)" />
@@ -163,10 +171,13 @@
     <param name="dist_bias_proior_cov"      type="double"  value="$(arg dist_bias_proior_cov)" />
     <param name="uwb_min_range"             type="double"  value="$(arg uwb_min_range)" />
     <param name="uwb_max_range"             type="double"  value="$(arg uwb_max_range)" />
+    <param name="enable_ls"                 type="bool" value="$(arg enable_ls)" />
+    <param name="compute_covariance"        type="bool" value="$(arg compute_covariance)" />
 
     <!-- ls solver parameters -->
     <param name="position_std"              type="double"  value="$(arg position_std)" />
     <param name="uwb_range_std"             type="double"  value="$(arg uwb_range_std)" />
+    <param name="check_ls_cov_spd"          type="bool"  value="$(arg check_ls_cov_spd)" />
 
     <!-- nls solver parameters -->
     <param name="levenberg_marquardt_lambda"        type="double"   value="$(arg levenberg_marquardt_lambda)" />
@@ -174,6 +185,7 @@
     <param name="step_norm_stop_condition"          type="double"   value="$(arg step_norm_stop_condition)" />
     <param name="residual_mse_stop_condition"       type="double"   value="$(arg residual_mse_stop_condition)" />
     <param name="max_iterations"                    type="int"      value="$(arg max_iterations)" />
+    <param name="check_nls_cov_spd"                 type="bool"     value="$(arg check_nls_cov_spd)" />
 
     <!-- waypoint generation parameters -->
     <param name="cell_len"                          type="int"      value="$(arg cell_len)" />

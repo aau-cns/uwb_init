@@ -141,7 +141,7 @@ bool LsSolver::solve_ls(const TimedBuffer<UwbData>& uwb_data, const PositionBuff
         svd.matrixV().transpose();
 
   // If covariance matrix is not semi-positive-definite return
-  if (!isSPD(cov))
+  if (solver_options_->check_cov_ && !isSPD(cov))
   {
     logger_->err("LsSolver: Covariance matrix is not SPD");
     return false;

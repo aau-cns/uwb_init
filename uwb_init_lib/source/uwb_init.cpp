@@ -218,7 +218,7 @@ bool UwbInitializer::init_anchors()
     Eigen::MatrixXd nlsCov;
 
     // Try to solve LS problem
-    if (ls_solver_.solve_ls(uwb_data.second, p_UinG_buffer_, lsSolution, lsCov))
+    if (init_options_->enable_ls_ && ls_solver_.solve_ls(uwb_data.second, p_UinG_buffer_, lsSolution, lsCov))
     {
       // Logging
       logger_->info("Anchor[" + std::to_string(uwb_data.first) + "]: Coarse solution found");
