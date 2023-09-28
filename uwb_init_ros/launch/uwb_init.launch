@@ -2,8 +2,8 @@
 <launch>
 
   <!-- topic parameters -->
-  <arg name="estimated_pose_topic"      default="uvio/poseimu" />
-  <arg name="uwb_range_topic"           default="uwb_driver_node/uwb" />
+  <arg name="estimated_pose_topic"      default="/uvio/poseimu" />
+  <arg name="uwb_range_topic"           default="/uwb_driver_node/uwb" />
   <arg name="start_service"             default="start" />
   <arg name="reset_service"             default="reset" />
   <arg name="initialization_service"    default="initialize" />
