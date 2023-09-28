@@ -30,18 +30,18 @@ list(APPEND include_dirs ${EIGEN3_INCLUDE_DIR})
 list(APPEND libs Eigen3::Eigen ${EIGEN3_LIBRARIES})
 
 # YamlCPP
-#FetchContent_Declare(
-#    yaml-cpp
-#    GIT_REPOSITORY  https://github.com/jbeder/yaml-cpp.git
-#    GIT_TAG         master
-#    GIT_SHALLOW     TRUE
-#    GIT_PROGRESS    TRUE
-#)
-find_package(yaml-cpp REQUIRED)
-list(APPEND libs yaml-cpp ${YAML_CPP_LIBRARIES})
-#list(APPEND external yaml-cpp)
-#list(APPEND include_dirs ${YAML_CPP_INCLUDE_DIR})
-#list(APPEND libs yaml-cpp::yaml-cpp ${YAML_CPP_LIBRARIES})
+FetchContent_Declare(
+    yaml-cpp
+    GIT_REPOSITORY  https://github.com/jbeder/yaml-cpp.git
+    GIT_TAG         master
+    GIT_SHALLOW     TRUE
+    GIT_PROGRESS    TRUE
+)
+list(APPEND external yaml-cpp)
+list(APPEND include_dirs ${YAML_CPP_INCLUDE_DIR})
+list(APPEND libs yaml-cpp::yaml-cpp ${YAML_CPP_LIBRARIES})
+#find_package(yaml-cpp REQUIRED)
+#list(APPEND libs yaml-cpp ${YAML_CPP_LIBRARIES})
 
 FetchContent_MakeAvailable(${external})
 
