@@ -2,16 +2,16 @@
 <launch>
 
   <!-- topic parameters -->
-  <arg name="estimated_pose_topic"      default="uvio/poseimu" />
-  <arg name="uwb_range_topic"           default="uwb_driver_node/uwb" />
-  <arg name="start_service"             default="uwb_init/start" />
-  <arg name="reset_service"             default="uwb_init/reset" />
-  <arg name="initialization_service"    default="uwb_init/initialize" />
-  <arg name="planner_service"           default="uwb_init/compute_wps" />
-  <arg name="refine_service"            default="uwb_init/refine" />
+  <arg name="estimated_pose_topic"      default="/uvio/poseimu" />
+  <arg name="uwb_range_topic"           default="/uwb_driver_node/uwb" />
+  <arg name="start_service"             default="start" />
+  <arg name="reset_service"             default="reset" />
+  <arg name="initialization_service"    default="initialize" />
+  <arg name="planner_service"           default="compute_wps" />
+  <arg name="refine_service"            default="refine" />
   <arg name="logger_level"              default="info" />     <!-- full, info, warning, error, inactive -->
-  <arg name="uwb_anchors_topic"         default="uwb_init/uwb_anchors" />
-  <arg name="waypoints_topic"           default="uwb_init/wps" />
+  <arg name="uwb_anchors_topic"         default="uwb_anchors" />
+  <arg name="waypoints_topic"           default="wps" />
 
   <!-- calibration -->
   <arg name="calib_p_UinI"              default="[0.01, -0.01, -0.05]" />
@@ -30,13 +30,13 @@
   <arg name="dist_bias_proior_cov"      default="0.01" />  <!-- distance bias prior covariance, used if not estimated (unbiased or constant) -->
   <arg name="uwb_min_range"             default="0.5" />    <!-- minimum uwb range to be considered for initialization -->
   <arg name="uwb_max_range"             default="30.0" />   <!-- maximum uwb range to be considered for initialization -->
-  <arg name="enable_ls"                 default="false" />  <!-- enable LS computation (may introduce errors if bad initialization data) -->
-  <arg name="compute_covariance"        default="false" />  <!-- compute covariance of the solutions (TODO not implemented yet!!!) -->
+  <arg name="enable_ls"                 default="true" />  <!-- enable/disable LS computation -->
+  <arg name="compute_covariance"        default="true" />  <!-- enable/disable covariance computation (TODO not implemented yet!!! => true) -->
   
   <!-- ls solver parameters -->
   <arg name="position_std"              default="0.03" />
   <arg name="uwb_range_std"             default="0.2" />
-  <arg name="check_ls_cov_spd"          default="false" />  <!-- check Semi-Positive Definite covariance of the LS solutions -->  
+  <arg name="check_ls_cov_spd"          default="true" />  <!-- enable/disable check for Semi-Positive Definite covariance of the LS solutions -->  
 
   <!-- nls solver parameters -->
   <arg name="levenberg_marquardt_lambda"    default="0.001" />
@@ -44,7 +44,7 @@
   <arg name="step_norm_stop_condition"      default="0.000001" />
   <arg name="residual_mse_stop_condition"   default="0.000001" />
   <arg name="max_iterations"            		default="1000" />
-  <arg name="check_nls_cov_spd"             default="false" />  <!-- check Semi-Positive Definite covariance of the NLS solutions -->  
+  <arg name="check_nls_cov_spd"             default="true" />  <!-- enable/disable check for Semi-Positive Definite covariance of the NLS solutions -->   
 
   <!-- waypoint generator parameters -->
   <arg name="cell_len"                          default="10" />
