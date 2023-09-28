@@ -76,6 +76,7 @@ void UwbInitRos::callbackPose(const geometry_msgs::PoseStamped::ConstPtr& msg)
   // Feed p_UinG
   if (collect_measurements_)
   {
+    std::scoped_lock lock{mtx_service_};
     uwb_init_.feed_position(msg->header.stamp.toSec(), p_UinG_);
   }
 }
@@ -93,6 +94,7 @@ void UwbInitRos::callbackPoseWithCov(const geometry_msgs::PoseWithCovarianceStam
   // Feed p_UinG
   if (collect_measurements_)
   {
+    std::scoped_lock lock{mtx_service_};
     uwb_init_.feed_position(msg->header.stamp.toSec(), p_UinG_);
   }
 }
@@ -110,6 +112,7 @@ void UwbInitRos::callbackTransform(const geometry_msgs::TransformStamped::ConstP
   // Feed p_UinG
   if (collect_measurements_)
   {
+    std::scoped_lock lock{mtx_service_};
     uwb_init_.feed_position(msg->header.stamp.toSec(), p_UinG_);
   }
 }
@@ -145,12 +148,14 @@ void UwbInitRos::callbackUwbRanges(const mdek_uwb_driver::UwbConstPtr& msg)
         ROS_WARN("Received UWB message containing characters in the id field. Measurement discarded");
       }
     }
+    std::scoped_lock lock{mtx_service_};
     uwb_init_.feed_uwb(msg->header.stamp.toSec(), data);
   }
 }
 
 void UwbInitRos::callbackUwbTwoWayRanges(const uwb_msgs::TwoWayRangeStampedConstPtr& msg)
 {
+  std::scoped_lock lock{mtx_service_};
   // Feed measurements
   if (collect_measurements_ && !uwb_id_on_black_list(msg->UWB_ID2)) {
     options_.uwb_ref_id_ = msg->UWB_ID1;
@@ -165,6 +170,7 @@ void UwbInitRos::callbackUwbTwoWayRanges(const uwb_msgs::TwoWayRangeStampedConst
 
 bool UwbInitRos::callbackServiceStart(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
 {
+  std::scoped_lock lock{mtx_service_};
   ROS_INFO("Start service called.");
   // Clear buffers at each start
   uwb_init_.clear_buffers();
@@ -174,6 +180,7 @@ bool UwbInitRos::callbackServiceStart(std_srvs::Empty::Request& req, std_srvs::E
 
 bool UwbInitRos::callbackServiceReset(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
 {
+  std::scoped_lock lock{mtx_service_};
   ROS_INFO("Reset service called.");
   uwb_init_.reset();
   collect_measurements_ = false;
@@ -182,6 +189,7 @@ bool UwbInitRos::callbackServiceReset(std_srvs::Empty::Request& req, std_srvs::E
 
 bool UwbInitRos::callbackServiceInit(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
 {
+  std::scoped_lock lock{mtx_service_};
   // Stop collecting measurements
   collect_measurements_ = false;
 
@@ -192,12 +200,14 @@ bool UwbInitRos::callbackServiceInit(std_srvs::Empty::Request& req, std_srvs::Em
 
 bool UwbInitRos::callbackServiceWps(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
 {
+  std::scoped_lock lock{mtx_service_};
   ROS_INFO("Waypoints generation service called.");
   return computeWaypoints();
 }
 
 bool UwbInitRos::callbackServiceRefine(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
 {
+  std::scoped_lock lock{mtx_service_};
   // Stop collecting measurements
   collect_measurements_ = false;
 

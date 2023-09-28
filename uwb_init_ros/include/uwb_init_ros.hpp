@@ -34,6 +34,7 @@
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <mutex>
 #include <uwb_init.hpp>
 
 #include "options.hpp"
@@ -192,6 +193,8 @@ private:
   ros::ServiceServer init_srv_;
   ros::ServiceServer wps_srv_;
   ros::ServiceServer refine_srv_;
+
+  std::mutex mtx_service_;
 
   /// UWB initializer
   uwb_init::UwbInitializer uwb_init_;
