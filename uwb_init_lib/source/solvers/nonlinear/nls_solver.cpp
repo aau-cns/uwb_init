@@ -85,13 +85,34 @@ bool NlsSolver::levenbergMarquardt(const TimedBuffer<UwbData>& uwb_data, const P
     // Compute Jacobian and residual
     for (uint j = 0; j < J.rows(); ++j)
     {
-      // Jacobian [df/dp_AinG, df/dgamma, df/dbeta]
-      J.row(j) << theta(4) * (theta(0) - pose_vec(j, 0)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
-          theta(4) * (theta(1) - pose_vec(j, 1)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
-          theta(4) * (theta(2) - pose_vec(j, 2)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(), 1,
-          (theta.head(3).transpose() - pose_vec.row(j)).norm();
-      // Residual res = y - f(theta) =  uwb_meas - (beta * ||p_AinG - p_UinG|| + gamma)
-      res(j) = uwb_vec(j) - (theta(4) * (theta.head(3).transpose() - pose_vec.row(j)).norm() + theta(3));
+      if (theta.size() == 5)
+      {
+        // Jacobian [df/dp_AinG, df/dgamma, df/dbeta]
+        J.row(j) << theta(4) * (theta(0) - pose_vec(j, 0)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
+            theta(4) * (theta(1) - pose_vec(j, 1)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
+            theta(4) * (theta(2) - pose_vec(j, 2)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(), 1,
+            (theta.head(3).transpose() - pose_vec.row(j)).norm();
+        // Residual res = y - f(theta) =  uwb_meas - (beta * ||p_AinG - p_UinG|| + gamma)
+        res(j) = uwb_vec(j) - (theta(4) * (theta.head(3).transpose() - pose_vec.row(j)).norm() + theta(3));
+      }
+      else if (theta.size() == 4)
+      {
+        // Jacobian [df/dp_AinG, df/dgamma]
+        J.row(j) << (theta(0) - pose_vec(j, 0)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
+            (theta(1) - pose_vec(j, 1)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
+            (theta(2) - pose_vec(j, 2)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(), 1;
+        // Residual res = y - f(theta) =  uwb_meas - (||p_AinG - p_UinG|| + gamma)
+        res(j) = uwb_vec(j) - ((theta.head(3).transpose() - pose_vec.row(j)).norm() + theta(3));
+      }
+      else if (theta.size() == 3)
+      {
+        // Jacobian [df/dp_AinG]
+        J.row(j) << (theta(0) - pose_vec(j, 0)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
+            (theta(1) - pose_vec(j, 1)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
+            (theta(2) - pose_vec(j, 2)) / (theta.head(3).transpose() - pose_vec.row(j)).norm();
+        // Residual res = y - f(theta) =  uwb_meas - ||p_AinG - p_UinG||
+        res(j) = uwb_vec(j) - (theta.head(3).transpose() - pose_vec.row(j)).norm();
+      }
     }
 
     // Calculate Moore-Penrose Pseudo-Inverse of matrix J
@@ -127,8 +148,13 @@ bool NlsSolver::levenbergMarquardt(const TimedBuffer<UwbData>& uwb_data, const P
       // Compute new residual
       for (uint j = 0; j < res_new.size(); ++j)
       {
-        res_new(j) =
-            uwb_vec(j) - (theta_tmp(4) * (theta_tmp.head(3).transpose() - pose_vec.row(j)).norm() + theta_tmp(3));
+        if (theta.size() == 5)
+          res_new(j) =
+              uwb_vec(j) - (theta_tmp(4) * (theta_tmp.head(3).transpose() - pose_vec.row(j)).norm() + theta_tmp(3));
+        else if (theta.size() == 4)
+          res_new(j) = uwb_vec(j) - ((theta_tmp.head(3).transpose() - pose_vec.row(j)).norm() + theta_tmp(3));
+        else if (theta.size() == 3)
+          res_new(j) = uwb_vec(j) - ((theta_tmp.head(3).transpose() - pose_vec.row(j)).norm());
       }
 
       // If residual decreases, update lambda and theta, and break
@@ -188,7 +214,7 @@ bool NlsSolver::levenbergMarquardt(const TimedBuffer<UwbData>& uwb_data, const P
   }
 
   // If covariance matrix is not semi-positive-definite return
-  if (!isSPD(cov))
+  if (solver_options_->check_cov_ && !isSPD(cov))
   {
     logger_->err("NlsSolver::levenbergMarquardt(): Covariance matrix is not SPD");
     return false;

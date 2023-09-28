@@ -57,6 +57,7 @@ enum class BiasType
 {
   NO_BIAS,     //!< use no bias for initialization, i.e. position only
   CONST_BIAS,  //!< only use constant bias and position in initialization
+  ALL_BIAS,    //!< use constant and distance bias in initialization
 };
 
 ///
@@ -70,6 +71,8 @@ constexpr const char* BiasTypeString(BiasType e)
       return "BiasType::NO_BIAS";
     case BiasType::CONST_BIAS:
       return "BiasType::CONST_BIAS";
+    case BiasType::ALL_BIAS:
+      return "BiasType::ALL_BIAS";
     default:
       return "";
   }
@@ -86,7 +89,31 @@ struct UwbInitOptions
   /// determines the type of bias used in the measurement model, to be estimated during the initialization routine
   BiasType bias_type_;
 
-  UwbInitOptions(const InitMethod& method, const BiasType& bias_type) : init_method_(method), bias_type_(bias_type)
+  /// constant bias prior covariance
+  double const_bias_prior_cov_;
+
+  /// distance bias prior covariance
+  double dist_bias_prior_cov_;
+
+  /// Minimum number of anchors to use for initialization
+  uint min_num_anchors_;
+
+  // Enable LS computation
+  bool enable_ls_;
+
+  // Compute covariance
+  bool compute_covariance_;
+
+  UwbInitOptions(const InitMethod& method, const BiasType& bias_type, const double const_bias_prior_cov,
+                 const double dist_bias_prior_cov, const uint min_num_anchors, const bool enable_ls,
+                 const bool compute_covariance)
+    : init_method_(method)
+    , bias_type_(bias_type)
+    , const_bias_prior_cov_(const_bias_prior_cov)
+    , dist_bias_prior_cov_(dist_bias_prior_cov)
+    , min_num_anchors_(min_num_anchors)
+    , enable_ls_(enable_ls)
+    , compute_covariance_(compute_covariance)
   {
   }
 

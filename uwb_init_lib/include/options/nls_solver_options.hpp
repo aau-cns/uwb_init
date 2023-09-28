@@ -45,9 +45,17 @@ struct NlsSolverOptions
   /// Stopping condition for maximum number of iterations (suggested defualt value: 1e3)
   uint max_iter_;
 
+  /// Check covariance is SPD
+  bool check_cov_;
+
   NlsSolverOptions(const double& lambda, const double& lambda_factor, const double& step_cond, const double& res_cond,
-                   const uint& max_iter)
-    : lambda_(lambda), lambda_factor_(lambda_factor), step_cond_(step_cond), res_cond_(res_cond), max_iter_(max_iter)
+                   const uint& max_iter, const bool check_cov)
+    : lambda_(lambda)
+    , lambda_factor_(lambda_factor)
+    , step_cond_(step_cond)
+    , res_cond_(res_cond)
+    , max_iter_(max_iter)
+    , check_cov_(check_cov)
   {
   }
 

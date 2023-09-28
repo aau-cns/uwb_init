@@ -2,32 +2,41 @@
 <launch>
 
   <!-- topic parameters -->
-  <arg name="estimated_pose_topic"      default="/uvio/poseimu" />
-  <arg name="uwb_range_topic"           default="/uwb_driver_node/uwb" />
-  <arg name="start_service"             default="/uwb_init/start" />
-  <arg name="reset_service"             default="/uwb_init/reset" />
-  <arg name="initialization_service"    default="/uwb_init/initialize" />
-  <arg name="planner_service"           default="/uwb_init/compute_wps" />
-  <arg name="refine_service"            default="/uwb_init/refine" />
+  <arg name="estimated_pose_topic"      default="uvio/poseimu" />
+  <arg name="uwb_range_topic"           default="uwb_driver_node/uwb" />
+  <arg name="start_service"             default="uwb_init/start" />
+  <arg name="reset_service"             default="uwb_init/reset" />
+  <arg name="initialization_service"    default="uwb_init/initialize" />
+  <arg name="planner_service"           default="uwb_init/compute_wps" />
+  <arg name="refine_service"            default="uwb_init/refine" />
   <arg name="logger_level"              default="info" />     <!-- full, info, warning, error, inactive -->
-  <arg name="uwb_anchors_topic"         default="/uwb_init/uwb_anchors" />
-  <arg name="waypoints_topic"           default="/uwb_init/wps" />
+  <arg name="uwb_anchors_topic"         default="uwb_init/uwb_anchors" />
+  <arg name="waypoints_topic"           default="uwb_init/wps" />
 
   <!-- calibration -->
   <arg name="calib_p_UinI"              default="[0.01, -0.01, -0.05]" />
 
   <!-- node parameters -->
-  <arg name="method"                    default="double" />   <!-- single, double -->
-  <arg name="bias_type"                 default="constant" /> <!-- unbiased, constant -->
-  <arg name="min_num_anchors"           default="4" />        <!-- expected number of uwb anchors to initialize -->
+  <arg name="method"                    default="double" />   <!-- single, double (suggestion: always use 'double')-->
+  <arg name="bias_type"                 default="unbiased" /> <!-- unbiased, constant, all (suggestion: use 'unbiased' if optimal waypoints are not computed)-->
+  <arg name="min_num_anchors"           default="4" />        <!-- minimum number of uwb anchors to initialize (if not met initialization fails)-->
   <arg name="publish_first_solution"    default="true" />     <!-- publish first solution after initialization without optimal WPs refinement -->
   <arg name="anchors_file_path"         default="$(find uwb_init_ros)/config/uwb_anchors.yaml" /> <!-- path where to save uwb_anchors.yaml -->
-  <arg name="frame_id"                  default="global" />
+  <arg name="frame_id_anchor"           default="global" />
+  <arg name="frame_id_waypoint"         default="$(arg frame_id_anchor)" />
+  <arg name="waypoint_nav_type"         default="local" /> <!-- see mission_sequencer msg definition, use local for vision! -->
   <arg name="publish_anchors_tf"        default="true" />
+  <arg name="const_bias_proior_cov"     default="0.01" />   <!-- constant bias prior covariance, used if not estimated (unbiased)-->
+  <arg name="dist_bias_proior_cov"      default="0.01" />  <!-- distance bias prior covariance, used if not estimated (unbiased or constant) -->
+  <arg name="uwb_min_range"             default="0.5" />    <!-- minimum uwb range to be considered for initialization -->
+  <arg name="uwb_max_range"             default="30.0" />   <!-- maximum uwb range to be considered for initialization -->
+  <arg name="enable_ls"                 default="false" />  <!-- enable LS computation (may introduce errors if bad initialization data) -->
+  <arg name="compute_covariance"        default="false" />  <!-- compute covariance of the solutions (TODO not implemented yet!!!) -->
   
   <!-- ls solver parameters -->
   <arg name="position_std"              default="0.03" />
   <arg name="uwb_range_std"             default="0.2" />
+  <arg name="check_ls_cov_spd"          default="false" />  <!-- check Semi-Positive Definite covariance of the LS solutions -->  
 
   <!-- nls solver parameters -->
   <arg name="levenberg_marquardt_lambda"    default="0.001" />
@@ -35,6 +44,7 @@
   <arg name="step_norm_stop_condition"      default="0.000001" />
   <arg name="residual_mse_stop_condition"   default="0.000001" />
   <arg name="max_iterations"            		default="1000" />
+  <arg name="check_nls_cov_spd"             default="false" />  <!-- check Semi-Positive Definite covariance of the NLS solutions -->  
 
   <!-- waypoint generator parameters -->
   <arg name="cell_len"                          default="10" />
@@ -84,12 +94,21 @@
     <param name="min_num_anchors"           type="int"  value="$(arg min_num_anchors)" />
     <param name="publish_first_solution"    type="bool" value="$(arg publish_first_solution)" />
     <param name="anchors_file_path"         type="str"  value="$(arg anchors_file_path)" />
-    <param name="frame_id"                  type="str"  value="$(arg frame_id)" />
+    <param name="frame_id_anchor"           type="str"  value="$(arg frame_id_anchor)" />
+    <param name="frame_id_waypoint"         type="str"  value="$(arg frame_id_waypoint)" />
+    <param name="waypoint_nav_type"         type="str"  value="$(arg waypoint_nav_type)" />
     <param name="publish_anchors_tf"        type="bool" value="$(arg publish_anchors_tf)" />
+    <param name="const_bias_proior_cov"     type="double"  value="$(arg const_bias_proior_cov)" />
+    <param name="dist_bias_proior_cov"      type="double"  value="$(arg dist_bias_proior_cov)" />
+    <param name="uwb_min_range"             type="double"  value="$(arg uwb_min_range)" />
+    <param name="uwb_max_range"             type="double"  value="$(arg uwb_max_range)" />
+    <param name="enable_ls"                 type="bool" value="$(arg enable_ls)" />
+    <param name="compute_covariance"        type="bool" value="$(arg compute_covariance)" />
 
     <!-- ls solver parameters -->
     <param name="position_std"              type="double"  value="$(arg position_std)" />
     <param name="uwb_range_std"             type="double"  value="$(arg uwb_range_std)" />
+    <param name="check_ls_cov_spd"          type="bool"  value="$(arg check_ls_cov_spd)" />
 
     <!-- nls solver parameters -->
     <param name="levenberg_marquardt_lambda"        type="double"   value="$(arg levenberg_marquardt_lambda)" />
@@ -97,6 +116,7 @@
     <param name="step_norm_stop_condition"          type="double"   value="$(arg step_norm_stop_condition)" />
     <param name="residual_mse_stop_condition"       type="double"   value="$(arg residual_mse_stop_condition)" />
     <param name="max_iterations"                    type="int"      value="$(arg max_iterations)" />
+    <param name="check_nls_cov_spd"                 type="bool"     value="$(arg check_nls_cov_spd)" />
 
     <!-- waypoint generation parameters -->
     <param name="cell_len"                          type="int"      value="$(arg cell_len)" />
@@ -143,12 +163,21 @@
     <param name="min_num_anchors"           type="int"  value="$(arg min_num_anchors)" />
     <param name="publish_first_solution"    type="bool" value="$(arg publish_first_solution)" />
     <param name="anchors_file_path"         type="str"  value="$(arg anchors_file_path)" />
-    <param name="frame_id"                  type="str"  value="$(arg frame_id)" />
+    <param name="frame_id_anchor"           type="str"  value="$(arg frame_id_anchor)" />
+    <param name="frame_id_waypoint"         type="str"  value="$(arg frame_id_waypoint)" />
+    <param name="waypoint_nav_type"         type="str"  value="$(arg waypoint_nav_type)" />
     <param name="publish_anchors_tf"        type="bool" value="$(arg publish_anchors_tf)" />
+    <param name="const_bias_proior_cov"     type="double"  value="$(arg const_bias_proior_cov)" />
+    <param name="dist_bias_proior_cov"      type="double"  value="$(arg dist_bias_proior_cov)" />
+    <param name="uwb_min_range"             type="double"  value="$(arg uwb_min_range)" />
+    <param name="uwb_max_range"             type="double"  value="$(arg uwb_max_range)" />
+    <param name="enable_ls"                 type="bool" value="$(arg enable_ls)" />
+    <param name="compute_covariance"        type="bool" value="$(arg compute_covariance)" />
 
     <!-- ls solver parameters -->
     <param name="position_std"              type="double"  value="$(arg position_std)" />
     <param name="uwb_range_std"             type="double"  value="$(arg uwb_range_std)" />
+    <param name="check_ls_cov_spd"          type="bool"  value="$(arg check_ls_cov_spd)" />
 
     <!-- nls solver parameters -->
     <param name="levenberg_marquardt_lambda"        type="double"   value="$(arg levenberg_marquardt_lambda)" />
@@ -156,6 +185,7 @@
     <param name="step_norm_stop_condition"          type="double"   value="$(arg step_norm_stop_condition)" />
     <param name="residual_mse_stop_condition"       type="double"   value="$(arg residual_mse_stop_condition)" />
     <param name="max_iterations"                    type="int"      value="$(arg max_iterations)" />
+    <param name="check_nls_cov_spd"                 type="bool"     value="$(arg check_nls_cov_spd)" />
 
     <!-- waypoint generation parameters -->
     <param name="cell_len"                          type="int"      value="$(arg cell_len)" />

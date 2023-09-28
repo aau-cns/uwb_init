@@ -84,13 +84,47 @@ int main(int argc, char** argv)
   }
 
   // Get frame ids from parameter server
-  if (!nh.getParam("frame_id", opts.frame_id_))
+  if (!nh.getParam("frame_id_anchor", opts.frame_id_anchors_))
   {
-    ROS_ERROR("Missing frame_id parameter");
+    ROS_ERROR("Missing frame_id_anchor parameter");
     std::exit(EXIT_FAILURE);
+  }
+  if (!nh.getParam("frame_id_waypoint", opts.frame_id_waypoints_))
+  {
+    // in case no frame_id for waypoints is given, assume the same frame_id for both
+    opts.frame_id_waypoints_ = opts.frame_id_anchors_;
+    ROS_INFO("Missing frame_id_waypoint parameter, using %s", opts.frame_id_waypoints_);
+  }
+
+  // parse waypoint nav type
+  std::string wp_nav_type_str;
+  if (!nh.getParam("waypoint_nav_type", wp_nav_type_str))
+  {
+    ROS_ERROR("Missing waypoint_nav_type parameter");
+    std::exit(EXIT_FAILURE);
+  }
+  else
+  {
+    if (wp_nav_type_str == "global")
+      opts.wp_nav_type_ = (uint)mission_sequencer::MissionWaypointArray::GLOBAL;
+    else if (wp_nav_type_str == "local")
+      opts.wp_nav_type_ = (uint)mission_sequencer::MissionWaypointArray::LOCAL;
+    else if (wp_nav_type_str == "position" || wp_nav_type_str == "pos" || wp_nav_type_str == "cur_pos")
+      opts.wp_nav_type_ = (uint)mission_sequencer::MissionWaypointArray::CUR_POS;
+    else if (wp_nav_type_str == "pose" || wp_nav_type_str == "cur_pose")
+      opts.wp_nav_type_ = (uint)mission_sequencer::MissionWaypointArray::CUR_POSE;
+    else
+    {
+      ROS_ERROR("Unknown waypoint_nav_type type '%s'.", wp_nav_type_str);
+      ROS_INFO("  Pleas use either 'global', 'local', 'position' (current), or 'pose' (current).", wp_nav_type_str);
+      std::exit(EXIT_FAILURE);
+    }
   }
 
   // Get init options from parameter server
+  bool opt_enable_ls, opt_compute_covariance;
+  nh.param<bool>("enable_ls", opt_enable_ls, false);
+  nh.param<bool>("compute_covariance", opt_compute_covariance, false);
   std::string method, bias_type;
   nh.param<std::string>("method", method, "double");
   nh.param<std::string>("bias_type", bias_type, "constant");
@@ -117,16 +151,21 @@ int main(int argc, char** argv)
   {
     opt_bias_type = uwb_init::BiasType::CONST_BIAS;
   }
+  else if (bias_type == "all")
+  {
+    opt_bias_type = uwb_init::BiasType::ALL_BIAS;
+  }
   else
   {
-    ROS_ERROR("Invalid bias type! Please use unbiased or constant");
+    ROS_ERROR("Invalid bias type! Please use unbiased, constant or all");
     std::exit(EXIT_FAILURE);
   }
 
   // Get minimum number of anchors from parameter server
-  int opt_min_num_anchors;
-  nh.param<int>("min_num_anchors_", opt_min_num_anchors, 4);
-  opts.min_num_anchors_ = uint(opt_min_num_anchors);
+  int min_num_anchors;
+  uint opt_min_num_anchors;
+  nh.param<int>("min_num_anchors_", min_num_anchors, 4);
+  opt_min_num_anchors = uint(min_num_anchors);
 
   // Get publishing options from parameter server
   nh.param<bool>("publish_first_solution", opts.publish_first_solution_, false);
@@ -141,20 +180,33 @@ int main(int argc, char** argv)
   // Get publish_anchors_tf option from parameter server
   nh.param<bool>("publish_anchors_tf", opts.publish_anchors_tf_, true);
 
+  // Get UWB range options from parameter server
+  nh.param<double>("uwb_min_range", opts.uwb_min_range_, 0.0);
+  nh.param<double>("uwb_max_range", opts.uwb_max_range_, 100.0);
+
+  // Get biases pror covariances from parameter server
+  double opt_const_bias_prior_cov, opt_dist_bias_prior_cov;
+  nh.param<double>("const_bias_prior_cov", opt_const_bias_prior_cov, 0.01);
+  nh.param<double>("dist_bias_prior_cov", opt_dist_bias_prior_cov, 0.01);
+
   // Get LS solver options from parameter server
   double opt_sigma_pos, opt_sigma_mes;
+  bool opt_check_ls_cov_spd;
   nh.param<double>("position_std", opt_sigma_pos, 0.05);
   nh.param<double>("uwb_range_std", opt_sigma_mes, 0.1);
+  nh.param<bool>("check_ls_cov_spd", opt_check_ls_cov_spd, false);
 
   // Get NLS solver options from parameter server
   double opt_lambda, opt_lambda_scale_factor, opt_step_cond, opt_res_cond;
   int max_iter;
+  bool opt_check_nls_cov_spd;
   nh.param<double>("levenberg_marquardt_lambda", opt_lambda, 0.01);
   nh.param<double>("lambda_scale_factor", opt_lambda_scale_factor, 10.0);
   nh.param<double>("step_norm_stop_condition", opt_step_cond, 0.000001);
   nh.param<double>("residual_mse_stop_condition", opt_res_cond, 0.000001);
   nh.param<int>("max_iterations", max_iter, 1000);
   uint opt_max_iter = static_cast<uint>(max_iter);
+  nh.param<bool>("check_nls_cov_spd", opt_check_nls_cov_spd, false);
 
   // Get waypoint generation options from parameter server
   int cell_len, pop_size, itr_num, x_n, y_n, z_n;
@@ -228,10 +280,13 @@ int main(int argc, char** argv)
   nh.param<double>("wp_holdtime", opts.wp_holdtime_, 1.0);
 
   // Make options
-  opts.init_options_ = std::make_shared<uwb_init::UwbInitOptions>(opt_init_method, opt_bias_type);
-  opts.ls_solver_options_ = std::make_unique<uwb_init::LsSolverOptions>(opt_sigma_pos, opt_sigma_mes);
-  opts.nls_solver_options_ = std::make_unique<uwb_init::NlsSolverOptions>(opt_lambda, opt_lambda_scale_factor,
-                                                                          opt_step_cond, opt_res_cond, opt_max_iter);
+  opts.init_options_ = std::make_shared<uwb_init::UwbInitOptions>(
+      opt_init_method, opt_bias_type, opt_const_bias_prior_cov, opt_dist_bias_prior_cov, opt_min_num_anchors,
+      opt_enable_ls, opt_compute_covariance);
+  opts.ls_solver_options_ =
+      std::make_unique<uwb_init::LsSolverOptions>(opt_sigma_pos, opt_sigma_mes, opt_check_ls_cov_spd);
+  opts.nls_solver_options_ = std::make_unique<uwb_init::NlsSolverOptions>(
+      opt_lambda, opt_lambda_scale_factor, opt_step_cond, opt_res_cond, opt_max_iter, opt_check_nls_cov_spd);
   opts.planner_options_ = std::make_unique<uwb_init::PlannerOptions>(
       opt_cell_len, opt_pop_size, opt_itr_num, opt_pc, opt_pm, opt_x_n, opt_y_n, opt_z_n, opt_side_x, opt_side_y,
       opt_side_z, opt_z_min, opt_C_e_x, opt_C_e_y);
