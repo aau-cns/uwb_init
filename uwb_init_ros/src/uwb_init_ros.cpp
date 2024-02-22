@@ -232,8 +232,8 @@ void UwbInitRos::publishAnchors(const uwb_init::NLSSolutions& sols) {
     anchor.position.x = it.second.anchor_.p_AinG_.x();
     anchor.position.y = it.second.anchor_.p_AinG_.y();
     anchor.position.z = it.second.anchor_.p_AinG_.z();
-    anchor.gamma = it.second.gamma_;
-    anchor.beta = it.second.beta_;
+    anchor.gamma = it.second.gammas_.at(anchor.ref_id);
+    anchor.beta = it.second.betas_.at(anchor.ref_id);
 
     // Store covarinace upper simmetric part only
     int index = 0;
@@ -332,8 +332,9 @@ void UwbInitRos::saveAnchors(const uwb_init::NLSSolutions& sols) {
             << it.second.anchor_.p_AinG_.y() << it.second.anchor_.p_AinG_.z() << YAML::EndSeq;
 
     // Write bias parameters
-    emitter << YAML::Key << "const_bias" << YAML::Value << it.second.gamma_;
-    emitter << YAML::Key << "dist_bias" << YAML::Value << it.second.beta_ - 1;
+    emitter << YAML::Key << "const_bias" << YAML::Value << it.second.gammas_.at(0);
+    // todo(RJ): why beta - 1.0 ?
+    emitter << YAML::Key << "dist_bias" << YAML::Value << it.second.betas_.at(0) - 1;
 
     // Write prior p_AinG covariance as the mean of the first 3 elements of the diagonal of cov_
     double prior_p_AinG_cov =

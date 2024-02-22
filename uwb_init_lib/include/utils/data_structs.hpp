@@ -54,21 +54,39 @@ struct LSSolution
   /// UWB anchor
   UwbAnchor anchor_;
 
-  /// Gamma: Constant bias
-  double gamma_;
+  /// Gamma: Constant bias: map<id_Tag, gamma>
+  std::unordered_map<uint, double> gammas_;
 
   /// Covariance of the solution
   Eigen::MatrixXd cov_;
 
-  LSSolution(const UwbAnchor& anchor, const double& gamma, const Eigen::MatrixXd& cov)
-    : anchor_(anchor), gamma_(gamma) {
+  LSSolution(const UwbAnchor& anchor, const double& gamma, const Eigen::MatrixXd& cov, const uint id_tag = 0)
+    : anchor_(anchor) {
     // Check if cov is either 3x3 or 4x4 and if it is semi positive definite
+
+     gammas_.insert({id_tag, gamma});
+
     if (!(cov.rows() == cov.cols() && cov.rows() <= 5 && isSPD(cov)))
     {
       throw std::invalid_argument("LSSolution: Invalid covariance");
     }
     cov_ = cov;
   }
+
+  LSSolution(const UwbAnchor& anchor, const std::unordered_map<uint, double>& gammas, const Eigen::MatrixXd& cov)
+    : anchor_(anchor), gammas_(gammas) {
+
+
+    long dim = 3+2*gammas_.size();
+    // Check if cov is 5x5 and if it is semi positive definite
+    if (!(cov.rows() <= dim && cov.cols() <= dim && isSPD(cov)))
+    {
+      throw std::invalid_argument("NLSSolution: Invalid covariance");
+    }
+    cov_ = cov;
+  }
+
+
 };
 
 /**
@@ -79,17 +97,20 @@ struct NLSSolution
   /// UWB anchor
   UwbAnchor anchor_;
 
-  /// Gamma: Constant bias
-  double gamma_;
+  /// Gamma: Constant bias: map<id_Tag, gamma>
+  std::unordered_map<uint, double> gammas_;
 
-  /// Beta: Distance multiplier bias
-  double beta_;
+  /// Beta: Distance multiplier bias: map<id_Tag, beta>
+  std::unordered_map<uint, double> betas_;
 
   /// Covariance of the solution
   Eigen::MatrixXd cov_;
 
-  NLSSolution(const UwbAnchor& anchor, const double& gamma, const double& beta, const Eigen::MatrixXd& cov)
-    : anchor_(anchor), gamma_(gamma), beta_(beta) {
+  NLSSolution(const UwbAnchor& anchor, const double& gamma, const double& beta, const Eigen::MatrixXd& cov, const uint id_tag = 0)
+    : anchor_(anchor) {
+
+    gammas_.insert({id_tag, gamma});
+    betas_.insert({id_tag, beta});
     // Check if cov is 5x5 and if it is semi positive definite
     if (!(cov.rows() == 5 && cov.cols() == 5 && isSPD(cov)))
     {
@@ -97,6 +118,23 @@ struct NLSSolution
     }
     cov_ = cov;
   }
+
+  NLSSolution(const UwbAnchor& anchor, const std::unordered_map<uint, double>& gammas, std::unordered_map<uint, double>& betas, const Eigen::MatrixXd& cov)
+    : anchor_(anchor), gammas_(gammas), betas_(betas) {
+
+    if (gammas_.size() != betas_.size()) {
+      throw std::invalid_argument("NLSSolution: Invalid gammas and betas dimension!");
+    }
+
+    long dim = 3+2*gammas_.size();
+    // Check if cov is 5x5 and if it is semi positive definite
+    if (!(cov.rows() == dim && cov.cols() == dim && isSPD(cov)))
+    {
+      throw std::invalid_argument("NLSSolution: Invalid covariance");
+    }
+    cov_ = cov;
+  }
+
 };
 
 /**
@@ -112,9 +150,13 @@ struct UwbData
   double distance_;
 
   /// Id of the anchor from which the measurement is received
-  uint id_;
+  uint id_Anchor;
 
-  UwbData(const bool& valid, const double& distance, const uint& id) : valid_(valid), distance_(distance), id_(id)
+  /// Id of the tag from which the measurement is received
+  uint id_Tag = 0;
+
+  UwbData(const bool& valid, const double& distance, const uint& id_anchor, const uint id_tag = 0) : valid_(valid), distance_(distance),
+                                                                                                     id_Anchor(id_anchor), id_Tag(id_tag)
   {
   }
 };
@@ -139,10 +181,15 @@ struct Waypoint
   {
   }
 };
-
+// Hist<p_TinG>
 typedef TimedBuffer<Eigen::Vector3d> PositionBuffer;
+// map<Tag_ID, Hist<p_TinG>>>
+typedef std::unordered_map<uint, PositionBuffer> PositionBufferDict_t;
+// map<Anchor_ID,  Hist<UwbData>>
 typedef std::unordered_map<uint, TimedBuffer<UwbData>> UwbDataBuffer;
+// map<Anchor_ID,  LSSolution>
 typedef std::unordered_map<uint, LSSolution> LSSolutions;
+// map<Anchor_ID,  NLSSolution>
 typedef std::unordered_map<uint, NLSSolution> NLSSolutions;
 typedef std::vector<Waypoint> Waypoints;
 

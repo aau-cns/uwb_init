@@ -139,15 +139,15 @@ void UwbInitializer::feed_uwb(const double timestamp, const std::vector<UwbData>
     if (uwb_measurements[i].valid_)
     {
       // Push back element to buffer
-      uwb_data_buffer_[uwb_measurements[i].id_].push_back(timestamp, uwb_measurements[i]);
+      uwb_data_buffer_[uwb_measurements[i].id_Anchor].push_back(timestamp, uwb_measurements[i]);
       logger_->debug("UwbInitializer::feed_uwb(): added measurement from anchor " +
-                     std::to_string(uwb_measurements[i].id_) + " at timestamp " + std::to_string(timestamp));
+                     std::to_string(uwb_measurements[i].id_Anchor) + " at timestamp " + std::to_string(timestamp));
     }
     else
     {
       logger_->warn("UwbInitializer::feed_uwb(): DISCARDING measurment " +
                     std::to_string(uwb_measurements[i].distance_) + " from anchor " +
-                    std::to_string(uwb_measurements[i].id_));
+                    std::to_string(uwb_measurements[i].id_Anchor));
     }
   }
 }
@@ -158,14 +158,14 @@ void UwbInitializer::feed_uwb(const double timestamp, const UwbData uwb_measurem
   if (uwb_measurement.valid_)
   {
     // Push back element to buffer
-    uwb_data_buffer_[uwb_measurement.id_].push_back(timestamp, uwb_measurement);
-    logger_->debug("UwbInitializer::feed_uwb(): added measurement from anchor " + std::to_string(uwb_measurement.id_) +
+    uwb_data_buffer_[uwb_measurement.id_Anchor].push_back(timestamp, uwb_measurement);
+    logger_->debug("UwbInitializer::feed_uwb(): added measurement from anchor " + std::to_string(uwb_measurement.id_Anchor) +
                    " at timestamp " + std::to_string(timestamp));
   }
   else
   {
     logger_->warn("UwbInitializer::feed_uwb(): DISCARDING measurment " + std::to_string(uwb_measurement.distance_) +
-                  " from anchor " + std::to_string(uwb_measurement.id_));
+                  " from anchor " + std::to_string(uwb_measurement.id_Anchor));
   }
 }
 
@@ -196,16 +196,17 @@ bool UwbInitializer::init_anchors()
     return false;
   }
 
-  // For each uwb ID extract uwb buffer
+  // For each uwb anchor ID extract uwb buffer and use the same tag position buffer p_UinG_buffer_: multiple anchors to one tag
   for (const auto& uwb_data : uwb_data_buffer_)
   {
+    uint const ID_Anchor = uwb_data.first;
     // Logging
-    logger_->info("Anchor[" + std::to_string(uwb_data.first) + "]: Starting initialization");
+    logger_->info("Anchor[" + std::to_string(ID_Anchor) + "]: Starting initialization");
 
     // If uwb buffer is empty try next anchor
     if (uwb_data.second.empty())
     {
-      logger_->warn("Anchor[" + std::to_string(uwb_data.first) + "]: Initialization FAILED (uwb buffer is empty)");
+      logger_->warn("Anchor[" + std::to_string(ID_Anchor) + "]: Initialization FAILED (uwb buffer is empty)");
       continue;
     }
 
@@ -222,11 +223,11 @@ bool UwbInitializer::init_anchors()
     if (init_options_->enable_ls_ && ls_solver_.solve_ls(uwb_data.second, p_UinG_buffer_, lsSolution, lsCov) && lsSolution.size() >= 3)
     {
       // Logging
-      logger_->info("Anchor[" + std::to_string(uwb_data.first) + "]: Coarse solution found");
+      logger_->info("Anchor[" + std::to_string(ID_Anchor) + "]: Coarse solution found");
 
 
       // Initialize new anchor
-      UwbAnchor new_anchor(uwb_data.first, lsSolution.head(3));
+      UwbAnchor new_anchor(ID_Anchor, lsSolution.head(3));
 
       // Initialize constant bias
       double const_bias = 0.0;
@@ -246,12 +247,12 @@ bool UwbInitializer::init_anchors()
       LSSolution ls_sol(new_anchor, const_bias, lsCov);
 
       // Add solution to vector
-      ls_sols_.emplace(std::make_pair(uwb_data.first, ls_sol));
+      ls_sols_.emplace(std::make_pair(ID_Anchor, ls_sol));
     }
     else
     {
       // If LS fails assign empty solution
-      logger_->warn("Anchor[" + std::to_string(uwb_data.first) +
+      logger_->warn("Anchor[" + std::to_string(ID_Anchor) +
                     "]: Coarse initialization FAILED. Assigning empty "
                     "solution");
 
@@ -283,13 +284,13 @@ bool UwbInitializer::init_anchors()
     if (nls_solver_.levenbergMarquardt(uwb_data.second, p_UinG_buffer_, nlsSolution, nlsCov))
     {
       // Logging
-      logger_->info("Anchor[" + std::to_string(uwb_data.first) + "]: Solutiuon refined");
+      logger_->info("Anchor[" + std::to_string(ID_Anchor) + "]: Solutiuon refined");
 
       // Increase counter
       init_count += 1;
 
       // Initialize new anchor
-      UwbAnchor new_anchor(uwb_data.first, nlsSolution.head(3));
+      UwbAnchor new_anchor(ID_Anchor, nlsSolution.head(3));
 
       // Initialize biases
       double const_bias = 0.0;
@@ -321,24 +322,24 @@ bool UwbInitializer::init_anchors()
       Eigen::VectorXd std_dev = nls_sol.cov_.diagonal().cwiseSqrt();
 
       // Add solution to vector
-      nls_sols_.emplace(std::make_pair(uwb_data.first, nls_sol));
+      nls_sols_.emplace(std::make_pair(ID_Anchor, nls_sol));
 
       // Refine successful
-      logger_->info("Anchor[" + std::to_string(uwb_data.first) + "]: Correctly initialized");
+      logger_->info("Anchor[" + std::to_string(ID_Anchor) + "]: Correctly initialized");
       // std::stringstream ss;
-      // ss << "Anchor[" << uwb_data.first << "]\n"
-      //    << "p_AinG = " << nls_sols_.at(uwb_data.first).anchor_.p_AinG_.transpose() << '\n'
+      // ss << "Anchor[" << ID_Anchor << "]\n"
+      //    << "p_AinG = " << nls_sols_.at(ID_Anchor).anchor_.p_AinG_.transpose() << '\n'
       //    << "Covariance = \n"
-      //    << nls_sols_.at(uwb_data.first).cov_ << '\n'
-      //    << "gamma = " << nls_sols_.at(uwb_data.first).gamma_ << '\n'
-      //    << "beta = " << nls_sols_.at(uwb_data.first).beta_ << '\n'
+      //    << nls_sols_.at(ID_Anchor).cov_ << '\n'
+      //    << "gamma = " << nls_sols_.at(ID_Anchor).gamma_ << '\n'
+      //    << "beta = " << nls_sols_.at(ID_Anchor).beta_ << '\n'
       //    << "Standard deviation = " << std_dev.transpose();
       // logger_->debug(ss.str());
     }
     // If NLS fails continue with next anchor
     else
     {
-      logger_->warn("Anchor[" + std::to_string(uwb_data.first) + "]: Initialization FAILED");
+      logger_->warn("Anchor[" + std::to_string(ID_Anchor) + "]: Initialization FAILED");
     }
   }
 
@@ -451,7 +452,7 @@ bool UwbInitializer::refine_anchors()
     Eigen::VectorXd theta = Eigen::VectorXd::Zero(5);
     Eigen::MatrixXd cov;
 
-    theta << nls_sol.second.anchor_.p_AinG_, nls_sol.second.gamma_, nls_sol.second.beta_;
+    theta << nls_sol.second.anchor_.p_AinG_, nls_sol.second.gammas_.at(0), nls_sol.second.betas_.at(0);
 
     // Perform nonlinear optimization
     if (nls_solver_.levenbergMarquardt(uwb_data_buffer_.at(nls_sol.first), p_UinG_buffer_, theta, cov))
@@ -473,8 +474,8 @@ bool UwbInitializer::refine_anchors()
          << "p_AinG = " << refined_sols_.at(nls_sol.first).anchor_.p_AinG_.transpose() << '\n'
          << "Covariance = \n"
          << refined_sols_.at(nls_sol.first).cov_ << '\n'
-         << "gamma = " << refined_sols_.at(nls_sol.first).gamma_ << '\n'
-         << "beta = " << refined_sols_.at(nls_sol.first).beta_ << '\n'
+         << "gamma = " << refined_sols_.at(nls_sol.first).gammas_.at(0) << '\n'
+         << "beta = " << refined_sols_.at(nls_sol.first).betas_.at(0) << '\n'
          << "Standard deviation = " << std_dev.transpose();
       logger_->debug(ss.str());
     }
