@@ -93,8 +93,16 @@ private:
                             Eigen::MatrixXd& A, Eigen::VectorXd& b, Eigen::VectorXd& s);
   bool ls_double_no_bias(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer, Eigen::MatrixXd& A,
                          Eigen::VectorXd& b, Eigen::VectorXd& s);
-};
 
+  ///
+  /// \brief find_pivot_idx Find pivot index (minimize weight uwb_dist^2*sigma_d + p_UinG'*sigma_p*p_UinG)
+  /// \param uwb_data
+  /// \param p_UinG_buffer
+  /// \return
+  ///
+  std::pair<uint, double> find_pivot_idx(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer);
+
+};  // class ls_solver
 }  // namespace uwb_init
 
 #endif  // LS_SOLVER_HPP_

@@ -221,22 +221,9 @@ bool LsSolver::ls_double_const_bias(const TimedBuffer<UwbData>& uwb_data, const 
   s = Eigen::VectorXd::Zero(A.rows());
 
   // Find pivot index (minimize weight uwb_dist^2*sigma_d + p_UinG'*sigma_p*p_UinG)
-  uint pivot_idx = 0;
-  double weight_pivot =
-      (std::pow(uwb_data[pivot_idx].second.distance_, 2) * solver_options_->sigma_meas_ +
-       p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first).transpose() * Eigen::Matrix3d::Identity() *
-           solver_options_->sigma_pos_ * p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first));
-  for (uint i = 1; i < uwb_data.size(); ++i)
-  {
-    double weight_i = (std::pow(uwb_data[i].second.distance_, 2) * solver_options_->sigma_meas_ +
-                       p_UinG_buffer.get_at_timestamp(uwb_data[i].first).transpose() * Eigen::Matrix3d::Identity() *
-                           solver_options_->sigma_pos_ * p_UinG_buffer.get_at_timestamp(uwb_data[i].first));
-    if (weight_i < weight_pivot)
-    {
-      pivot_idx = i;
-      weight_pivot = weight_i;
-    }
-  }
+  std::pair<uint, double> res = find_pivot_idx(uwb_data, p_UinG_buffer);
+  uint const pivot_idx = res.first;
+  double const weight_pivot = res.second;
 
   // Position and distance at pivot_index
   Eigen::Vector3d p_UinG_pivot = p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first);
@@ -291,22 +278,9 @@ bool LsSolver::ls_double_no_bias(const TimedBuffer<UwbData>& uwb_data, const Pos
   s = Eigen::VectorXd::Zero(A.rows());
 
   // Find pivot index (minimize weight uwb_dist^2*sigma_d + p_UinG'*sigma_p*p_UinG)
-  uint pivot_idx = 0;
-  double weight_pivot =
-      (std::pow(uwb_data[pivot_idx].second.distance_, 2) * solver_options_->sigma_meas_ +
-       p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first).transpose() * Eigen::Matrix3d::Identity() *
-           solver_options_->sigma_pos_ * p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first));
-  for (uint i = 1; i < uwb_data.size(); ++i)
-  {
-    double weight_i = (std::pow(uwb_data[i].second.distance_, 2) * solver_options_->sigma_meas_ +
-                       p_UinG_buffer.get_at_timestamp(uwb_data[i].first).transpose() * Eigen::Matrix3d::Identity() *
-                           solver_options_->sigma_pos_ * p_UinG_buffer.get_at_timestamp(uwb_data[i].first));
-    if (weight_i < weight_pivot)
-    {
-      pivot_idx = i;
-      weight_pivot = weight_i;
-    }
-  }
+  std::pair<uint, double> res = find_pivot_idx(uwb_data, p_UinG_buffer);
+  uint const pivot_idx = res.first;
+  double const weight_pivot = res.second;
 
   // Position and distance at pivot_index
   Eigen::Vector3d p_UinG_pivot = p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first);
@@ -338,6 +312,28 @@ bool LsSolver::ls_double_no_bias(const TimedBuffer<UwbData>& uwb_data, const Pos
   }
 
   return true;
+}
+
+std::pair<uint, double> LsSolver::find_pivot_idx(const TimedBuffer<UwbData>& uwb_data,
+                                                 const PositionBuffer& p_UinG_buffer)
+{
+  uint pivot_idx = 0;
+  double weight_pivot =
+    (std::pow(uwb_data[pivot_idx].second.distance_, 2) * solver_options_->sigma_meas_ +
+     p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first).transpose() * Eigen::Matrix3d::Identity() *
+       solver_options_->sigma_pos_ * p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first));
+  for (uint i = 1; i < uwb_data.size(); ++i)
+  {
+    double weight_i = (std::pow(uwb_data[i].second.distance_, 2) * solver_options_->sigma_meas_ +
+                       p_UinG_buffer.get_at_timestamp(uwb_data[i].first).transpose() * Eigen::Matrix3d::Identity() *
+                         solver_options_->sigma_pos_ * p_UinG_buffer.get_at_timestamp(uwb_data[i].first));
+    if (weight_i < weight_pivot)
+    {
+      pivot_idx = i;
+      weight_pivot = weight_i;
+    }
+  }
+  return std::make_pair(pivot_idx, weight_pivot);
 }
 
 }  // namespace uwb_init
