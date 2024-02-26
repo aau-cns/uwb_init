@@ -185,7 +185,7 @@ struct NLSSolution
       betas(idx) = e.second;
     }
 
-    v << anchor_.p_AinG_.x(), anchor_.p_AinG_.y(), anchor_.p_AinG_.z(), gammas.transpose(), betas.transpose();
+    v << anchor_.p_AinG_.x(), anchor_.p_AinG_.y(), anchor_.p_AinG_.z(), gammas, betas;
     return v;
   }
 
