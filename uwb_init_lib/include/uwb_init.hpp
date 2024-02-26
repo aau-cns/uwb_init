@@ -124,7 +124,7 @@ public:
   /// \param timestamp timestamp of pose
   /// \param p_UinG position to add to buffer
   ///
-  void feed_position(const double timestamp, const Eigen::Vector3d p_UinG);
+  void feed_position(const double timestamp, const Eigen::Vector3d p_UinG, uint const Tag_ID=0);
 
   ///
   /// \brief init_anchors tries to initialize all anchors for which readings exist
@@ -170,8 +170,10 @@ private:
   OptWpsGenerator planner_;
 
   // Anchor and measurement handling
-  PositionBuffer p_UinG_buffer_;   //!< buffer of UWB module positions in global frame
-  UwbDataBuffer uwb_data_buffer_;  //!< history of uwb readings in DataBuffer
+  // map<Tag_ID, Hist<p_TinG>>>
+  PositionBufferDict_t p_UinG_buffer_;   //!< buffer of UWB module positions in global frame
+  // map<Anchor_ID, map<Tag_ID, Hist<UwbData>>>
+  UwbDataBufferDict_t uwb_data_buffer_;  //!< history of uwb readings in DataBuffer
 
   // Solutions handling
   LSSolutions ls_sols_;

@@ -135,32 +135,30 @@ void UwbInitializer::feed_uwb(const double timestamp, const std::vector<UwbData>
   // Add measurements to data buffer
   for (uint i = 0; i < uwb_measurements.size(); ++i)
   {
-    // Check validity
-    if (uwb_measurements[i].valid_)
-    {
-      // Push back element to buffer
-      uwb_data_buffer_[uwb_measurements[i].id_Anchor].push_back(timestamp, uwb_measurements[i]);
-      logger_->debug("UwbInitializer::feed_uwb(): added measurement from anchor " +
-                     std::to_string(uwb_measurements[i].id_Anchor) + " at timestamp " + std::to_string(timestamp));
-    }
-    else
-    {
-      logger_->warn("UwbInitializer::feed_uwb(): DISCARDING measurment " +
-                    std::to_string(uwb_measurements[i].distance_) + " from anchor " +
-                    std::to_string(uwb_measurements[i].id_Anchor));
-    }
+    feed_uwb(timestamp, uwb_measurements[i]);
   }
 }
 
 void UwbInitializer::feed_uwb(const double timestamp, const UwbData uwb_measurement)
 {
+  uint Anchor_ID = uwb_measurement.id_Anchor;
+  uint Tag_ID = uwb_measurement.id_Tag;
+
   // Check validity
   if (uwb_measurement.valid_)
   {
-    // Push back element to buffer
-    uwb_data_buffer_[uwb_measurement.id_Anchor].push_back(timestamp, uwb_measurement);
-    logger_->debug("UwbInitializer::feed_uwb(): added measurement from anchor " + std::to_string(uwb_measurement.id_Anchor) +
-                   " at timestamp " + std::to_string(timestamp));
+    if (uwb_data_buffer_.find(Anchor_ID) == uwb_data_buffer_.end()) {
+      uwb_data_buffer_.insert({Anchor_ID, std::unordered_map<uint, TimedBuffer<UwbData>>()});
+    }
+    if (uwb_data_buffer_[Anchor_ID].find(Tag_ID) == uwb_data_buffer_[Anchor_ID].end()) {
+      uwb_data_buffer_[Anchor_ID].insert({Tag_ID, TimedBuffer<UwbData>()});
+    }
+
+
+    uwb_data_buffer_[Anchor_ID][Tag_ID].push_back(timestamp, uwb_measurement);
+    logger_->debug("UwbInitializer::feed_uwb(): added measurement from tag_ID=" + std::to_string(Tag_ID)
+                   + " to anchor_ID=" + std::to_string(Anchor_ID) + " at timestamp " + std::to_string(timestamp));
+
   }
   else
   {
@@ -169,10 +167,16 @@ void UwbInitializer::feed_uwb(const double timestamp, const UwbData uwb_measurem
   }
 }
 
-void UwbInitializer::feed_position(const double timestamp, const Eigen::Vector3d p_UinG)
+void UwbInitializer::feed_position(const double timestamp, const Eigen::Vector3d p_UinG, const uint Tag_ID)
 {
-  p_UinG_buffer_.push_back(timestamp, p_UinG);
-  logger_->debug("UwbInitializer::feed_position(): added position at timestamp " + std::to_string(timestamp));
+  if (p_UinG_buffer_.find(Tag_ID) == p_UinG_buffer_.end())
+  {
+    p_UinG_buffer_.insert({Tag_ID, PositionBuffer()});
+  }
+
+  p_UinG_buffer_[Tag_ID].push_back(timestamp, p_UinG);
+
+  logger_->debug("UwbInitializer::feed_position(): added position from [" + std::to_string(Tag_ID) + "] at timestamp " + std::to_string(timestamp));
 }
 
 ///
@@ -197,14 +201,15 @@ bool UwbInitializer::init_anchors()
   }
 
   // For each uwb anchor ID extract uwb buffer and use the same tag position buffer p_UinG_buffer_: multiple anchors to one tag
-  for (const auto& uwb_data : uwb_data_buffer_)
+  for (const auto& e : uwb_data_buffer_)
   {
-    uint const ID_Anchor = uwb_data.first;
+    uint const ID_Anchor = e.first;
+    UwbDataPerTag const& uwb_data = e.second;
     // Logging
     logger_->info("Anchor[" + std::to_string(ID_Anchor) + "]: Starting initialization");
 
     // If uwb buffer is empty try next anchor
-    if (uwb_data.second.empty())
+    if (uwb_data.empty())
     {
       logger_->warn("Anchor[" + std::to_string(ID_Anchor) + "]: Initialization FAILED (uwb buffer is empty)");
       continue;
@@ -220,7 +225,7 @@ bool UwbInitializer::init_anchors()
     Eigen::MatrixXd nlsCov;
 
     // Try to solve LS problem
-    if (init_options_->enable_ls_ && ls_solver_.solve_ls(uwb_data.second, p_UinG_buffer_, lsSolution, lsCov) && lsSolution.size() >= 3)
+    if (init_options_->enable_ls_ && ls_solver_.solve_ls(uwb_data, p_UinG_buffer_, lsSolution, lsCov) && lsSolution.size() >= 3)
     {
       // Logging
       logger_->info("Anchor[" + std::to_string(ID_Anchor) + "]: Coarse solution found");
@@ -281,7 +286,7 @@ bool UwbInitializer::init_anchors()
     }
 
     // Perform nonlinear optimization
-    if (nls_solver_.levenbergMarquardt(uwb_data.second, p_UinG_buffer_, nlsSolution, nlsCov))
+    if (nls_solver_.levenbergMarquardt(uwb_data, p_UinG_buffer_, nlsSolution, nlsCov))
     {
       // Logging
       logger_->info("Anchor[" + std::to_string(ID_Anchor) + "]: Solutiuon refined");
