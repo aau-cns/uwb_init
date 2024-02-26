@@ -75,7 +75,7 @@ bool NlsSolver::levenbergMarquardt(const std::unordered_map<uint, TimedBuffer<Uw
     auto const& p_UinG_buffer = dict_p_UinG_buffer.at(Tag_ID);
 
             // Create consistent data vectors
-    for (uint i = 0; i < d_TA_vec.size(); ++i)
+    for (uint i = 0; i < uwb_data.size(); ++i)
     {
       d_TA_vec(idx_meas) = uwb_data[i].second.distance_;
       p_GT_vec.row(idx_meas) = p_UinG_buffer.get_at_timestamp(uwb_data[i].first);
@@ -127,8 +127,8 @@ bool NlsSolver::levenbergMarquardt(const std::unordered_map<uint, TimedBuffer<Uw
         // Jacobian [df/dp_AinG, df/dgamma, df/dbeta]
         J.row(j) << theta(4) * (theta(0) - p_GT_vec(j, 0)) / (theta.head(3).transpose() - p_GT_vec.row(j)).norm(),
             theta(4) * (theta(1) - p_GT_vec(j, 1)) / (theta.head(3).transpose() - p_GT_vec.row(j)).norm(),
-            theta(4) * (theta(2) - p_GT_vec(j, 2)) / (theta.head(3).transpose() - p_GT_vec.row(j)).norm(), gamma_vec,
-            beta_vec;
+            theta(4) * (theta(2) - p_GT_vec(j, 2)) / (theta.head(3).transpose() - p_GT_vec.row(j)).norm(), gamma_vec.transpose(),
+            beta_vec.transpose();
         // Residual res = y - f(theta) =  uwb_meas - (beta * ||p_AinG - p_UinG|| + gamma)
         res(j) = d_TA_vec(j) - (theta(4) * (theta.head(3).transpose() - p_GT_vec.row(j)).norm() + theta(3));
       }
@@ -140,7 +140,7 @@ bool NlsSolver::levenbergMarquardt(const std::unordered_map<uint, TimedBuffer<Uw
         // Jacobian [df/dp_AinG, df/dgamma]
         J.row(j) << (theta(0) - p_GT_vec(j, 0)) / (theta.head(3).transpose() - p_GT_vec.row(j)).norm(),
             (theta(1) - p_GT_vec(j, 1)) / (theta.head(3).transpose() - p_GT_vec.row(j)).norm(),
-            (theta(2) - p_GT_vec(j, 2)) / (theta.head(3).transpose() - p_GT_vec.row(j)).norm(), gamma_vec;
+            (theta(2) - p_GT_vec(j, 2)) / (theta.head(3).transpose() - p_GT_vec.row(j)).norm(), gamma_vec.transpose();
         // Residual res = y - f(theta) =  uwb_meas - (||p_AinG - p_UinG|| + gamma)
         res(j) = d_TA_vec(j) - ((theta.head(3).transpose() - p_GT_vec.row(j)).norm() + theta(3));
       }
