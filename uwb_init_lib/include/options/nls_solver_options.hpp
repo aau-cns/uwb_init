@@ -20,7 +20,7 @@
 #ifndef UWB_INIT_NLS_OPTIONS_HPP_
 #define UWB_INIT_NLS_OPTIONS_HPP_
 
-#include <Eigen/Eigen>
+#include <Eigen/Dense>
 
 namespace uwb_init
 {
@@ -43,13 +43,13 @@ struct NlsSolverOptions
   double res_cond_;
 
   /// Stopping condition for maximum number of iterations (suggested defualt value: 1e3)
-  uint max_iter_;
+  unsigned int max_iter_;
 
   /// Check covariance is SPD
   bool check_cov_;
 
-  NlsSolverOptions(const double& lambda, const double& lambda_factor, const double& step_cond, const double& res_cond,
-                   const uint& max_iter, const bool check_cov)
+  NlsSolverOptions(const double lambda=1e-2, const double lambda_factor=10.0, const double step_cond=1e-6,
+                   const double res_cond=1e-6, const unsigned int max_iter=1e3, const bool check_cov=true)
     : lambda_(lambda)
     , lambda_factor_(lambda_factor)
     , step_cond_(step_cond)

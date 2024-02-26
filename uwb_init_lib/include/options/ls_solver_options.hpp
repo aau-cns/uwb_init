@@ -37,7 +37,7 @@ struct LsSolverOptions
   /// check covariancee is SPD
   bool check_cov_;
 
-  LsSolverOptions(const double& sigma_pos, const double& sigma_meas, const bool check_cov)
+  LsSolverOptions(const double sigma_pos=0.03, const double sigma_meas=0.1, const bool check_cov=true)
     : sigma_pos_(sigma_pos), sigma_meas_(sigma_meas), check_cov_(check_cov)
   {
   }

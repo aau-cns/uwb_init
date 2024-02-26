@@ -30,7 +30,7 @@ namespace uwb_init
 ///
 enum class InitMethod
 {
-  SINGLE,  //!< use only one measurement to construct LLS matrix
+  SINGLE = 0,  //!< use only one measurement to construct LLS matrix
   DOUBLE,  //!< use a pair of measurements to construct LLS matrix
 };
 
@@ -55,7 +55,7 @@ constexpr const char* InitMethodString(InitMethod e)
 ///
 enum class BiasType
 {
-  NO_BIAS,     //!< use no bias for initialization, i.e. position only
+  NO_BIAS = 0,     //!< use no bias for initialization, i.e. position only
   CONST_BIAS,  //!< only use constant bias and position in initialization
   ALL_BIAS,    //!< use constant and distance bias in initialization
 };
@@ -96,7 +96,7 @@ struct UwbInitOptions
   double dist_bias_prior_cov_;
 
   /// Minimum number of anchors to use for initialization
-  uint min_num_anchors_;
+  unsigned int min_num_anchors_;
 
   // Enable LS computation
   bool enable_ls_;
@@ -104,9 +104,9 @@ struct UwbInitOptions
   // Compute covariance
   bool compute_covariance_;
 
-  UwbInitOptions(const InitMethod& method, const BiasType& bias_type, const double const_bias_prior_cov,
-                 const double dist_bias_prior_cov, const uint min_num_anchors, const bool enable_ls,
-                 const bool compute_covariance)
+  UwbInitOptions(const InitMethod& method, const BiasType& bias_type, const double const_bias_prior_cov = 0.1,
+                 const double dist_bias_prior_cov = 0.1, const unsigned int min_num_anchors = 1, const bool enable_ls = true,
+                 const bool compute_covariance = true)
     : init_method_(method)
     , bias_type_(bias_type)
     , const_bias_prior_cov_(const_bias_prior_cov)
