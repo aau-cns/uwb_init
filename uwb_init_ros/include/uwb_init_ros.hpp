@@ -164,6 +164,7 @@ private:
   [[nodiscard]] bool refineAnchors();
 
   bool uwb_id_on_black_list(size_t const id);
+  bool uwb_id_is_tag(size_t const id);
   // Flags
   bool collect_measurements_ = false;
 
@@ -172,7 +173,7 @@ private:
 
   /// Subscribers
   ros::Subscriber uwb_range_sub_;
-  ros::Subscriber uwb_twr_sub_;
+  std::vector<ros::Subscriber> uwb_twr_subs_;
   ros::Subscriber estimated_pose_sub_;
   ros::Subscriber estimated_pose_cov_sub_;
   ros::Subscriber estimated_transform_sub_;

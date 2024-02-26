@@ -42,7 +42,7 @@ struct UwbInitRosOptions
   std::string estimated_transform_topic_{""};
 
   std::string uwb_range_topic_;
-  std::string uwb_twr_topic_;
+  std::vector<std::string> uwb_twr_topics_;
   uint uwb_ref_id_{0};  //!< ID of the UWB device (will be set automatically by the twr msg)
 
   std::string service_start_;
@@ -63,7 +63,7 @@ struct UwbInitRosOptions
   double uwb_max_range_;
 
   /// Position of the UWB module expressed in IMU frame
-  Eigen::Vector3d p_UinI_;
+  std::map<size_t, Eigen::Vector3d> dict_p_UinI_;
 
   /// IDs that are rejected
   std::vector<size_t> uwb_id_black_list;

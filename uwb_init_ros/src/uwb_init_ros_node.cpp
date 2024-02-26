@@ -50,14 +50,33 @@ int main(int argc, char** argv)
   {
     uwb_topic_set = true;
   }
-  if (nh.getParam("uwb_twr_topic", opts.uwb_twr_topic_))
-  {
+
+  std::string uwb_twr_topics_str;
+  nh.param<std::string>("uwb_twr_topics", uwb_twr_topics_str, uwb_twr_topics_str);
+  if (uwb_twr_topics_str.size()) {
+    YAML::Node node = YAML::Load(uwb_twr_topics_str);
+    if (node.IsMap()) {
+      for (YAML::iterator it = node.begin(); it != node.end(); ++it) {
+        size_t Tag_ID = it->first.as<int>();
+        std::string topic = it->second.as<std::string>();
+        ROS_INFO_STREAM("twr topic: ID=" << Tag_ID << " topic = " << topic);
+      }
+    } else if (node.IsSequence()) {
+      opts.uwb_twr_topics_ = node.as<std::vector<std::string>>();
+    } else if (node.IsScalar()) {
+      opts.uwb_twr_topics_.push_back(node.as<std::string>());
+    } else {
+      ROS_ERROR_STREAM("Unsupported format for uwb_twr_topics : "
+                       << uwb_twr_topics_str << " either {<ID>: <string>, ...} or [<string>,...] or <string>");
+      std::exit(EXIT_FAILURE);
+    }
     uwb_topic_set = true;
   }
 
+
   if (!uwb_topic_set)
   {
-    ROS_ERROR("Missing uwb_range_topic or uwb_twr_topic parameter");
+    ROS_ERROR("Missing uwb_range_topic or uwb_twr_topics parameter");
     std::exit(EXIT_FAILURE);
   }
 
@@ -294,10 +313,50 @@ int main(int argc, char** argv)
   // Get calibration UWB tag -> IMU
   std::vector<double> p_ItoU;
   std::vector<double> p_ItoU_default = { 0.0, 0.0, 0.0 };
-  nh.param<std::vector<double>>("p_ItoU", p_ItoU, p_ItoU_default);
-  Eigen::Vector3d p_UinI(p_ItoU.data());
-  opts.p_UinI_ = p_UinI;
-  ROS_INFO_STREAM("Calibration p_UinI = " << p_UinI.transpose());
+
+
+  if(nh.hasParam("p_ItoU")) {
+
+    nh.param<std::vector<double>>("p_ItoU", p_ItoU, p_ItoU_default);
+    Eigen::Vector3d p_UinI(p_ItoU.data());
+    opts.dict_p_UinI_.insert({0, p_UinI});
+    ROS_INFO_STREAM("Calibration p_UinI = " << p_UinI.transpose());
+  }
+  else if(nh.hasParam("dict_p_ItoU")) {
+    std::string dict_p_UinI_str;
+    nh.param<std::string>("dict_p_ItoU", dict_p_UinI_str, dict_p_UinI_str);
+
+    YAML::Node node = YAML::Load(dict_p_UinI_str);
+    if (node.IsMap()) {
+      for (YAML::iterator it = node.begin(); it != node.end(); ++it) {
+        //      std::stringstream key;
+        //      key << it->first;
+        //      key << ", " << it->second;
+        //      ROS_INFO("GOT UWB_TAG id =%s", key.str().c_str());
+        size_t Tag_ID = it->first.as<int>();
+        std::vector<double> pos = it->second.as<std::vector<double>>();
+
+        Eigen::Vector3d p_UinI(pos.data());
+        ROS_INFO_STREAM("Calibration: ID=" << Tag_ID << " p_UinI = " << p_UinI.transpose());
+        opts.dict_p_UinI_.insert({Tag_ID, p_UinI});
+      }
+    } else if (node.IsSequence()) {
+      size_t Tag_ID = 0;
+      std::vector<double> pos = node.as<std::vector<double>>();
+
+      Eigen::Vector3d p_UinI(pos.data());
+      ROS_INFO_STREAM("Calibration: ID=" << Tag_ID << " p_UinI = " << p_UinI.transpose());
+      opts.dict_p_UinI_.insert({Tag_ID, p_UinI});
+
+    } else {
+      ROS_ERROR_STREAM("Unsupported format for dict_p_ItoU: " << dict_p_UinI_str << " either {<ID>: [x,y,z], ...} or [x,y,z]");
+      std::exit(EXIT_FAILURE);
+    }
+  }
+  else {
+    ROS_ERROR_STREAM("Neither p_ItoU nor dict_p_ItoU defined");
+    std::exit(EXIT_FAILURE);
+  }
 
   // Get black list of UWB anchors
   std::vector<double> uwb_id_black_list_default;

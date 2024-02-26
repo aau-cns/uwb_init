@@ -46,10 +46,13 @@ UwbInitRos::UwbInitRos(const ros::NodeHandle& nh, UwbInitRosOptions&& options)
     ROS_INFO("Subsribing to %s", uwb_range_sub_.getTopic().c_str());
   }
 
-  if (!options_.uwb_twr_topic_.empty()) {
-    uwb_twr_sub_ = nh_.subscribe(options_.uwb_twr_topic_, queue_sz, &UwbInitRos::callbackUwbTwoWayRanges, this);
-    ROS_INFO("Subsribing to %s", uwb_twr_sub_.getTopic().c_str());
+  if (!options_.uwb_twr_topics_.empty()) {
+    for (auto const& topic : options_.uwb_twr_topics_) {
+      uwb_twr_subs_.push_back(nh_.subscribe(topic, queue_sz, &UwbInitRos::callbackUwbTwoWayRanges, this));
+      ROS_INFO("Subsribing to %s", topic.c_str());
+    }
   }
+
 
   // Publishers
   uwb_anchors_pub_ = nh_.advertise<uwb_msgs::UwbAnchorArrayStamped>(options_.uwb_anchors_topic_, 1);
@@ -70,14 +73,16 @@ void UwbInitRos::callbackPose(const geometry_msgs::PoseStamped::ConstPtr& msg)
   Eigen::Quaterniond q_GI(msg->pose.orientation.w, msg->pose.orientation.x, msg->pose.orientation.y,
                           msg->pose.orientation.z);
 
-  // Compute position of UWB module in Global frame
-  p_UinG_ = p_IinG + q_GI.toRotationMatrix() * options_.p_UinI_;
-
   // Feed p_UinG
   if (collect_measurements_)
   {
     std::scoped_lock lock{mtx_service_};
-    uwb_init_.feed_position(msg->header.stamp.toSec(), p_UinG_);
+    for (auto const& e : options_.dict_p_UinI_)
+    {
+      // Compute position of UWB module in Global frame
+      p_UinG_ = p_IinG + q_GI.toRotationMatrix() * e.second;
+      uwb_init_.feed_position(msg->header.stamp.toSec(), p_UinG_, e.first);
+    }
   }
 }
 
@@ -88,14 +93,16 @@ void UwbInitRos::callbackPoseWithCov(const geometry_msgs::PoseWithCovarianceStam
   Eigen::Quaterniond q_GI(msg->pose.pose.orientation.w, msg->pose.pose.orientation.x, msg->pose.pose.orientation.y,
                           msg->pose.pose.orientation.z);
 
-  // Compute position of UWB module in Global frame
-  p_UinG_ = p_IinG + q_GI.toRotationMatrix() * options_.p_UinI_;
-
   // Feed p_UinG
   if (collect_measurements_)
   {
     std::scoped_lock lock{mtx_service_};
-    uwb_init_.feed_position(msg->header.stamp.toSec(), p_UinG_);
+    for (auto const& e : options_.dict_p_UinI_)
+    {
+      // Compute position of UWB module in Global frame
+      p_UinG_ = p_IinG + q_GI.toRotationMatrix() * e.second;
+      uwb_init_.feed_position(msg->header.stamp.toSec(), p_UinG_, e.first);
+    }
   }
 }
 
@@ -106,14 +113,17 @@ void UwbInitRos::callbackTransform(const geometry_msgs::TransformStamped::ConstP
   Eigen::Quaterniond q_GI(msg->transform.rotation.w, msg->transform.rotation.x, msg->transform.rotation.y,
                           msg->transform.rotation.z);
 
-  // Compute position of UWB module in Global frame
-  p_UinG_ = p_IinG + q_GI.toRotationMatrix() * options_.p_UinI_;
-
   // Feed p_UinG
   if (collect_measurements_)
   {
     std::scoped_lock lock{mtx_service_};
-    uwb_init_.feed_position(msg->header.stamp.toSec(), p_UinG_);
+    // Feed p_UinG
+    for (auto const& e : options_.dict_p_UinI_)
+    {
+      // Compute position of UWB module in Global frame
+      p_UinG_ = p_IinG + q_GI.toRotationMatrix() * e.second;
+      uwb_init_.feed_position(msg->header.stamp.toSec(), p_UinG_, e.first);
+    }
   }
 }
 
@@ -157,12 +167,18 @@ void UwbInitRos::callbackUwbTwoWayRanges(const uwb_msgs::TwoWayRangeStampedConst
 {
   std::scoped_lock lock{mtx_service_};
   // Feed measurements
-  if (collect_measurements_ && !uwb_id_on_black_list(msg->UWB_ID2)) {
+  if (collect_measurements_ && !uwb_id_on_black_list(msg->UWB_ID2) && !uwb_id_is_tag(msg->UWB_ID2)) {
+    if (!uwb_id_is_tag(msg->UWB_ID1)) {
+      ROS_WARN_THROTTLE(1, "wbInitRos::cbUwbTwoWayRanges(): UWB_ID1[%d] is not configured!", msg->UWB_ID1);
+      return;
+    }
+
+
     options_.uwb_ref_id_ = msg->UWB_ID1;
     // Parse message into correct data structure
     // Valid is true if the range is greater than threshold (0.0)
     bool valid = (msg->range_raw >= options_.uwb_min_range_) && (msg->range_raw <= options_.uwb_max_range_);
-    std::vector<uwb_init::UwbData> data({ uwb_init::UwbData(valid, msg->range_raw, msg->UWB_ID2) });
+    std::vector<uwb_init::UwbData> data({ uwb_init::UwbData(valid, msg->range_raw, msg->UWB_ID2, msg->UWB_ID1) });
 
     uwb_init_.feed_uwb(msg->header.stamp.toSec(), data);
   }
@@ -219,7 +235,9 @@ bool UwbInitRos::callbackServiceRefine(std_srvs::Empty::Request& req, std_srvs::
 void UwbInitRos::publishAnchors(const uwb_init::NLSSolutions& sols) {
   // Create message
   uwb_msgs::UwbAnchorArrayStamped anchors_msg_;
-
+  anchors_msg_.header.stamp = ros::Time::now();
+  anchors_msg_.header.frame_id = options_.frame_id_anchors_;
+  anchors_msg_.header.seq = 0;
   for (const auto& it : sols)
   {
     ROS_INFO("Anchor [%d] succesfully refined at [%f, %f, %f]", it.first, it.second.anchor_.p_AinG_.x(),
@@ -246,9 +264,7 @@ void UwbInitRos::publishAnchors(const uwb_init::NLSSolutions& sols) {
     }
 
     anchors_msg_.anchors.push_back(anchor);
-    ++anchors_msg_.header.seq;
-    anchors_msg_.header.stamp = ros::Time::now();
-    anchors_msg_.header.frame_id = options_.frame_id_anchors_;
+    anchors_msg_.header.seq++;
 
     // Publish anchor tf if requested
     if (options_.publish_anchors_tf_)
@@ -494,6 +510,10 @@ bool UwbInitRos::uwb_id_on_black_list(const size_t id) {
     }
   }
   return false;
+}
+
+bool UwbInitRos::uwb_id_is_tag(const size_t id) {
+  return (options_.dict_p_UinI_.find(id) != options_.dict_p_UinI_.end());
 }
 
 }  // namespace uwb_init_ros
