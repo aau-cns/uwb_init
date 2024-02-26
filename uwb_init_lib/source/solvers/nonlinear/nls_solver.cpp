@@ -124,25 +124,31 @@ bool NlsSolver::levenbergMarquardt(const std::unordered_map<uint, TimedBuffer<Uw
         gamma_vec(idx_tag) = 1;
         beta_vec(idx_tag) = (theta.head(3).transpose() - p_GT_vec.row(j)).norm();
 
+        double beta_i = theta(3+num_tags+idx_tag);
+        double gamma_i = theta(3+idx_tag);
+
         // Jacobian [df/dp_AinG, df/dgamma, df/dbeta]
-        J.row(j) << theta(4) * (theta(0) - p_GT_vec(j, 0)) / (theta.head(3).transpose() - p_GT_vec.row(j)).norm(),
-            theta(4) * (theta(1) - p_GT_vec(j, 1)) / (theta.head(3).transpose() - p_GT_vec.row(j)).norm(),
-            theta(4) * (theta(2) - p_GT_vec(j, 2)) / (theta.head(3).transpose() - p_GT_vec.row(j)).norm(), gamma_vec.transpose(),
+        J.row(j) << beta_i * (theta(0) - p_GT_vec(j, 0)) / (theta.head(3).transpose() - p_GT_vec.row(j)).norm(),
+            beta_i * (theta(1) - p_GT_vec(j, 1)) / (theta.head(3).transpose() - p_GT_vec.row(j)).norm(),
+            beta_i * (theta(2) - p_GT_vec(j, 2)) / (theta.head(3).transpose() - p_GT_vec.row(j)).norm(), gamma_vec.transpose(),
             beta_vec.transpose();
         // Residual res = y - f(theta) =  uwb_meas - (beta * ||p_AinG - p_UinG|| + gamma)
-        res(j) = d_TA_vec(j) - (theta(4) * (theta.head(3).transpose() - p_GT_vec.row(j)).norm() + theta(3));
+        res(j) = d_TA_vec(j) - (beta_i * (theta.head(3).transpose() - p_GT_vec.row(j)).norm() + gamma_i);
       }
       else if (theta.size() == 3 + num_tags)
       {
         // fill out the entry of the corresponding tag
         gamma_vec.setZero(num_tags);
         gamma_vec(idx_tag) = 1;
+
+        double gamma_i = theta(3+idx_tag);
+
         // Jacobian [df/dp_AinG, df/dgamma]
         J.row(j) << (theta(0) - p_GT_vec(j, 0)) / (theta.head(3).transpose() - p_GT_vec.row(j)).norm(),
             (theta(1) - p_GT_vec(j, 1)) / (theta.head(3).transpose() - p_GT_vec.row(j)).norm(),
             (theta(2) - p_GT_vec(j, 2)) / (theta.head(3).transpose() - p_GT_vec.row(j)).norm(), gamma_vec.transpose();
         // Residual res = y - f(theta) =  uwb_meas - (||p_AinG - p_UinG|| + gamma)
-        res(j) = d_TA_vec(j) - ((theta.head(3).transpose() - p_GT_vec.row(j)).norm() + theta(3));
+        res(j) = d_TA_vec(j) - ((theta.head(3).transpose() - p_GT_vec.row(j)).norm() + gamma_i);
       }
       else if (theta.size() == 3)
       {
@@ -188,13 +194,23 @@ bool NlsSolver::levenbergMarquardt(const std::unordered_map<uint, TimedBuffer<Uw
       // Compute new residual
       for (uint j = 0; j < res_new.size(); ++j)
       {
-        if (theta.size() == 5)
+        size_t const idx_tag = tag_idx_vec(j);
+        if (theta.size() == 3 + 2*num_tags)
+        {
+          double beta_i = theta_tmp(3+num_tags+idx_tag);
+          double gamma_i = theta_tmp(3+idx_tag);
           res_new(j) =
-              d_TA_vec(j) - (theta_tmp(4) * (theta_tmp.head(3).transpose() - p_GT_vec.row(j)).norm() + theta_tmp(3));
-        else if (theta.size() == 4)
-          res_new(j) = d_TA_vec(j) - ((theta_tmp.head(3).transpose() - p_GT_vec.row(j)).norm() + theta_tmp(3));
+              d_TA_vec(j) - (beta_i * (theta_tmp.head(3).transpose() - p_GT_vec.row(j)).norm() + gamma_i);
+        }
+        else if (theta.size() == 3 + num_tags)
+        {
+          double gamma_i = theta_tmp(3+idx_tag);
+          res_new(j) = d_TA_vec(j) - ((theta_tmp.head(3).transpose() - p_GT_vec.row(j)).norm() + gamma_i);
+        }
         else if (theta.size() == 3)
+        {
           res_new(j) = d_TA_vec(j) - ((theta_tmp.head(3).transpose() - p_GT_vec.row(j)).norm());
+        }
       }
 
       // If residual decreases, update lambda and theta, and break
