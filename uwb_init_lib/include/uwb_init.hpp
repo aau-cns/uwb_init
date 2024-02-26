@@ -182,6 +182,11 @@ private:
 
   // Optimal Waypoints
   Waypoints opt_wps_;
+
+
+  LSSolution to_LSSolution(Eigen::VectorXd const& lsSolution, Eigen::MatrixXd const& lsCov, size_t const ID_Anchor, std::vector<size_t> const& ID_Tags);
+  NLSSolution to_NLSSolution(Eigen::VectorXd const& nlsSolution, Eigen::MatrixXd const& nlsCov, size_t const ID_Anchor, std::vector<size_t> const& ID_Tags);
+
 };
 
 }  // namespace uwb_init
