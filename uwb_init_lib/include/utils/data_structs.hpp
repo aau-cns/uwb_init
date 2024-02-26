@@ -44,6 +44,13 @@ struct UwbAnchor
   UwbAnchor(const uint& id, const Eigen::Vector3d& p_AinG) : id_(id), p_AinG_(p_AinG)
   {
   }
+
+  std::string str() const
+  {
+    std::string s("UwbAnchor [" + std::to_string(id_) + "]: " + std::to_string(p_AinG_(0)) +
+                  ", " + std::to_string(p_AinG_(1)) + ", " + std::to_string(p_AinG_(2)));
+    return s;
+  }
 };
 
 /**
@@ -86,7 +93,16 @@ struct LSSolution
     cov_ = cov;
   }
 
-
+  std::string str() const
+  {
+    std::stringstream ss;
+    ss << "LSSolution: " << anchor_.str() << "; const biases:";
+    for(auto const& e: gammas_) {
+      ss << "[" << e.first << "]=" << e.second << ", ";
+    }
+    ss << " Cov=[" << cov_.diagonal().transpose() << "]";
+    return ss.str();
+  }
 };
 
 /**
@@ -133,6 +149,44 @@ struct NLSSolution
       throw std::invalid_argument("NLSSolution: Invalid covariance");
     }
     cov_ = cov;
+  }
+  std::string str() const
+  {
+    std::stringstream ss;
+    ss << "NLSSolution: " << anchor_.str() << "; const biases:";
+    for(auto const& e: gammas_) {
+      ss << "[" << e.first << "]=" << e.second << ", ";
+    }
+    ss << "; range biases:";
+    for(auto const& e: betas_) {
+      ss << "[" << e.first << "]=" << e.second << ", ";
+    }
+    ss << " Cov=[" << cov_.diagonal().transpose() << "]";
+    return ss.str();
+  }
+
+  Eigen::VectorXd to_vec() const
+  {
+    Eigen::VectorXd v;
+    v.setZero(3+gammas_.size()+betas_.size());
+
+    Eigen::VectorXd gammas, betas;
+    gammas.setZero(gammas_.size());
+    betas.setOnes(betas_.size());
+
+    size_t idx = 0;
+    for(auto const& e : gammas_)
+    {
+      gammas(idx) = e.second;
+    }
+    idx = 0;
+    for(auto const& e : betas_)
+    {
+      betas(idx) = e.second;
+    }
+
+    v << anchor_.p_AinG_.x(), anchor_.p_AinG_.y(), anchor_.p_AinG_.z(), gammas.transpose(), betas.transpose();
+    return v;
   }
 
 };

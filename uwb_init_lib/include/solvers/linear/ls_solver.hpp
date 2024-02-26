@@ -92,7 +92,7 @@ private:
   /// Shared pointer to logger
   std::shared_ptr<Logger> logger_ = nullptr;
 
-  // LsSolver parameters
+  /// LsSolver parameters
   std::unique_ptr<LsSolverOptions> solver_options_ = nullptr;
 
   ///
