@@ -43,29 +43,56 @@ NlsSolver::NlsSolver(const std::shared_ptr<Logger> logger, std::unique_ptr<NlsSo
 bool NlsSolver::levenbergMarquardt(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer,
                                    Eigen::VectorXd& theta, Eigen::MatrixXd& cov)
 {
+  UwbDataPerTag dict_uwb_data;
+  dict_uwb_data.insert({(uint)0, uwb_data});
+  PositionBufferDict_t dict_p_UinG_buffer;
+  dict_p_UinG_buffer.insert({(uint)0, p_UinG_buffer});
+  return levenbergMarquardt(dict_uwb_data, dict_p_UinG_buffer, theta, cov);
+
+}
+bool NlsSolver::levenbergMarquardt(const std::unordered_map<uint, TimedBuffer<UwbData> > &dict_uwb_data, const PositionBufferDict_t &dict_p_UinG_buffer, Eigen::VectorXd &theta, Eigen::MatrixXd &cov)
+{
+  int const num_tags = dict_uwb_data.size();
+  size_t num_meas = 0;
+  for(auto const&e : dict_uwb_data)
+  {
+    num_meas += e.second.size();
+  }
+
   // Lambda initialization
   double lambda = solver_options_->lambda_;
 
   // Data vectors initialization
-  Eigen::VectorXd uwb_vec = Eigen::VectorXd::Zero(uwb_data.size());
-  Eigen::MatrixXd pose_vec = Eigen::MatrixXd::Zero(uwb_vec.size(), 3);
-
-  // Create consistent data vectors
-  for (uint i = 0; i < uwb_vec.size(); ++i)
+  Eigen::VectorXd d_TA_vec = Eigen::VectorXd::Zero(num_meas);     // distance between Tag and Anchor
+  Eigen::MatrixXd p_GT_vec = Eigen::MatrixXd::Zero(num_meas, 3);  // position of Tag in global frame
+  Eigen::VectorXi tag_idx_vec = Eigen::VectorXi::Zero(num_meas);  // index of Tag
+  size_t idx_meas = 0;
+  size_t idx_tag = 0;
+  for(auto const&e : dict_uwb_data)
   {
-    uwb_vec(i) = uwb_data[i].second.distance_;
-    pose_vec.row(i) = p_UinG_buffer.get_at_timestamp(uwb_data[i].first);
-  }
+    uint const Tag_ID = e.first;
+    auto const& uwb_data = e.second;
+    auto const& p_UinG_buffer = dict_p_UinG_buffer.at(Tag_ID);
 
-  // Check for consistency
-  if (uwb_vec.size() != pose_vec.rows())
-  {
-    // Refine unsuccessful
-    logger_->err("NlsSolver::levenbergMarquardt(): Can not perform optimization (data vectors have different "
-                 "dimensions)");
-    return false;
-  }
+            // Create consistent data vectors
+    for (uint i = 0; i < d_TA_vec.size(); ++i)
+    {
+      d_TA_vec(idx_meas) = uwb_data[i].second.distance_;
+      p_GT_vec.row(idx_meas) = p_UinG_buffer.get_at_timestamp(uwb_data[i].first);
+      tag_idx_vec(idx_meas) = idx_tag;
+      idx_meas += 1;
+    }
 
+    // Check for consistency
+    if (d_TA_vec.size() != p_GT_vec.rows())
+    {
+      // Refine unsuccessful
+      logger_->err("NlsSolver::levenbergMarquardt(): Can not perform optimization (data vectors have different "
+        "dimensions)");
+      return false;
+    }
+    idx_tag += 1;
+  }
   // Iteration counter
   size_t iter = 0;
 
@@ -73,10 +100,10 @@ bool NlsSolver::levenbergMarquardt(const TimedBuffer<UwbData>& uwb_data, const P
   while (iter <= solver_options_->max_iter_)
   {
     // Jacobian, Hessian and residual initialization
-    Eigen::MatrixXd J = Eigen::MatrixXd::Zero(uwb_vec.size(), theta.size());
+    Eigen::MatrixXd J = Eigen::MatrixXd::Zero(d_TA_vec.size(), theta.size());
     Eigen::MatrixXd H = Eigen::MatrixXd::Zero(J.rows(), J.rows());
-    Eigen::VectorXd res = Eigen::VectorXd::Zero(uwb_vec.size());
-    Eigen::VectorXd res_new = Eigen::VectorXd::Zero(uwb_vec.size());
+    Eigen::VectorXd res = Eigen::VectorXd::Zero(d_TA_vec.size());
+    Eigen::VectorXd res_new = Eigen::VectorXd::Zero(d_TA_vec.size());
 
     // Auxiliary variables
     Eigen::VectorXd d_theta = Eigen::VectorXd::Zero(theta.size());
@@ -85,33 +112,46 @@ bool NlsSolver::levenbergMarquardt(const TimedBuffer<UwbData>& uwb_data, const P
     // Compute Jacobian and residual
     for (uint j = 0; j < J.rows(); ++j)
     {
-      if (theta.size() == 5)
+      Eigen::VectorXd gamma_vec, beta_vec;
+      size_t const idx_tag = tag_idx_vec(j);
+
+      if (theta.size() == 3 + 2*num_tags )
       {
+        gamma_vec.setZero(num_tags);
+        beta_vec.setZero(num_tags);
+
+        // fill out the entry of the corresponding tag
+        gamma_vec(idx_tag) = 1;
+        beta_vec(idx_tag) = (theta.head(3).transpose() - p_GT_vec.row(j)).norm();
+
         // Jacobian [df/dp_AinG, df/dgamma, df/dbeta]
-        J.row(j) << theta(4) * (theta(0) - pose_vec(j, 0)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
-            theta(4) * (theta(1) - pose_vec(j, 1)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
-            theta(4) * (theta(2) - pose_vec(j, 2)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(), 1,
-            (theta.head(3).transpose() - pose_vec.row(j)).norm();
+        J.row(j) << theta(4) * (theta(0) - p_GT_vec(j, 0)) / (theta.head(3).transpose() - p_GT_vec.row(j)).norm(),
+            theta(4) * (theta(1) - p_GT_vec(j, 1)) / (theta.head(3).transpose() - p_GT_vec.row(j)).norm(),
+            theta(4) * (theta(2) - p_GT_vec(j, 2)) / (theta.head(3).transpose() - p_GT_vec.row(j)).norm(), gamma_vec,
+            beta_vec;
         // Residual res = y - f(theta) =  uwb_meas - (beta * ||p_AinG - p_UinG|| + gamma)
-        res(j) = uwb_vec(j) - (theta(4) * (theta.head(3).transpose() - pose_vec.row(j)).norm() + theta(3));
+        res(j) = d_TA_vec(j) - (theta(4) * (theta.head(3).transpose() - p_GT_vec.row(j)).norm() + theta(3));
       }
-      else if (theta.size() == 4)
+      else if (theta.size() == 3 + num_tags)
       {
+        // fill out the entry of the corresponding tag
+        gamma_vec.setZero(num_tags);
+        gamma_vec(idx_tag) = 1;
         // Jacobian [df/dp_AinG, df/dgamma]
-        J.row(j) << (theta(0) - pose_vec(j, 0)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
-            (theta(1) - pose_vec(j, 1)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
-            (theta(2) - pose_vec(j, 2)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(), 1;
+        J.row(j) << (theta(0) - p_GT_vec(j, 0)) / (theta.head(3).transpose() - p_GT_vec.row(j)).norm(),
+            (theta(1) - p_GT_vec(j, 1)) / (theta.head(3).transpose() - p_GT_vec.row(j)).norm(),
+            (theta(2) - p_GT_vec(j, 2)) / (theta.head(3).transpose() - p_GT_vec.row(j)).norm(), gamma_vec;
         // Residual res = y - f(theta) =  uwb_meas - (||p_AinG - p_UinG|| + gamma)
-        res(j) = uwb_vec(j) - ((theta.head(3).transpose() - pose_vec.row(j)).norm() + theta(3));
+        res(j) = d_TA_vec(j) - ((theta.head(3).transpose() - p_GT_vec.row(j)).norm() + theta(3));
       }
       else if (theta.size() == 3)
       {
         // Jacobian [df/dp_AinG]
-        J.row(j) << (theta(0) - pose_vec(j, 0)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
-            (theta(1) - pose_vec(j, 1)) / (theta.head(3).transpose() - pose_vec.row(j)).norm(),
-            (theta(2) - pose_vec(j, 2)) / (theta.head(3).transpose() - pose_vec.row(j)).norm();
+        J.row(j) << (theta(0) - p_GT_vec(j, 0)) / (theta.head(3).transpose() - p_GT_vec.row(j)).norm(),
+            (theta(1) - p_GT_vec(j, 1)) / (theta.head(3).transpose() - p_GT_vec.row(j)).norm(),
+            (theta(2) - p_GT_vec(j, 2)) / (theta.head(3).transpose() - p_GT_vec.row(j)).norm();
         // Residual res = y - f(theta) =  uwb_meas - ||p_AinG - p_UinG||
-        res(j) = uwb_vec(j) - (theta.head(3).transpose() - pose_vec.row(j)).norm();
+        res(j) = d_TA_vec(j) - (theta.head(3).transpose() - p_GT_vec.row(j)).norm();
       }
     }
 
@@ -150,11 +190,11 @@ bool NlsSolver::levenbergMarquardt(const TimedBuffer<UwbData>& uwb_data, const P
       {
         if (theta.size() == 5)
           res_new(j) =
-              uwb_vec(j) - (theta_tmp(4) * (theta_tmp.head(3).transpose() - pose_vec.row(j)).norm() + theta_tmp(3));
+              d_TA_vec(j) - (theta_tmp(4) * (theta_tmp.head(3).transpose() - p_GT_vec.row(j)).norm() + theta_tmp(3));
         else if (theta.size() == 4)
-          res_new(j) = uwb_vec(j) - ((theta_tmp.head(3).transpose() - pose_vec.row(j)).norm() + theta_tmp(3));
+          res_new(j) = d_TA_vec(j) - ((theta_tmp.head(3).transpose() - p_GT_vec.row(j)).norm() + theta_tmp(3));
         else if (theta.size() == 3)
-          res_new(j) = uwb_vec(j) - ((theta_tmp.head(3).transpose() - pose_vec.row(j)).norm());
+          res_new(j) = d_TA_vec(j) - ((theta_tmp.head(3).transpose() - p_GT_vec.row(j)).norm());
       }
 
       // If residual decreases, update lambda and theta, and break
@@ -167,7 +207,7 @@ bool NlsSolver::levenbergMarquardt(const TimedBuffer<UwbData>& uwb_data, const P
         theta += d_theta;
 
         // Calculate MSE = ||res_new||^2 / (n - p)
-        mse = res_new.squaredNorm() / (uwb_vec.size() - theta.size());
+        mse = res_new.squaredNorm() / (d_TA_vec.size() - theta.size());
 
         // Compute estimation Covariance matrix
         cov = pinv_H * mse;

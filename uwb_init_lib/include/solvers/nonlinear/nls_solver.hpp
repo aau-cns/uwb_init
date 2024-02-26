@@ -51,6 +51,11 @@ public:
   [[nodiscard]] bool levenbergMarquardt(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer,
                                         Eigen::VectorXd& theta, Eigen::MatrixXd& cov);
 
+
+  bool levenbergMarquardt(const std::unordered_map<uint, TimedBuffer<UwbData>>& dict_uwb_data,
+                          const PositionBufferDict_t& dict_p_UinG_buffer, Eigen::VectorXd& theta, Eigen::MatrixXd& cov);
+
+
 private:
   /// Shared pointer to logger
   std::shared_ptr<Logger> logger_ = nullptr;
