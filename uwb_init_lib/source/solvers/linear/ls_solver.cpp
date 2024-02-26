@@ -96,12 +96,17 @@ bool LsSolver::solve_ls(const TimedBuffer<UwbData>& uwb_data, const PositionBuff
                         Eigen::VectorXd& lsSolution, Eigen::MatrixXd& cov)
 {
   // Coefficient matrix and measurement vector initialization
-  Eigen::MatrixXd coeffs;
-  Eigen::VectorXd meas;
-  Eigen::VectorXd sigma;
+  Eigen::MatrixXd coeffs;  // A
+  Eigen::VectorXd meas;    // b
+  Eigen::VectorXd sigma;   // s
+
+  UwbDataPerTag dict_uwb_data;
+  dict_uwb_data.insert({(uint)0, uwb_data});
+  PositionBufferDict_t dict_p_UinG_buffer;
+  dict_p_UinG_buffer.insert({(uint)0, p_UinG_buffer});
 
   // Initialize least squares problem
-  if (!(ls_problem(uwb_data, p_UinG_buffer, coeffs, meas, sigma)))
+  if (!(ls_problem(dict_uwb_data, dict_p_UinG_buffer, coeffs, meas, sigma)))
   {
     logger_->err("LsSolver: Cannot build Least Squares problem");
     return false;
@@ -150,165 +155,290 @@ bool LsSolver::solve_ls(const TimedBuffer<UwbData>& uwb_data, const PositionBuff
   return true;
 }
 
-bool LsSolver::ls_single_const_bias(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer,
+bool LsSolver::solve_ls(const std::unordered_map<uint, TimedBuffer<UwbData> > &dict_uwb_data, std::unordered_map<uint, PositionBuffer> dict_p_UinG_buffer, Eigen::VectorXd &lsSolution, Eigen::MatrixXd &cov) {
+  // Coefficient matrix and measurement vector initialization
+  Eigen::MatrixXd coeffs;  // A
+  Eigen::VectorXd meas;    // b
+  Eigen::VectorXd sigma;   // s
+
+          // Initialize least squares problem
+  if (!(ls_problem(dict_uwb_data, dict_p_UinG_buffer, coeffs, meas, sigma)))
+  {
+    logger_->err("LsSolver: Cannot build Least Squares problem");
+    return false;
+  }
+
+          // Compute weighted coefficients
+  Eigen::MatrixXd W = sigma.cwiseInverse().cwiseSqrt().asDiagonal();
+  Eigen::MatrixXd weighted_coeffs = W * coeffs;
+  Eigen::VectorXd weighted_meas = W * meas;
+
+          // Solve GLS
+  Eigen::BDCSVD<Eigen::MatrixXd> svd(weighted_coeffs, Eigen::ComputeThinU | Eigen::ComputeThinV);
+  lsSolution = svd.solve(weighted_meas);
+
+  /* lsSolution changes w.r.t. chosen method and variables
+  //
+  // Const bias single:
+  // [    0   ,     1   ,    2    ,  3 ,  4  , ... ,  end            ]
+  // [p_AinG_x, p_AinG_y, p_AinG_z,  k_1, k_2, ... , norm(p_AinG)^2-k^2]
+  //
+  // Const bias double:
+  // [    0   ,     1   ,    2    ,  3  , ... , end ]
+  // [p_AinG_x, p_AinG_y, p_AinG_z,  k_1, ... , k_n ]
+  //
+  // Unbiased single:
+  // [    0    ,    1   ,    2   ,        3       ]
+  // [p_AinG_x, p_AinG_y, p_AinG_z, norm(p_AinG)^2]
+  //
+  // Unbiased double:
+  // [    0    ,    1   ,    2    ]
+  // [p_AinG_x, p_AinG_y, p_AinG_z]
+  */
+
+          // Compute estimation Covariance (Var(X) = (A'*sigma^-1*A)^-1 = ((W*A)'*(W*A))^-1) = (A_'*A_)^-1)
+          // if A_ = U*S*V' then (A_'*A_)^-1 = V*S^-1*S^-1*V' (see properties of SVD)
+  cov = svd.matrixV() * svd.singularValues().asDiagonal().inverse() * svd.singularValues().asDiagonal().inverse()
+        * svd.matrixV().transpose();
+
+          // If covariance matrix is not semi-positive-definite return
+  if (!isSPD(cov)) {
+    logger_->err("LsSolver: Covariance matrix is not SPD");
+    return false;
+  }
+  return true;
+
+}
+
+bool LsSolver::ls_single_const_bias(const UwbDataPerTag &dict_uwb_data, const PositionBufferDict_t& dict_p_UinG_buffer,
                                     Eigen::MatrixXd& A, Eigen::VectorXd& b, Eigen::VectorXd& s)
 {
+  size_t const num_tags = dict_uwb_data.size();
+  size_t num_meas = 0;
+  for(auto const&e : dict_uwb_data)
+  {
+    num_meas += e.second.size();
+  }
   // Const bias single:
-  // [    0   ,     1   ,    2    ,  3 ,      4            ]
-  // [p_AinG_x, p_AinG_y, p_AinG_z,  k , norm(p_AinG)^2-k^2]
+  // [    0   ,     1   ,    2    ,  3 ,  4  , ... ,  end            ]
+  // [p_AinG_x, p_AinG_y, p_AinG_z,  k_1, k_2, ... , norm(p_AinG)^2-k^2]
 
   // Coefficient matrix and measurement vector initialization
-  A = Eigen::MatrixXd::Zero(uwb_data.size(), 5);
+  A = Eigen::MatrixXd::Zero(num_meas, 4 + num_tags);
   b = Eigen::VectorXd::Zero(A.rows());
   s = Eigen::VectorXd::Ones(A.rows());
 
   // Fill the coefficient matrix and the measurement vector
-  for (uint i = 0; i < uwb_data.size(); ++i)
+
+  size_t idx_tag = 0;
+  for(auto const&e : dict_uwb_data)
   {
-    // Get position at uwb timestamp
-    Eigen::Vector3d p_UinG = p_UinG_buffer.get_at_timestamp(uwb_data[i].first);
+    uint const Tag_ID = e.first;
+    auto const& uwb_data = e.second;
+    auto const& p_UinG_buffer = dict_p_UinG_buffer.at(Tag_ID);
 
-    // Fill row(i) of A and b
-    A.row(i) << -2 * p_UinG.x(), -2 * p_UinG.y(), -2 * p_UinG.z(), 2 * uwb_data[i].second.distance_, 1;
-    b(i) = std::pow(uwb_data[i].second.distance_, 2) - std::pow(p_UinG.norm(), 2);
+    for (uint i = 0; i < uwb_data.size(); ++i)
+    {
+      // Get position at uwb timestamp
+      Eigen::Vector3d p_UinG = p_UinG_buffer.get_at_timestamp(uwb_data[i].first);
+
+      // make bias gamma entry for the appropriate tag
+      Eigen::VectorXd gamma_vec;
+      gamma_vec.setZero(num_tags);
+      gamma_vec(idx_tag) = 2 * uwb_data[i].second.distance_;
+
+      // Fill row(i) of A and b
+      A.row(i) << -2 * p_UinG.x(), -2 * p_UinG.y(), -2 * p_UinG.z(), gamma_vec, 1;
+      b(i) = std::pow(uwb_data[i].second.distance_, 2) - std::pow(p_UinG.norm(), 2);
+    }
+    idx_tag++;
   }
-
   return true;
 }
 
-bool LsSolver::ls_single_no_bias(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer,
+bool LsSolver::ls_single_no_bias(const UwbDataPerTag &dict_uwb_data, const PositionBufferDict_t &dict_p_UinG_buffer,
                                  Eigen::MatrixXd& A, Eigen::VectorXd& b, Eigen::VectorXd& s)
 {
+  size_t num_meas = 0;
+  for(auto const&e : dict_uwb_data)
+  {
+    num_meas += e.second.size();
+  }
   // Unbiased single:
   // [    0    ,    1   ,    2   ,        3       ]
   // [p_AinG_x, p_AinG_y, p_AinG_z, norm(p_AinG)^2]
 
   // Coefficient matrix and measurement vector initialization
-  A = Eigen::MatrixXd::Zero(uwb_data.size(), 4);
+  A = Eigen::MatrixXd::Zero(num_meas, 4);
   b = Eigen::VectorXd::Zero(A.rows());
   s = Eigen::VectorXd::Ones(A.rows());
 
-  // Fill the coefficient matrix and the measurement vector
-  for (uint i = 0; i < uwb_data.size(); ++i)
+  for(auto const&e : dict_uwb_data)
   {
-    // Get position at uwb timestamp
-    Eigen::Vector3d p_UinG = p_UinG_buffer.get_at_timestamp(uwb_data[i].first);
+    uint const Tag_ID = e.first;
 
-    // Fill row(i) of A and b
-    A.row(i) << -2 * p_UinG.x(), -2 * p_UinG.y(), -2 * p_UinG.z(), 1;
-    b(i) = std::pow(uwb_data[i].second.distance_, 2) - std::pow(p_UinG.norm(), 2);
+    auto const& uwb_data = e.second;
+    auto const& p_UinG_buffer = dict_p_UinG_buffer.at(Tag_ID);
+    // Fill the coefficient matrix and the measurement vector
+    for (uint i = 0; i < uwb_data.size(); ++i)
+    {
+      // Get position at uwb timestamp
+      Eigen::Vector3d p_UinG = p_UinG_buffer.get_at_timestamp(uwb_data[i].first);
+
+      // Fill row(i) of A and b
+      A.row(i) << -2 * p_UinG.x(), -2 * p_UinG.y(), -2 * p_UinG.z(), 1;
+      b(i) = std::pow(uwb_data[i].second.distance_, 2) - std::pow(p_UinG.norm(), 2);
+    }
   }
-
   return true;
 }
 
-bool LsSolver::ls_double_const_bias(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer,
+bool LsSolver::ls_double_const_bias(const UwbDataPerTag &dict_uwb_data, const PositionBufferDict_t& dict_p_UinG_buffer,
                                     Eigen::MatrixXd& A, Eigen::VectorXd& b, Eigen::VectorXd& s)
 {
+
+  size_t const num_tags = dict_uwb_data.size();
+  size_t num_meas = 0;
+  for(auto const&e : dict_uwb_data)
+  {
+    num_meas += e.second.size();
+  }
+
   // Const bias double:
-  // [    0   ,     1   ,    2    ,  3 ]
-  // [p_AinG_x, p_AinG_y, p_AinG_z,  k ]
+  // [    0   ,     1   ,    2    ,  3  , ... , end]
+  // [p_AinG_x, p_AinG_y, p_AinG_z,  k_1, ... , k_n]
 
   // Number of data points must be at least 2
-  if (uwb_data.size() < 2)
+  if (num_meas < 2)
   {
     return false;
   }
 
   // Coefficient matrix and measurement vector initialization
-  A = Eigen::MatrixXd::Zero(uwb_data.size() - 1, 4);
+  A = Eigen::MatrixXd::Zero(num_meas - num_tags, 3 + num_tags);
   b = Eigen::VectorXd::Zero(A.rows());
   s = Eigen::VectorXd::Zero(A.rows());
 
-  // Find pivot index (minimize weight uwb_dist^2*sigma_d + p_UinG'*sigma_p*p_UinG)
-  std::pair<uint, double> res = find_pivot_idx(uwb_data, p_UinG_buffer);
-  uint const pivot_idx = res.first;
-  double const weight_pivot = res.second;
-
-  // Position and distance at pivot_index
-  Eigen::Vector3d p_UinG_pivot = p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first);
-  double uwb_pivot = uwb_data[pivot_idx].second.distance_;
-
-  // Fill the coefficient matrix and the measurement vector
-  uint j = 0;
-  for (uint i = 0; i < uwb_data.size(); ++i)
+  size_t idx_tag = 0;
+  for(auto const&e : dict_uwb_data)
   {
-    // Skip pivot
-    if (i == pivot_idx)
+    uint const Tag_ID = e.first;
+    auto const& uwb_data = e.second;
+
+    auto const& p_UinG_buffer = dict_p_UinG_buffer.at(Tag_ID);
+    // Find pivot index (minimize weight uwb_dist^2*sigma_d + p_UinG'*sigma_p*p_UinG)
+    std::pair<uint, double> res = find_pivot_idx(uwb_data, p_UinG_buffer);
+    uint const pivot_idx = res.first;
+    double const weight_pivot = res.second;
+
+            // Position and distance at pivot_index
+    Eigen::Vector3d p_UinG_pivot = p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first);
+    double uwb_pivot = uwb_data[pivot_idx].second.distance_;
+
+            // Fill the coefficient matrix and the measurement vector
+    uint j = 0;
+    for (uint i = 0; i < uwb_data.size(); ++i)
     {
-      continue;
+      // Skip pivot
+      if (i == pivot_idx)
+      {
+        continue;
+      }
+
+              // Get position at timestamp
+      Eigen::Vector3d p_UinG = p_UinG_buffer.get_at_timestamp(uwb_data[i].first);
+
+
+      // make bias gamma entry for the appropriate tag
+      Eigen::VectorXd gamma_vec;
+      gamma_vec.setZero(num_tags);
+      gamma_vec(idx_tag) = (uwb_data[i].second.distance_ - uwb_pivot);
+
+
+              // Fill row(j) of A and b
+      A.row(j) << -(p_UinG.x() - p_UinG_pivot.x()), -(p_UinG.y() - p_UinG_pivot.y()), -(p_UinG.z() - p_UinG_pivot.z()),
+        gamma_vec;
+
+      b(j) = 0.5 * (std::pow(uwb_data[i].second.distance_, 2) - std::pow(uwb_pivot, 2) -
+                    (std::pow(p_UinG.norm(), 2) - std::pow(p_UinG_pivot.norm(), 2)));
+
+      s(j) = std::pow(uwb_data[i].second.distance_, 2) * solver_options_->sigma_meas_ +
+             p_UinG.transpose() * Eigen::Matrix3d::Identity() * solver_options_->sigma_pos_ * p_UinG + weight_pivot;
+
+              // Increment row index
+      j += 1;
     }
 
-    // Get position at timestamp
-    Eigen::Vector3d p_UinG = p_UinG_buffer.get_at_timestamp(uwb_data[i].first);
-
-    // Fill row(j) of A and b
-    A.row(j) << -(p_UinG.x() - p_UinG_pivot.x()), -(p_UinG.y() - p_UinG_pivot.y()), -(p_UinG.z() - p_UinG_pivot.z()),
-        (uwb_data[i].second.distance_ - uwb_pivot);
-
-    b(j) = 0.5 * (std::pow(uwb_data[i].second.distance_, 2) - std::pow(uwb_pivot, 2) -
-                  (std::pow(p_UinG.norm(), 2) - std::pow(p_UinG_pivot.norm(), 2)));
-
-    s(j) = std::pow(uwb_data[i].second.distance_, 2) * solver_options_->sigma_meas_ +
-           p_UinG.transpose() * Eigen::Matrix3d::Identity() * solver_options_->sigma_pos_ * p_UinG + weight_pivot;
-
-    // Increment row index
-    j += 1;
+    idx_tag += 1;
   }
 
   return true;
 }
 
-bool LsSolver::ls_double_no_bias(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer,
+bool LsSolver::ls_double_no_bias(const UwbDataPerTag &dict_uwb_data, const PositionBufferDict_t &dict_p_UinG_buffer,
                                  Eigen::MatrixXd& A, Eigen::VectorXd& b, Eigen::VectorXd& s)
 {
+  size_t const num_tags = dict_uwb_data.size();
+  size_t num_meas = 0;
+  for(auto const&e : dict_uwb_data)
+  {
+    num_meas += e.second.size();
+  }
   // Unbiased double:
   // [    0    ,    1   ,    2    ]
   // [p_AinG_x, p_AinG_y, p_AinG_z]
 
   // Number of data points must be at least 2
-  if (uwb_data.size() < 2)
+  if (num_meas < 2)
   {
     return false;
   }
 
   // Coefficient matrix and measurement vector initialization
-  A = Eigen::MatrixXd::Zero(uwb_data.size() - 1, 3);
+  A = Eigen::MatrixXd::Zero(num_meas - num_tags, 3);
   b = Eigen::VectorXd::Zero(A.rows());
   s = Eigen::VectorXd::Zero(A.rows());
 
-  // Find pivot index (minimize weight uwb_dist^2*sigma_d + p_UinG'*sigma_p*p_UinG)
-  std::pair<uint, double> res = find_pivot_idx(uwb_data, p_UinG_buffer);
-  uint const pivot_idx = res.first;
-  double const weight_pivot = res.second;
 
-  // Position and distance at pivot_index
-  Eigen::Vector3d p_UinG_pivot = p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first);
-  double uwb_pivot = uwb_data[pivot_idx].second.distance_;
-
-  // Fill the coefficient matrix and the measurement vector
-  uint j = 0;
-  for (uint i = 0; i < uwb_data.size(); ++i)
+  for(auto const&e : dict_uwb_data)
   {
-    // Skip pivot
-    if (i == pivot_idx)
+    uint const Tag_ID = e.first;
+    auto const& uwb_data = e.second;
+
+    auto const& p_UinG_buffer = dict_p_UinG_buffer.at(Tag_ID);
+    // Find pivot index (minimize weight uwb_dist^2*sigma_d + p_UinG'*sigma_p*p_UinG)
+    std::pair<uint, double> res = find_pivot_idx(uwb_data, p_UinG_buffer);
+    uint const pivot_idx = res.first;
+    double const weight_pivot = res.second;
+
+            // Position and distance at pivot_index
+    Eigen::Vector3d p_UinG_pivot = p_UinG_buffer.get_at_timestamp(uwb_data[pivot_idx].first);
+    double uwb_pivot = uwb_data[pivot_idx].second.distance_;
+
+            // Fill the coefficient matrix and the measurement vector
+    uint j = 0;
+    for (uint i = 0; i < dict_uwb_data.size(); ++i)
     {
-      continue;
+      // Skip pivot
+      if (i == pivot_idx)
+      {
+        continue;
+      }
+
+              // Get position at uwb timestamp
+      Eigen::Vector3d p_UinG = p_UinG_buffer.get_at_timestamp(uwb_data[i].first);
+
+              // Fill row(j) of A and b
+      A.row(j) << -(p_UinG.x() - p_UinG_pivot.x()), -(p_UinG.y() - p_UinG_pivot.y()), -(p_UinG.z() - p_UinG_pivot.z());
+
+      b(j) = 0.5 * (std::pow(uwb_data[i].second.distance_, 2) - std::pow(uwb_pivot, 2) -
+                    (std::pow(p_UinG.norm(), 2) - std::pow(p_UinG_pivot.norm(), 2)));
+      s(j) = std::pow(uwb_data[i].second.distance_, 2) * solver_options_->sigma_meas_ +
+             p_UinG.transpose() * solver_options_->sigma_pos_ * Eigen::Matrix3d::Identity() * p_UinG + weight_pivot;
+
+              // Increment row index
+      j += 1;
     }
-
-    // Get position at uwb timestamp
-    Eigen::Vector3d p_UinG = p_UinG_buffer.get_at_timestamp(uwb_data[i].first);
-
-    // Fill row(j) of A and b
-    A.row(j) << -(p_UinG.x() - p_UinG_pivot.x()), -(p_UinG.y() - p_UinG_pivot.y()), -(p_UinG.z() - p_UinG_pivot.z());
-
-    b(j) = 0.5 * (std::pow(uwb_data[i].second.distance_, 2) - std::pow(uwb_pivot, 2) -
-                  (std::pow(p_UinG.norm(), 2) - std::pow(p_UinG_pivot.norm(), 2)));
-    s(j) = std::pow(uwb_data[i].second.distance_, 2) * solver_options_->sigma_meas_ +
-           p_UinG.transpose() * solver_options_->sigma_pos_ * Eigen::Matrix3d::Identity() * p_UinG + weight_pivot;
-
-    // Increment row index
-    j += 1;
   }
 
   return true;

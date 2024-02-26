@@ -187,6 +187,9 @@ typedef TimedBuffer<Eigen::Vector3d> PositionBuffer;
 typedef std::unordered_map<uint, PositionBuffer> PositionBufferDict_t;
 // map<Anchor_ID,  Hist<UwbData>>
 typedef std::unordered_map<uint, TimedBuffer<UwbData>> UwbDataBuffer;
+typedef std::unordered_map<uint, TimedBuffer<UwbData>> UwbDataPerTag;
+// map<Anchor_ID, map<Tag_ID, Hist<UwbData>>>
+typedef std::unordered_map<uint, UwbDataPerTag> UwbDataBufferDict_t;
 // map<Anchor_ID,  LSSolution>
 typedef std::unordered_map<uint, LSSolution> LSSolutions;
 // map<Anchor_ID,  NLSSolution>

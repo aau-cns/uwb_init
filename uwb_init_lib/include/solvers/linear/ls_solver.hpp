@@ -65,11 +65,26 @@ public:
   [[nodiscard]] bool solve_ls(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer,
                               Eigen::VectorXd& lsSolution, Eigen::MatrixXd& cov);
 
+
+  /**
+   * @brief Function to be called to solve the least square problem
+   *
+   * @param dict_uwb_data  <Tag_ID, Hist<UWBData>>
+   * @param dict_p_UinG_buffer <Tag_ID, Hist<p_UinG>>
+   * @param lsSolution
+   * @param cov
+   * @return true if a solution is found, false otherwise
+   */
+  bool solve_ls(std::unordered_map<uint, TimedBuffer<UwbData>> const& dict_uwb_data,
+                std::unordered_map<uint, PositionBuffer> dict_p_UinG_buffer, Eigen::VectorXd& lsSolution,
+                Eigen::MatrixXd& cov);
+
+
   /**
    * @brief The least square problem
    *
    */
-  std::function<bool(const TimedBuffer<UwbData>&, const PositionBuffer&, Eigen::MatrixXd&, Eigen::VectorXd&,
+  std::function<bool(const UwbDataPerTag&, const PositionBufferDict_t&, Eigen::MatrixXd&, Eigen::VectorXd&,
                      Eigen::VectorXd&)>
       ls_problem;
 
@@ -85,13 +100,13 @@ private:
   /// \param UWB data for the single anchor, coefficient matrix A, measurement vector b (A * x = b), uncertainty s
   /// \return ture if successful, false if not
   ///
-  bool ls_single_const_bias(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer,
+  bool ls_single_const_bias(const UwbDataPerTag& dict_uwb_data, const PositionBufferDict_t &dict_p_UinG_buffer,
                             Eigen::MatrixXd& A, Eigen::VectorXd& b, Eigen::VectorXd& s);
-  bool ls_single_no_bias(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer, Eigen::MatrixXd& A,
+  bool ls_single_no_bias(const UwbDataPerTag& dict_uwb_data, const PositionBufferDict_t& dict_p_UinG_buffer, Eigen::MatrixXd& A,
                          Eigen::VectorXd& b, Eigen::VectorXd& s);
-  bool ls_double_const_bias(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer,
+  bool ls_double_const_bias(const UwbDataPerTag& dict_uwb_data, const PositionBufferDict_t& dict_p_UinG_buffer,
                             Eigen::MatrixXd& A, Eigen::VectorXd& b, Eigen::VectorXd& s);
-  bool ls_double_no_bias(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer, Eigen::MatrixXd& A,
+  bool ls_double_no_bias(const UwbDataPerTag& dict_uwb_data, const PositionBufferDict_t& dict_p_UinG_buffer, Eigen::MatrixXd& A,
                          Eigen::VectorXd& b, Eigen::VectorXd& s);
 
   ///
