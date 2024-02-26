@@ -205,6 +205,8 @@ bool UwbInitializer::init_anchors()
   {
     uint const ID_Anchor = e.first;
     UwbDataPerTag const& uwb_data = e.second;
+    uint const num_Tags = uwb_data.size();
+
     // Logging
     logger_->info("Anchor[" + std::to_string(ID_Anchor) + "]: Starting initialization");
 
@@ -233,24 +235,30 @@ bool UwbInitializer::init_anchors()
 
       // Initialize new anchor
       UwbAnchor new_anchor(ID_Anchor, lsSolution.head(3));
+      logger_->debug(" * " + new_anchor.str());
 
       // Initialize constant bias
-      double const_bias = 0.0;
+      std::unordered_map<uint, double> const_biases;
 
       // If constant bias was estimated assign the value, else resize covariance
-      if (lsSolution.size() > 3)
+      if (init_options_->bias_type_ != BiasType::NO_BIAS)
       {
-        const_bias = lsSolution(3);
+        size_t idx = 3;
+        for(auto const &e : p_UinG_buffer_) {
+          const_biases.insert({e.first, lsSolution(idx)});
+          idx++;
+        }
       }
       else
       {
         lsCov.conservativeResizeLike(Eigen::MatrixXd::Zero(4, 4));
         lsCov(3, 3) = init_options_->const_bias_prior_cov_;
+        const_biases.insert({0,0.0});
       }
 
       // Initialize solution
-      LSSolution ls_sol(new_anchor, const_bias, lsCov);
-
+      LSSolution ls_sol(new_anchor, const_biases, lsCov);
+      logger_->debug(" * " + ls_sol.str());
       // Add solution to vector
       ls_sols_.emplace(std::make_pair(ID_Anchor, ls_sol));
     }
@@ -268,17 +276,26 @@ bool UwbInitializer::init_anchors()
       }
       else
       {
-        lsSolution = Eigen::VectorXd::Zero(4);
+        lsSolution = Eigen::VectorXd::Zero(3+num_Tags);
       }
     }
 
     // Initial guess for NLS based on bias type
     if (init_options_->bias_type_ == BiasType::ALL_BIAS)
     {
-      nlsSolution = Eigen::VectorXd::Zero(5);
+      nlsSolution = Eigen::VectorXd::Zero(3+2*num_Tags);
       Eigen::VectorXd p_AinG = lsSolution.head(3);
-      double const_bias = lsSolution(3);
-      nlsSolution << p_AinG, const_bias, 1.0;
+
+      Eigen::VectorXd range_biases, const_biases;
+      range_biases.setOnes(num_Tags);
+      const_biases.setZero(num_Tags);
+
+      // copy all solutions ot the vectors
+      for(size_t idx = 0; idx < num_Tags; idx++) {
+        const_biases(idx) = lsSolution(3+idx);
+      }
+
+      nlsSolution << p_AinG, const_biases.transpose(), range_biases.transpose();
     }
     else
     {
@@ -296,32 +313,72 @@ bool UwbInitializer::init_anchors()
 
       // Initialize new anchor
       UwbAnchor new_anchor(ID_Anchor, nlsSolution.head(3));
+      logger_->debug(" * " + new_anchor.str());
 
       // Initialize biases
-      double const_bias = 0.0;
-      double beta = 1.0;
+      std::unordered_map<uint, double> const_biases;
+      std::unordered_map<uint, double>  range_biases;
 
       // Switch bias type and resize covariance
       switch (init_options_->bias_type_)
       {
         case BiasType::ALL_BIAS:
-          const_bias = nlsSolution(3);
-          beta = nlsSolution(4);
+        {
+          size_t idx = 3;
+          for(auto const &e : p_UinG_buffer_) {
+            const_biases.insert({e.first, nlsSolution(idx)});
+            idx++;
+          }
+          for(auto const &e : p_UinG_buffer_) {
+            range_biases.insert({e.first, nlsSolution(idx)});
+            idx++;
+          }
+
           break;
+        }
         case BiasType::CONST_BIAS:
-          const_bias = nlsSolution(3);
-          nlsCov.conservativeResizeLike(Eigen::MatrixXd::Zero(5, 5));
-          nlsCov(4, 4) = init_options_->dist_bias_prior_cov_;
+        {
+          size_t idx = 3;
+          for(auto const &e : p_UinG_buffer_)
+          {
+            const_biases.insert({e.first, nlsSolution(idx)});
+            idx++;
+          }
+          nlsCov.conservativeResizeLike(Eigen::MatrixXd::Zero(3+2*num_Tags, 3+2*num_Tags));
+          for(size_t idx = 3+num_Tags; idx < 3+2*num_Tags; idx++ )
+          {
+            nlsCov(idx, idx) = init_options_->dist_bias_prior_cov_;
+          }
+
+          for(auto const &e : p_UinG_buffer_) {
+            range_biases.insert({e.first, 1.0});
+          }
           break;
+        }
         case BiasType::NO_BIAS:
-          nlsCov.conservativeResizeLike(Eigen::MatrixXd::Zero(5, 5));
-          nlsCov(3, 3) = init_options_->const_bias_prior_cov_;
-          nlsCov(4, 4) = init_options_->dist_bias_prior_cov_;
+        {
+          nlsCov.conservativeResizeLike(Eigen::MatrixXd::Zero(3+2*num_Tags, 3+2*num_Tags));
+          for(size_t idx = 3; idx < 3+num_Tags; idx++ )
+          {
+            nlsCov(idx, idx) = init_options_->dist_bias_prior_cov_;
+          }
+          for(size_t idx = 3+num_Tags; idx < 3+2*num_Tags; idx++ )
+          {
+            nlsCov(idx, idx) = init_options_->dist_bias_prior_cov_;
+          }
+
+          for(auto const &e : p_UinG_buffer_) {
+            const_biases.insert({e.first, 0.0});
+          }
+          for(auto const &e : p_UinG_buffer_) {
+            range_biases.insert({e.first, 1.0});
+          }
           break;
+        }
       }
 
       // Initialize solution
-      NLSSolution nls_sol(new_anchor, const_bias, beta, nlsCov);
+      NLSSolution nls_sol(new_anchor, const_biases, range_biases, nlsCov);
 
       // Compute standard deviation
       Eigen::VectorXd std_dev = nls_sol.cov_.diagonal().cwiseSqrt();
@@ -331,15 +388,8 @@ bool UwbInitializer::init_anchors()
 
       // Refine successful
       logger_->info("Anchor[" + std::to_string(ID_Anchor) + "]: Correctly initialized");
-      // std::stringstream ss;
-      // ss << "Anchor[" << ID_Anchor << "]\n"
-      //    << "p_AinG = " << nls_sols_.at(ID_Anchor).anchor_.p_AinG_.transpose() << '\n'
-      //    << "Covariance = \n"
-      //    << nls_sols_.at(ID_Anchor).cov_ << '\n'
-      //    << "gamma = " << nls_sols_.at(ID_Anchor).gamma_ << '\n'
-      //    << "beta = " << nls_sols_.at(ID_Anchor).beta_ << '\n'
-      //    << "Standard deviation = " << std_dev.transpose();
-      // logger_->debug(ss.str());
+      logger_->debug(" * " + nls_sol.str());
+
     }
     // If NLS fails continue with next anchor
     else
@@ -454,10 +504,8 @@ bool UwbInitializer::refine_anchors()
     }
 
     // Initialize NLS solution and covariance
-    Eigen::VectorXd theta = Eigen::VectorXd::Zero(5);
+    Eigen::VectorXd theta = nls_sol.second.to_vec();
     Eigen::MatrixXd cov;
-
-    theta << nls_sol.second.anchor_.p_AinG_, nls_sol.second.gammas_.at(0), nls_sol.second.betas_.at(0);
 
     // Perform nonlinear optimization
     if (nls_solver_.levenbergMarquardt(uwb_data_buffer_.at(nls_sol.first), p_UinG_buffer_, theta, cov))
