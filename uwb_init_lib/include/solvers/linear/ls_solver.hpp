@@ -75,8 +75,8 @@ public:
    * @param cov
    * @return true if a solution is found, false otherwise
    */
-  bool solve_ls(std::unordered_map<uint, TimedBuffer<UwbData>> const& dict_uwb_data,
-                std::unordered_map<uint, PositionBuffer> dict_p_UinG_buffer, Eigen::VectorXd& lsSolution,
+  bool solve_ls(const UwbDataPerTag& dict_uwb_data,
+                const PositionBufferDict_t&dict_p_UinG_buffer, Eigen::VectorXd& lsSolution,
                 Eigen::MatrixXd& cov);
 
 

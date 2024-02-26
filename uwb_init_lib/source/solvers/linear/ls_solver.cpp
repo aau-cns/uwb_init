@@ -155,7 +155,7 @@ bool LsSolver::solve_ls(const TimedBuffer<UwbData>& uwb_data, const PositionBuff
   return true;
 }
 
-bool LsSolver::solve_ls(const std::unordered_map<uint, TimedBuffer<UwbData> > &dict_uwb_data, std::unordered_map<uint, PositionBuffer> dict_p_UinG_buffer, Eigen::VectorXd &lsSolution, Eigen::MatrixXd &cov) {
+bool LsSolver::solve_ls(const UwbDataPerTag &dict_uwb_data, PositionBufferDict_t const& dict_p_UinG_buffer, Eigen::VectorXd &lsSolution, Eigen::MatrixXd &cov) {
   // Coefficient matrix and measurement vector initialization
   Eigen::MatrixXd coeffs;  // A
   Eigen::VectorXd meas;    // b
@@ -169,7 +169,8 @@ bool LsSolver::solve_ls(const std::unordered_map<uint, TimedBuffer<UwbData> > &d
   }
 
           // Compute weighted coefficients
-  Eigen::MatrixXd W = sigma.cwiseInverse().cwiseSqrt().asDiagonal();
+  Eigen::MatrixXd W_diag = sigma.cwiseInverse().cwiseSqrt();
+  Eigen::MatrixXd W = W_diag.asDiagonal();
   Eigen::MatrixXd weighted_coeffs = W * coeffs;
   Eigen::VectorXd weighted_meas = W * meas;
 
@@ -231,6 +232,7 @@ bool LsSolver::ls_single_const_bias(const UwbDataPerTag &dict_uwb_data, const Po
   // Fill the coefficient matrix and the measurement vector
 
   size_t idx_tag = 0;
+  uint j = 0;
   for(auto const&e : dict_uwb_data)
   {
     uint const Tag_ID = e.first;
@@ -248,8 +250,10 @@ bool LsSolver::ls_single_const_bias(const UwbDataPerTag &dict_uwb_data, const Po
       gamma_vec(idx_tag) = 2 * uwb_data[i].second.distance_;
 
       // Fill row(i) of A and b
-      A.row(i) << -2 * p_UinG.x(), -2 * p_UinG.y(), -2 * p_UinG.z(), gamma_vec, 1;
-      b(i) = std::pow(uwb_data[i].second.distance_, 2) - std::pow(p_UinG.norm(), 2);
+      A.row(j) << -2 * p_UinG.x(), -2 * p_UinG.y(), -2 * p_UinG.z(), gamma_vec.transpose(), 1;
+      b(j) = std::pow(uwb_data[i].second.distance_, 2) - std::pow(p_UinG.norm(), 2);
+
+      j += 1;
     }
     idx_tag++;
   }
@@ -273,6 +277,7 @@ bool LsSolver::ls_single_no_bias(const UwbDataPerTag &dict_uwb_data, const Posit
   b = Eigen::VectorXd::Zero(A.rows());
   s = Eigen::VectorXd::Ones(A.rows());
 
+  uint j = 0;
   for(auto const&e : dict_uwb_data)
   {
     uint const Tag_ID = e.first;
@@ -286,8 +291,10 @@ bool LsSolver::ls_single_no_bias(const UwbDataPerTag &dict_uwb_data, const Posit
       Eigen::Vector3d p_UinG = p_UinG_buffer.get_at_timestamp(uwb_data[i].first);
 
       // Fill row(i) of A and b
-      A.row(i) << -2 * p_UinG.x(), -2 * p_UinG.y(), -2 * p_UinG.z(), 1;
-      b(i) = std::pow(uwb_data[i].second.distance_, 2) - std::pow(p_UinG.norm(), 2);
+      A.row(j) << -2 * p_UinG.x(), -2 * p_UinG.y(), -2 * p_UinG.z(), 1;
+      b(j) = std::pow(uwb_data[i].second.distance_, 2) - std::pow(p_UinG.norm(), 2);
+
+      j += 1;
     }
   }
   return true;
@@ -320,6 +327,7 @@ bool LsSolver::ls_double_const_bias(const UwbDataPerTag &dict_uwb_data, const Po
   s = Eigen::VectorXd::Zero(A.rows());
 
   size_t idx_tag = 0;
+  uint j = 0;
   for(auto const&e : dict_uwb_data)
   {
     uint const Tag_ID = e.first;
@@ -336,7 +344,6 @@ bool LsSolver::ls_double_const_bias(const UwbDataPerTag &dict_uwb_data, const Po
     double uwb_pivot = uwb_data[pivot_idx].second.distance_;
 
             // Fill the coefficient matrix and the measurement vector
-    uint j = 0;
     for (uint i = 0; i < uwb_data.size(); ++i)
     {
       // Skip pivot
@@ -357,7 +364,7 @@ bool LsSolver::ls_double_const_bias(const UwbDataPerTag &dict_uwb_data, const Po
 
               // Fill row(j) of A and b
       A.row(j) << -(p_UinG.x() - p_UinG_pivot.x()), -(p_UinG.y() - p_UinG_pivot.y()), -(p_UinG.z() - p_UinG_pivot.z()),
-        gamma_vec;
+        gamma_vec.transpose();
 
       b(j) = 0.5 * (std::pow(uwb_data[i].second.distance_, 2) - std::pow(uwb_pivot, 2) -
                     (std::pow(p_UinG.norm(), 2) - std::pow(p_UinG_pivot.norm(), 2)));
@@ -399,7 +406,8 @@ bool LsSolver::ls_double_no_bias(const UwbDataPerTag &dict_uwb_data, const Posit
   b = Eigen::VectorXd::Zero(A.rows());
   s = Eigen::VectorXd::Zero(A.rows());
 
-
+  size_t idx_tag = 0;
+  uint j = 0;
   for(auto const&e : dict_uwb_data)
   {
     uint const Tag_ID = e.first;
@@ -416,7 +424,6 @@ bool LsSolver::ls_double_no_bias(const UwbDataPerTag &dict_uwb_data, const Posit
     double uwb_pivot = uwb_data[pivot_idx].second.distance_;
 
             // Fill the coefficient matrix and the measurement vector
-    uint j = 0;
     for (uint i = 0; i < dict_uwb_data.size(); ++i)
     {
       // Skip pivot
@@ -439,6 +446,7 @@ bool LsSolver::ls_double_no_bias(const UwbDataPerTag &dict_uwb_data, const Posit
               // Increment row index
       j += 1;
     }
+    idx_tag += 1;
   }
 
   return true;
