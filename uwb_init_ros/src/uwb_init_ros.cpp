@@ -243,23 +243,42 @@ void UwbInitRos::publishAnchors(const uwb_init::NLSSolutions& sols) {
     ROS_INFO("Anchor [%d] succesfully refined at [%f, %f, %f]", it.first, it.second.anchor_.p_AinG_.x(),
              it.second.anchor_.p_AinG_.y(), it.second.anchor_.p_AinG_.z());
 
+    std::vector<size_t> ref_ids;
+
+
     // Anchor message
     uwb_msgs::UwbAnchor anchor;
     anchor.id = it.first;
-    anchor.ref_id = options_.uwb_ref_id_;
     anchor.position.x = it.second.anchor_.p_AinG_.x();
     anchor.position.y = it.second.anchor_.p_AinG_.y();
     anchor.position.z = it.second.anchor_.p_AinG_.z();
-    anchor.gamma = it.second.gammas_.at(anchor.ref_id);
-    anchor.beta = it.second.betas_.at(anchor.ref_id);
 
-    // Store covarinace upper simmetric part only
+    size_t idx_id = 0;
+    size_t num_tags = it.second.betas_.size();
+    for(auto const& e : it.second.gammas_) {
+      anchor.ref_ids.push_back(e.first);
+      anchor.gammas.push_back(e.second);
+      double sigma_gamma = std::sqrt(it.second.cov_(3+idx_id, 3+idx_id));
+      anchor.sigma_gammas.push_back(sigma_gamma);
+      // check if beta exists:
+      double beta = 1.0;
+
+      if(it.second.betas_.find(e.first) != it.second.betas_.end()) {
+        beta =it.second.betas_.at(e.first);
+
+        double sigma_beta = std::sqrt(it.second.cov_(3+num_tags+idx_id, 3+num_tags+idx_id));
+        anchor.sigma_betas.push_back(sigma_beta);
+      }
+      anchor.betas.push_back(beta);
+    }
+
+    // Store covarinace fully
     int index = 0;
-    for (int i = 0; i < it.second.cov_.rows(); i++)
+    for (int i = 0; i < std::min(3, (int)it.second.cov_.rows()); i++)
     {
-      for (int j = i; j < it.second.cov_.cols(); j++)
+      for (int j = 0; j < std::min(3, (int)it.second.cov_.cols()); j++)
       {
-        anchor.covariance.at(index++) = it.second.cov_(i, j);
+        anchor.covariance_p.at(index++) = it.second.cov_(i, j);
       }
     }
 
@@ -294,7 +313,7 @@ void UwbInitRos::publishWaypoints(const uwb_init::Waypoints& wps)
     waypoints_msg_.waypoints.push_back(wp);
   }
 
-  ++waypoints_msg_.header.seq;
+  waypoints_msg_.header.seq++;
   waypoints_msg_.header.stamp = ros::Time::now();
   waypoints_msg_.header.frame_id = options_.frame_id_waypoints_;
   waypoints_msg_.reference = options_.wp_nav_type_;
