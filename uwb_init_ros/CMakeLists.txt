@@ -30,10 +30,14 @@ list(APPEND include_dirs ${EIGEN3_INCLUDE_DIR})
 list(APPEND libs Eigen3::Eigen ${EIGEN3_LIBRARIES})
 
 # YamlCPP
+
+if(NOT YAML_CPP_VERSION)
+  set( YAML_CPP_VERSION "0.8.0" )
+endif()
+
 FetchContent_Declare(
     yaml-cpp
-    GIT_REPOSITORY  https://github.com/jbeder/yaml-cpp.git
-    GIT_TAG         master
+    URL https://github.com/jbeder/yaml-cpp/archive/refs/tags/${YAML_CPP_VERSION}.tar.gz
     GIT_SHALLOW     TRUE
     GIT_PROGRESS    TRUE
 )
