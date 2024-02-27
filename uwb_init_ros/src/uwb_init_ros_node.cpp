@@ -59,6 +59,7 @@ int main(int argc, char** argv)
       for (YAML::iterator it = node.begin(); it != node.end(); ++it) {
         size_t Tag_ID = it->first.as<int>();
         std::string topic = it->second.as<std::string>();
+        opts.uwb_twr_topics_.push_back(topic);
         ROS_INFO_STREAM("twr topic: ID=" << Tag_ID << " topic = " << topic);
       }
     } else if (node.IsSequence()) {
@@ -370,7 +371,7 @@ int main(int argc, char** argv)
 
           Eigen::Vector3d p(pos.data());
           ROS_INFO_STREAM("Calibration: Anchor_ID=" << Anchor_ID << " p_AinG = " << p.transpose());
-          opts.dict_p_UinI_.insert({Anchor_ID, p});
+          opts.dict_p_AinG_.insert({Anchor_ID, p});
         }
       }
       else if (node.IsSequence()) {
@@ -379,7 +380,7 @@ int main(int argc, char** argv)
 
         Eigen::Vector3d p(pos.data());
         ROS_INFO_STREAM("Calibration: Anchor_ID=" << Anchor_ID << " p_AinG = " << p.transpose());
-        opts.dict_p_UinI_.insert({Anchor_ID, p});
+        opts.dict_p_AinG_.insert({Anchor_ID, p});
 
       }
       else {

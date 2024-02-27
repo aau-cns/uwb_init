@@ -165,6 +165,9 @@ private:
 
   bool uwb_id_on_black_list(size_t const id);
   bool uwb_id_is_tag(size_t const id);
+
+  void feed_stationary_anchor_pos();
+
   // Flags
   bool collect_measurements_ = false;
 

@@ -43,7 +43,6 @@ struct UwbInitRosOptions
 
   std::string uwb_range_topic_;
   std::vector<std::string> uwb_twr_topics_;
-  uint uwb_ref_id_{0};  //!< ID of the UWB device (will be set automatically by the twr msg)
 
   std::string service_start_;
   std::string service_reset_;

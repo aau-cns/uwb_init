@@ -54,6 +54,7 @@ UwbInitRos::UwbInitRos(const ros::NodeHandle& nh, UwbInitRosOptions&& options)
   }
 
 
+
   // Publishers
   uwb_anchors_pub_ = nh_.advertise<uwb_msgs::UwbAnchorArrayStamped>(options_.uwb_anchors_topic_, 1);
   waypoints_pub_ = nh_.advertise<mission_sequencer::MissionWaypointArray>(options_.waypoints_topic_, 1);
@@ -64,6 +65,9 @@ UwbInitRos::UwbInitRos(const ros::NodeHandle& nh, UwbInitRosOptions&& options)
   init_srv_ = nh_.advertiseService(options_.service_init_, &UwbInitRos::callbackServiceInit, this);
   wps_srv_ = nh_.advertiseService(options_.service_wps_, &UwbInitRos::callbackServiceWps, this);
   refine_srv_ = nh_.advertiseService(options_.service_refine_, &UwbInitRos::callbackServiceRefine, this);
+
+  feed_stationary_anchor_pos();
+
 }
 
 void UwbInitRos::callbackPose(const geometry_msgs::PoseStamped::ConstPtr& msg)
@@ -167,20 +171,28 @@ void UwbInitRos::callbackUwbTwoWayRanges(const uwb_msgs::TwoWayRangeStampedConst
 {
   std::scoped_lock lock{mtx_service_};
   // Feed measurements
-  if (collect_measurements_ && !uwb_id_on_black_list(msg->UWB_ID2) && !uwb_id_is_tag(msg->UWB_ID2)) {
-    if (!uwb_id_is_tag(msg->UWB_ID1)) {
-      ROS_WARN_THROTTLE(1, "wbInitRos::cbUwbTwoWayRanges(): UWB_ID1[%d] is not configured!", msg->UWB_ID1);
+  if (collect_measurements_)
+  {
+    if(!uwb_id_on_black_list(msg->UWB_ID2) && !uwb_id_is_tag(msg->UWB_ID2))
+    {
+      if (!uwb_id_is_tag(msg->UWB_ID1)) {
+        ROS_WARN_THROTTLE(1, "wbInitRos::cbUwbTwoWayRanges(): UWB_ID1[%d] is not configured!", msg->UWB_ID1);
+        return;
+      }
+
+      // Parse message into correct data structure
+      // Valid is true if the range is greater than threshold (0.0)
+      bool valid = (msg->range_raw >= options_.uwb_min_range_) && (msg->range_raw <= options_.uwb_max_range_);
+      if (valid)
+      {
+        uwb_init::UwbData data(true, msg->range_raw, msg->UWB_ID2, msg->UWB_ID1);
+        uwb_init_.feed_uwb(msg->header.stamp.toSec(), data);
+      }
+    }
+    else {
+      ROS_WARN_THROTTLE(1, "wbInitRos::cbUwbTwoWayRanges(): UWB_ID2[%d] is on black list or a tag!", msg->UWB_ID2);
       return;
     }
-
-
-    options_.uwb_ref_id_ = msg->UWB_ID1;
-    // Parse message into correct data structure
-    // Valid is true if the range is greater than threshold (0.0)
-    bool valid = (msg->range_raw >= options_.uwb_min_range_) && (msg->range_raw <= options_.uwb_max_range_);
-    std::vector<uwb_init::UwbData> data({ uwb_init::UwbData(valid, msg->range_raw, msg->UWB_ID2, msg->UWB_ID1) });
-
-    uwb_init_.feed_uwb(msg->header.stamp.toSec(), data);
   }
 }
 
@@ -191,6 +203,7 @@ bool UwbInitRos::callbackServiceStart(std_srvs::Empty::Request& req, std_srvs::E
   // Clear buffers at each start
   uwb_init_.clear_buffers();
   collect_measurements_ = true;
+  feed_stationary_anchor_pos();
   return true;
 }
 
@@ -532,7 +545,18 @@ bool UwbInitRos::uwb_id_on_black_list(const size_t id) {
 }
 
 bool UwbInitRos::uwb_id_is_tag(const size_t id) {
-  return (options_.dict_p_UinI_.find(id) != options_.dict_p_UinI_.end());
+  return (options_.dict_p_UinI_.find(id) != options_.dict_p_UinI_.end()) ||  (options_.dict_p_AinG_.find(id) != options_.dict_p_AinG_.end());
+}
+
+void UwbInitRos::feed_stationary_anchor_pos() {
+  for (auto const& e : options_.dict_p_AinG_) {
+    auto const Anchor_ID = e.first;
+    auto const p_GtoA = e.second;
+
+    // at least two elements are needed:
+    uwb_init_.feed_position(0.0, p_GtoA, Anchor_ID);
+    uwb_init_.feed_position(double(INT_MAX), p_GtoA, Anchor_ID);
+  }
 }
 
 }  // namespace uwb_init_ros
