@@ -363,44 +363,59 @@ void UwbInitRos::saveAnchors(const uwb_init::NLSSolutions& sols) {
 
     // Anchor map
     emitter << YAML::BeginMap;
-    emitter << YAML::Key << "id" << YAML::Value << it.first;
-
-    // Set the "fix" parameter to "true" for the first two anchors
-    if (i < 2)
     {
-      emitter << YAML::Key << "fix" << YAML::Value << "true";
-    }
-    else
-    {
-      emitter << YAML::Key << "fix" << YAML::Value << "false";
-    }
+      emitter << YAML::Key << "id" << YAML::Value << (unsigned int) it.first;
 
-    // Write p_AinG as a vector
-    emitter << YAML::Key << "p_AinG" << YAML::Value << YAML::Flow << YAML::BeginSeq << it.second.anchor_.p_AinG_.x()
-            << it.second.anchor_.p_AinG_.y() << it.second.anchor_.p_AinG_.z() << YAML::EndSeq;
+      // Set the "fix" parameter to "true" for the first two anchors
+      if (i < 2)
+      {
+        emitter << YAML::Key << "fix" << YAML::Value << "true";
+      }
+      else
+      {
+        emitter << YAML::Key << "fix" << YAML::Value << "false";
+      }
 
-    // Write bias parameters
-    emitter << YAML::Key << "const_bias" << YAML::Value << it.second.gammas_.at(0);
-    // todo(RJ): why beta - 1.0 ?
-    emitter << YAML::Key << "dist_bias" << YAML::Value << it.second.betas_.at(0) - 1;
+              // Write p_AinG as a vector
+      emitter << YAML::Key << "p_AinG";
+      emitter << YAML::Value << YAML::Flow << YAML::BeginSeq << it.second.anchor_.p_AinG_.x()
+              << it.second.anchor_.p_AinG_.y() << it.second.anchor_.p_AinG_.z() << YAML::EndSeq;
 
-    // Write prior p_AinG covariance as the mean of the first 3 elements of the diagonal of cov_
-    double prior_p_AinG_cov =
+              // Write bias parameters
+      emitter << YAML::Key << "const_biases" << YAML::Value << YAML::Flow << YAML::BeginSeq;
+      for(auto const& e : it.second.gammas_) {
+        emitter<< e.second;
+      }
+      emitter << YAML::EndSeq;
+      emitter << YAML::Key << "dist_biases" << YAML::Value << YAML::Flow << YAML::BeginSeq;
+      for(auto const& e : it.second.betas_) {
+        // todo(RJ): why beta - 1.0 ?
+        emitter<< e.second - 1.0;
+      }
+      emitter << YAML::EndSeq;
+      emitter << YAML::Key << "Tag_IDs" << YAML::Value << YAML::Flow << YAML::BeginSeq;
+      for(auto const& e : it.second.gammas_) {
+        emitter<< e.first;
+      }
+      emitter << YAML::EndSeq;
+
+              // Write prior p_AinG covariance as the mean of the first 3 elements of the diagonal of cov_
+      double prior_p_AinG_cov =
         (std::sqrt(it.second.cov_(0, 0)) + std::sqrt(it.second.cov_(1, 1)) + std::sqrt(it.second.cov_(2, 2))) / 3;
-    emitter << YAML::Key << "prior_p_AinG_cov" << YAML::Value << prior_p_AinG_cov;
+      emitter << YAML::Key << "prior_p_AinG_cov" << YAML::Value << prior_p_AinG_cov;
 
-    // Write prior bias covariance as the last two elements of the diagonal of cov_
-    double prior_const_bias_cov = std::sqrt(it.second.cov_(3, 3));
-    double prior_dist_bias_cov = std::sqrt(it.second.cov_(4, 4));
-    emitter << YAML::Key << "prior_const_bias_cov" << YAML::Value << prior_const_bias_cov;
-    emitter << YAML::Key << "prior_dist_bias_cov" << YAML::Value << prior_dist_bias_cov;
+              // Write prior bias covariance as the last two elements of the diagonal of cov_
+      double prior_const_bias_cov = std::sqrt(it.second.cov_(3, 3));
+      double prior_dist_bias_cov = std::sqrt(it.second.cov_(4, 4));
+      emitter << YAML::Key << "prior_const_bias_cov" << YAML::Value << prior_const_bias_cov;
+      emitter << YAML::Key << "prior_dist_bias_cov" << YAML::Value << prior_dist_bias_cov;
 
-    // Add blank line between anchors in the YAML file
-    emitter << YAML::Newline;
-
+    }
     // End anchor map
     emitter << YAML::EndMap;
 
+    // Add blank line between anchors in the YAML file
+    emitter << YAML::Newline;
     // Increment counter
     i++;
   }
