@@ -7,7 +7,8 @@
   <arg name="estimated_pose_topic"      default="" />
   <arg name="estimated_transform_topic" default="" />
   <arg name="uwb_range_topic"           default="/uwb_driver_node/uwb" />
-  <arg name="uwb_twr_topic"             default="/uwb_driver_node/twr" />
+
+  <arg name="uwb_twr_topics"             default="{1: /uwb_driver_node/twr}" />
   <arg name="uwb_id_black_list"         default="[]" />
 
   <arg name="start_service"             default="/uwb_init/start" />
@@ -87,7 +88,7 @@
     <param name="estimated_pose_topic"      type="str"  value="$(arg estimated_pose_topic)" />
     <param name="estimated_transform_topic" type="str"  value="$(arg estimated_transform_topic)" />
     <param name="uwb_range_topic"           type="str"  value="$(arg uwb_range_topic)" />
-    <param name="uwb_twr_topic"             type="str"  value="$(arg uwb_twr_topic)" />
+    <param name="uwb_twr_topics"             type="str"  value="$(arg uwb_twr_topics)" />
     <rosparam param="uwb_id_black_list"     subst_value="True">$(arg uwb_id_black_list)</rosparam>
 
 
@@ -101,7 +102,7 @@
     <param name="waypoints_topic"           type="str"  value="$(arg waypoints_topic)" />
 
     <!-- calibration -->
-    <rosparam param="dict_p_ItoU"           subst_value="True">$(arg dict_p_UinI)</rosparam>
+    <param name="dict_p_ItoU"               type="str"  value="$(arg dict_p_UinI)" />
     <!-- calibration: [x,y,z] or {<ID>: [x,y,z], ...}  -->
     <param name="dict_p_GtoA"               type="str"  value="$(arg dict_p_AinG)" />
 
@@ -164,7 +165,7 @@
     <param name="estimated_pose_topic"      type="str"  value="$(arg estimated_pose_topic)" />
     <param name="estimated_transform_topic" type="str"  value="$(arg estimated_transform_topic)" />
     <param name="uwb_range_topic"           type="str"  value="$(arg uwb_range_topic)" />
-    <param name="uwb_twr_topic"             type="str"  value="$(arg uwb_twr_topic)" />
+    <param name="uwb_twr_topics"             type="str"  value="$(arg uwb_twr_topics)" />
     <rosparam param="uwb_id_black_list"     subst_value="True">$(arg uwb_id_black_list)</rosparam>
 
     <param name="start_service"             type="str"  value="$(arg start_service)" />
