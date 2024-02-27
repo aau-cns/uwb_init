@@ -323,40 +323,72 @@ int main(int argc, char** argv)
     ROS_INFO_STREAM("Calibration p_UinI = " << p_UinI.transpose());
   }
   else if(nh.hasParam("dict_p_ItoU")) {
-    std::string dict_p_UinI_str;
-    nh.param<std::string>("dict_p_ItoU", dict_p_UinI_str, dict_p_UinI_str);
+    std::string dict_p_ItoU_str;
+    nh.param<std::string>("dict_p_ItoU", dict_p_ItoU_str, dict_p_ItoU_str);
+    if(!dict_p_ItoU_str.empty()) {
+      YAML::Node node = YAML::Load(dict_p_ItoU_str);
+      if (node.IsMap()) {
+        for (YAML::iterator it = node.begin(); it != node.end(); ++it) {
+          size_t Tag_ID = it->first.as<int>();
+          std::vector<double> pos = it->second.as<std::vector<double>>();
 
-    YAML::Node node = YAML::Load(dict_p_UinI_str);
-    if (node.IsMap()) {
-      for (YAML::iterator it = node.begin(); it != node.end(); ++it) {
-        //      std::stringstream key;
-        //      key << it->first;
-        //      key << ", " << it->second;
-        //      ROS_INFO("GOT UWB_TAG id =%s", key.str().c_str());
-        size_t Tag_ID = it->first.as<int>();
-        std::vector<double> pos = it->second.as<std::vector<double>>();
+          Eigen::Vector3d p_UinI(pos.data());
+          ROS_INFO_STREAM("Calibration: Tag_ID=" << Tag_ID << " p_UinI = " << p_UinI.transpose());
+          opts.dict_p_UinI_.insert({Tag_ID, p_UinI});
+        }
+      }
+      else if (node.IsSequence()) {
+        size_t Tag_ID = 0;
+        std::vector<double> pos = node.as<std::vector<double>>();
 
         Eigen::Vector3d p_UinI(pos.data());
-        ROS_INFO_STREAM("Calibration: ID=" << Tag_ID << " p_UinI = " << p_UinI.transpose());
+        ROS_INFO_STREAM("Calibration: Tag_ID=" << Tag_ID << " p_UinI = " << p_UinI.transpose());
         opts.dict_p_UinI_.insert({Tag_ID, p_UinI});
+
       }
-    } else if (node.IsSequence()) {
-      size_t Tag_ID = 0;
-      std::vector<double> pos = node.as<std::vector<double>>();
-
-      Eigen::Vector3d p_UinI(pos.data());
-      ROS_INFO_STREAM("Calibration: ID=" << Tag_ID << " p_UinI = " << p_UinI.transpose());
-      opts.dict_p_UinI_.insert({Tag_ID, p_UinI});
-
-    } else {
-      ROS_ERROR_STREAM("Unsupported format for dict_p_ItoU: " << dict_p_UinI_str << " either {<ID>: [x,y,z], ...} or [x,y,z]");
-      std::exit(EXIT_FAILURE);
+      else {
+        ROS_ERROR_STREAM("Unsupported format for dict_p_ItoU: " << dict_p_ItoU_str << " either {<ID>: [x,y,z], ...} or [x,y,z]");
+        std::exit(EXIT_FAILURE);
+      }
     }
   }
   else {
     ROS_ERROR_STREAM("Neither p_ItoU nor dict_p_ItoU defined");
     std::exit(EXIT_FAILURE);
   }
+
+  // load dictionary with stationary anchor positions and IDs
+  if(nh.hasParam("dict_p_GtoA")) {
+    std::string dict_p_GtoA_str;
+    nh.param<std::string>("dict_p_GtoA", dict_p_GtoA_str, dict_p_GtoA_str);
+    if(!dict_p_GtoA_str.empty()) {
+      YAML::Node node = YAML::Load(dict_p_GtoA_str);
+      if (node.IsMap()) {
+        for (YAML::iterator it = node.begin(); it != node.end(); ++it) {
+          size_t Anchor_ID = it->first.as<int>();
+          std::vector<double> pos = it->second.as<std::vector<double>>();
+
+          Eigen::Vector3d p(pos.data());
+          ROS_INFO_STREAM("Calibration: Anchor_ID=" << Anchor_ID << " p_AinG = " << p.transpose());
+          opts.dict_p_UinI_.insert({Anchor_ID, p});
+        }
+      }
+      else if (node.IsSequence()) {
+        size_t Anchor_ID = 0;
+        std::vector<double> pos = node.as<std::vector<double>>();
+
+        Eigen::Vector3d p(pos.data());
+        ROS_INFO_STREAM("Calibration: Anchor_ID=" << Anchor_ID << " p_AinG = " << p.transpose());
+        opts.dict_p_UinI_.insert({Anchor_ID, p});
+
+      }
+      else {
+        ROS_ERROR_STREAM("Unsupported format for dict_p_GtoA: " << dict_p_GtoA_str << " either {<ID>: [x,y,z], ...} or [x,y,z]");
+        std::exit(EXIT_FAILURE);
+      }
+    }
+  }
+
 
   // Get black list of UWB anchors
   std::vector<double> uwb_id_black_list_default;

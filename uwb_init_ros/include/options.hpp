@@ -64,6 +64,7 @@ struct UwbInitRosOptions
 
   /// Position of the UWB module expressed in IMU frame
   std::map<size_t, Eigen::Vector3d> dict_p_UinI_;
+  std::map<size_t, Eigen::Vector3d> dict_p_AinG_;
 
   /// IDs that are rejected
   std::vector<size_t> uwb_id_black_list;

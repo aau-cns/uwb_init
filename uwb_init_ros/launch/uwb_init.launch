@@ -21,6 +21,8 @@
 
   <!-- calibration: [x,y,z] or {<ID>: [x,y,z], ...}  -->
   <arg name="dict_p_UinI"              default="{0: [0.01, -0.01, -0.05]}" />
+  <!-- stationary anchor positions: [x,y,z] or {<ID>: [x,y,z], ...}  -->
+  <arg name="dict_p_AinG"              default="" />
 
   <!-- node parameters -->
   <arg name="method"                    default="double" />   <!-- single, double (suggestion: always use 'double')-->
@@ -100,6 +102,8 @@
 
     <!-- calibration -->
     <rosparam param="dict_p_ItoU"           subst_value="True">$(arg dict_p_UinI)</rosparam>
+    <!-- calibration: [x,y,z] or {<ID>: [x,y,z], ...}  -->
+    <param name="dict_p_GtoA"               type="str"  value="$(arg dict_p_AinG)" />
 
     <!-- node parameters -->
     <param name="method"                    type="str"  value="$(arg method)" />
@@ -174,7 +178,8 @@
 
     <!-- calibration: [x,y,z] or {<ID>: [x,y,z], ...}  -->
     <param name="dict_p_ItoU"               type="str"  value="$(arg dict_p_UinI)" />
-
+    <!-- calibration: [x,y,z] or {<ID>: [x,y,z], ...}  -->
+    <param name="dict_p_GtoA"               type="str"  value="$(arg dict_p_AinG)" />
 
     <!-- node parameters -->
     <param name="method"                    type="str"  value="$(arg method)" />
