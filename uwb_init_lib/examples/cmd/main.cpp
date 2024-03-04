@@ -108,7 +108,9 @@ int main(int argc, char** argv)
   std::unique_ptr<NlsSolverOptions> nls_options = nullptr;
   std::unique_ptr<PlannerOptions> planner_options = nullptr;
 
-  init_options = std::make_shared<UwbInitOptions>(InitMethod::DOUBLE, BiasType::CONST_BIAS);
+  RANSAC_Options ransac_options(0.99, 10, 0.15);
+
+  init_options = std::make_shared<UwbInitOptions>(InitMethod::SINGLE, BiasType::CONST_BIAS, ransac_options);
   ls_options = std::make_unique<LsSolverOptions>(0.05, 0.1);
   nls_options = std::make_unique<NlsSolverOptions>(1e-2, 10.0, 1e-6, 1e-6, 1e3);
   planner_options = std::make_unique<PlannerOptions>(10, 10, 3000, 0.5, 0.2, 2, 2, 4, 4, 5, 6, 1, 0, 0);
