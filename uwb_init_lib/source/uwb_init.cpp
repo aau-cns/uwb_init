@@ -63,6 +63,7 @@ void UwbInitializer::set_bias_type(const BiasType& type)
 
   // Configure Least Squares Solver
   ls_solver_.configure(init_options_);
+
 }
 
 const LSSolutions& UwbInitializer::get_ls_solutions() const
@@ -156,8 +157,8 @@ void UwbInitializer::feed_uwb(const double timestamp, const UwbData uwb_measurem
 
 
     uwb_data_buffer_[Anchor_ID][Tag_ID].push_back(timestamp, uwb_measurement);
-    logger_->debug("UwbInitializer::feed_uwb(): added measurement from tag_ID=" + std::to_string(Tag_ID)
-                   + " to anchor_ID=" + std::to_string(Anchor_ID) + " at timestamp " + std::to_string(timestamp));
+    //logger_->debug("UwbInitializer::feed_uwb(): added measurement from tag_ID=" + std::to_string(Tag_ID)
+    //               + " to anchor_ID=" + std::to_string(Anchor_ID) + " at timestamp " + std::to_string(timestamp));
 
   }
   else
@@ -205,7 +206,6 @@ bool UwbInitializer::init_anchors()
   {
     uint const ID_Anchor = e.first;
     UwbDataPerTag const& uwb_data = e.second;
-    uint const num_Tags = uwb_data.size();
 
     // Logging
     logger_->info("Anchor[" + std::to_string(ID_Anchor) + "]: Starting initialization");
@@ -248,42 +248,14 @@ bool UwbInitializer::init_anchors()
       logger_->warn("Anchor[" + std::to_string(ID_Anchor) +
                     "]: Coarse initialization FAILED. Assigning empty "
                     "solution");
-
-      // Initialize solution and covariance
-      if (init_options_->bias_type_ == BiasType::NO_BIAS)
-      {
         lsSolution = Eigen::VectorXd::Zero(3);
-      }
-      else
-      {
-        lsSolution = Eigen::VectorXd::Zero(3+num_Tags);
-      }
     }
 
-    // Initial guess for NLS based on bias type
-    if (init_options_->bias_type_ == BiasType::ALL_BIAS)
-    {
-      nlsSolution = Eigen::VectorXd::Zero(3+2*num_Tags);
-      Eigen::VectorXd p_AinG = lsSolution.head(3);
-
-      Eigen::VectorXd range_biases, const_biases;
-      range_biases.setOnes(num_Tags);
-      const_biases.setZero(num_Tags);
-
-      // copy all solutions ot the vectors
-      for(size_t idx = 0; idx < num_Tags; idx++) {
-        const_biases(idx) = lsSolution(3+idx);
-      }
-
-      nlsSolution << p_AinG, const_biases.transpose(), range_biases.transpose();
-    }
-    else
-    {
-      nlsSolution = lsSolution;
-    }
+    // assign initial guess for NlsSolver
+    nlsSolution = lsSolution;
 
     // Perform nonlinear optimization
-    if (nls_solver_.levenbergMarquardt(uwb_data_inliers, p_UinG_buffer_, nlsSolution, nlsCov))
+    if (nls_solver_.levenbergMarquardt(uwb_data_inliers, p_UinG_buffer_, nlsSolution, nlsCov, uwb_data_inliers))
     {
       // Logging
       logger_->info("Anchor[" + std::to_string(ID_Anchor) + "]: Solutiuon refined");
