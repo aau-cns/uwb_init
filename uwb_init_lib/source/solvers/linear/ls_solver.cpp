@@ -225,6 +225,13 @@ bool uwb_init::LsSolver::solve_ls(const UwbDataPerTag &dict_uwb_data, const Posi
                                   Eigen::VectorXd &lsSolution, Eigen::MatrixXd &cov, UwbDataPerTag &dict_uwb_inliers)
 {
 
+  // if RANSAC is disabled, use default method
+  if(!solver_options_->use_RANSAC_)
+  {
+    dict_uwb_inliers = dict_uwb_data;
+    return solve_ls(dict_uwb_data, dict_p_UinG_buffer, lsSolution, cov);
+  }
+
   std::vector<double> costs;
   std::vector<Eigen::VectorXd> lsSolutions;
   std::vector<Eigen::MatrixXd> Sigmas;
@@ -267,8 +274,10 @@ bool uwb_init::LsSolver::solve_ls(const UwbDataPerTag &dict_uwb_data, const Posi
   }
 
   // 4) remove outliers that fall outside the 99% of the distribution 2*(sigma_uwb+sigma_pos) using all measurement and best match
-  std::pair<UwbDataPerTag, size_t> uwb_data_clean = LsSolver::remove_ouliers(dict_uwb_data, dict_p_UinG_buffer, lsSolutions[idx_best], bias_type_, (solver_options_->sigma_meas_ + solver_options_->sigma_pos_)*3);
-  logger_->debug("LsSolver::solve_ls: [" + std::to_string(uwb_data_clean.second) + "] outliers removed");
+  double threshold = (solver_options_->sigma_meas_ + solver_options_->sigma_pos_)*3;
+
+  std::pair<UwbDataPerTag, size_t> uwb_data_clean = LsSolver::remove_ouliers(dict_uwb_data, dict_p_UinG_buffer, lsSolutions[idx_best], bias_type_, threshold);
+  logger_->debug("LsSolver::solve_ls: [" + std::to_string(uwb_data_clean.second) + "] outliers removed above threshold=" + std::to_string(threshold));
   dict_uwb_inliers = uwb_data_clean.first;
 
   // 5) fit a new model on the cleaned data:
@@ -330,6 +339,12 @@ UwbDataPerTag uwb_init::LsSolver::rand_samples(const UwbDataPerTag &dict_uwb_dat
     if(num_samples < e.second.size())
     {
       auto indices = randperm(num_samples, e.second.size(), *ptr_gen);
+
+      //for(auto &i : indices) {
+      //  std::cout << i << ",";
+      //}
+      //std::cout << std::endl;
+
       uint const Tag_ID = e.first;
       TimedBuffer<UwbData> const& data = e.second;
       TimedBuffer<UwbData> sampled_data;
