@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.3)
+cmake_minimum_required(VERSION 3.5)
 project(
     uwb_init_lib
     VERSION 1.0
@@ -6,20 +6,34 @@ project(
     LANGUAGES CXX
 )
 
-## Check variables
-if(NOT BUILD_TESTS)
-    set(BUILD_TESTS false)
-endif()
-message(STATUS "BUILD TESTS = ${BUILD_TESTS}")
+option(OPTION_BUILD_EXAMPLES "Build examples."                                 ON)
+option(OPTION_BUILD_TESTS "Build examples."                                    ON)
+option(UWB_INIT_USE_SYSTEM_EIGEN "Use system wide Eigen3 or search locally..." OFF)
+
+
+# Include cmake modules
+#list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+list(APPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+message(STATUS "BUILD TESTS = ${OPTION_BUILD_TESTS}")
 
 ## Include libraries
-include(CMakeFindDependencyMacro)
-find_package(Eigen3 3.4 REQUIRED)
-find_dependency(Eigen3 3.4)
-message(STATUS "EIGEN VERSION: " ${Eigen3_VERSION})
+
+if(UWB_INIT_USE_SYSTEM_EIGEN)
+  include(CMakeFindDependencyMacro)
+  find_package(Eigen3 3.4 REQUIRED)
+  find_dependency(Eigen3 3.4)
+else()
+  find_package(Eigen REQUIRED)
+endif()
+
+message(" **************************************")
+message(" --- Main Dependencies:")
+message(" * Eigen: ${EIGEN3_INCLUDE_DIR}, ${Eigen_VERSION}  ${Eigen3_VERSION}")
+message(" **************************************")
 
 ## Include and set up googletest
-if(${BUILD_TESTS})
+if(${OPTION_BUILD_TESTS})
     include(FetchContent)
     FetchContent_Declare(
     googletest
@@ -55,48 +69,65 @@ endif ()
 
 message(STATUS "CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE}.")
 message(STATUS "CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS}.")
+message(STATUS "EIGEN3_INCLUDE_DIR ${EIGEN3_INCLUDE_DIR}.")
+
 
 ## List library source files
 list(
     APPEND lib_sources
+    source/utils/utils.cpp
     source/uwb_init.cpp
     source/solvers/linear/ls_solver.cpp
     source/solvers/nonlinear/nls_solver.cpp
     source/planners/wps_gen.cpp
-)
 
-## Declare a C++ library
-add_library(${PROJECT_NAME} STATIC ${lib_sources})
+)
 
 ## Include GNU dirs
 include(GNUInstallDirs)
 
-## Define includes
-list(APPEND include_dirs
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${EIGEN3_INCLUDE_DIR}
-)
+## Declare a C++ library
+add_library(${PROJECT_NAME} STATIC ${lib_sources})
 
 ## include directories
 ## Specify generator expression to indicate build path and install path
 ## to allow easy re-location
 target_include_directories(${PROJECT_NAME}
-    PUBLIC
-        "$<BUILD_INTERFACE:${include_dirs}>"
-        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+  PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+
+  INTERFACE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 )
 
+target_link_libraries(${PROJECT_NAME}
+  PUBLIC
+  Eigen
+
+  INTERFACE
+  $<BUILD_INTERFACE:Eigen>
+)
+
+
+# Examples
+if(OPTION_BUILD_EXAMPLES)
+    set(IDE_FOLDER "Examples")
+    add_subdirectory(examples)
+endif()
+
+
 ## Declare C++ tests
-if(${BUILD_TESTS})
+if(${OPTION_BUILD_TESTS})
     add_executable(test_wps test/test_wps_gen.cpp)
-    target_include_directories(test_wps PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include ${EIGEN3_INCLUDE_DIR})
-    target_link_libraries(test_wps ${PROJECT_NAME})
+    #target_include_directories(test_wps PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include ${EIGEN3_INCLUDE_DIR})
+    target_link_libraries(test_wps ${PROJECT_NAME} Eigen)
     add_executable(test_utils test/test_utils.cpp)
-    target_include_directories(test_utils PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include ${EIGEN3_INCLUDE_DIR})
-    target_link_libraries(test_utils ${PROJECT_NAME} GTest::gtest_main)
+    #target_include_directories(test_utils) # PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include ${EIGEN3_INCLUDE_DIR})
+    target_link_libraries(test_utils ${PROJECT_NAME} GTest::gtest_main Eigen)
     add_executable(test_init test/test_init.cpp)
-    target_include_directories(test_init PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include ${EIGEN3_INCLUDE_DIR})
-    target_link_libraries(test_init ${PROJECT_NAME})
+    #target_include_directories(test_init PRIVATE) # ${CMAKE_CURRENT_SOURCE_DIR}/include ${EIGEN3_INCLUDE_DIR})
+    target_link_libraries(test_init ${PROJECT_NAME} Eigen)
+
     include(GoogleTest)
     gtest_discover_tests(test_utils)
 endif()
