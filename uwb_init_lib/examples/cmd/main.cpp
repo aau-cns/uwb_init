@@ -99,6 +99,14 @@ int main(int argc, char** argv)
   app.add_option("--uwb_meas_csv", uwb_meas_csv, "CSV file containing <t, ID_Tag, ID_Anchor, range>", true);
   std::string tag_pos_csv = "";
   app.add_option("--tag_pos_csv", tag_pos_csv, "CSV file containing <t, ID_Tag, x, y, z>", true);
+  bool use_ransac = false;
+  app.add_flag("--use_ransac", use_ransac, "select if ransac is turned on");
+  bool use_double = false;
+  app.add_flag("--use_double", use_double, "select if double or single method is used");
+  double sigma_pos = 0.0;
+  app.add_option("--sigma_pos", sigma_pos, "noise of position measurement");
+  double sigma_range = 0.0;
+  app.add_option("--sigma_range", sigma_range, "noise of distance measurement");
 
   CLI11_PARSE(app, argc, argv);
   // Print library info
@@ -110,16 +118,19 @@ int main(int argc, char** argv)
 
   RANSAC_Options ransac_options(0.99, 10, 0.15);
 
-  init_options = std::make_shared<UwbInitOptions>(InitMethod::SINGLE, BiasType::CONST_BIAS, ransac_options);
-  ls_options = std::make_unique<LsSolverOptions>(0.1, 0.1);
+  if (use_double) {
+    init_options = std::make_shared<UwbInitOptions>(InitMethod::DOUBLE, BiasType::CONST_BIAS, ransac_options);
+
+  } else {
+   init_options = std::make_shared<UwbInitOptions>(InitMethod::SINGLE, BiasType::CONST_BIAS, ransac_options);
+  }
+  ls_options = std::make_unique<LsSolverOptions>(sigma_pos, sigma_range, true, use_ransac);
   nls_options = std::make_unique<NlsSolverOptions>(1e-2, 10.0, 1e-6, 1e-6, 1e3);
   planner_options = std::make_unique<PlannerOptions>(10, 10, 3000, 0.5, 0.2, 2, 2, 4, 4, 5, 6, 1, 0, 0);
 
           // Test initialization
   UwbInitializer uwb_init(LoggerLevel::FULL, std::move(init_options), std::move(ls_options), std::move(nls_options),
                           std::move(planner_options));
-  uwb_init.set_bias_type(BiasType::CONST_BIAS);
-  uwb_init.set_init_method(InitMethod::DOUBLE);
 
 
   std::map<std::string, std::vector<double>> uwb_meas = read_csv(uwb_meas_csv);
