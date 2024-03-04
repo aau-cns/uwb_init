@@ -22,6 +22,8 @@
 #define UWB_INIT_UWB_OPTIONS_HPP_
 #include <math.h>       /* log */
 #include <Eigen/Eigen>
+#include <options/BiasType.hpp>
+#include <options/RANSAC_Options.hpp>
 
 namespace uwb_init
 {
@@ -50,68 +52,9 @@ constexpr const char* InitMethodString(InitMethod e)
   }
 }
 
-///
-/// \brief The BiasType enum describes the type of biase used in the measurement model
-///
-enum class BiasType
-{
-  NO_BIAS = 0,     //!< use no bias for initialization, i.e. position only
-  CONST_BIAS,  //!< only use constant bias and position in initialization
-  ALL_BIAS,    //!< use constant and distance bias in initialization
-};
-
-///
-/// \brief Return a string with the corresponding bias type
-///
-constexpr const char* BiasTypeString(BiasType e)
-{
-  switch (e)
-  {
-    case BiasType::NO_BIAS:
-      return "BiasType::NO_BIAS";
-    case BiasType::CONST_BIAS:
-      return "BiasType::CONST_BIAS";
-    case BiasType::ALL_BIAS:
-      return "BiasType::ALL_BIAS";
-    default:
-      return "";
-  }
-}
 
 
-struct RANSAC_Options {
-  double p = 0.99; // propability to obtain a inlier subset
-  uint s = 10;  // samples needed for the model
-  double e = 0.15;  // relative percentage of outliers
-  uint n = 21; // number of iterations needed to achieve p ; %
 
-  RANSAC_Options(uint const n=21, double const p = 0.99, uint const s = 10, double const e = 0.15) : p(p), s(s), e(e), n(n) {
-    assert(e < 1.0 && e >= 0.0);
-    assert(p < 1.0 && p >= 0.0);
-  }
-  RANSAC_Options(double const p, uint const s, double const e) : p(p), s(s), e(e)
-  {
-    assert(e < 1.0 && e >= 0.0);
-    assert(p < 1.0 && p >= 0.0);
-    n = RANSAC_Options::num_iterations(p,e,s);
-  }
-
-  static uint num_iterations(double const p, double const e, unsigned int const s)
-  {
-    assert(e < 1.0 && e >= 0.0);
-    assert(p < 1.0 && p >= 0.0);
-
-    double e_pow = std::pow((1-e), double(s));
-    return (uint) std::ceil(log(1.0-p)/log(1.0-e_pow));
-  }
-
-  size_t num_samples_needed()
-  {
-    return n*s;
-  }
-
-
-};
 
 
 ///

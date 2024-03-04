@@ -76,6 +76,7 @@ message(STATUS "EIGEN3_INCLUDE_DIR ${EIGEN3_INCLUDE_DIR}.")
 list(
     APPEND lib_sources
     source/utils/utils.cpp
+    source/options/BiasType.cpp
     source/uwb_init.cpp
     source/solvers/linear/ls_solver.cpp
     source/solvers/nonlinear/nls_solver.cpp
