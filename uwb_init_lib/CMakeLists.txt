@@ -77,6 +77,7 @@ list(
     APPEND lib_sources
     source/utils/utils.cpp
     source/options/BiasType.cpp
+    source/options/RANSAC_Options.cpp
     source/uwb_init.cpp
     source/solvers/linear/ls_solver.cpp
     source/solvers/nonlinear/nls_solver.cpp
