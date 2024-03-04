@@ -248,7 +248,8 @@ bool UwbInitializer::init_anchors()
       logger_->warn("Anchor[" + std::to_string(ID_Anchor) +
                     "]: Coarse initialization FAILED. Assigning empty "
                     "solution");
-        lsSolution = Eigen::VectorXd::Zero(3);
+      lsSolution = Eigen::VectorXd::Zero(3);
+      uwb_data_inliers = uwb_data;
     }
 
     // assign initial guess for NlsSolver

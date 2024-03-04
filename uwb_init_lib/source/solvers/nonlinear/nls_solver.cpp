@@ -65,6 +65,16 @@ bool NlsSolver::levenbergMarquardt(const TimedBuffer<UwbData>& uwb_data, const P
 bool NlsSolver::levenbergMarquardt(const std::unordered_map<uint, TimedBuffer<UwbData> > &dict_uwb_data, const PositionBufferDict_t &dict_p_UinG_buffer, Eigen::VectorXd &theta, Eigen::MatrixXd &cov)
 {
   int const num_tags = dict_uwb_data.size();
+  if(num_tags < 1) {
+    logger_->err("NlsSolver::levenbergMarquardt: empty uwb range buffer obtained");
+    return false;
+  }
+  if(dict_uwb_data.size() != dict_p_UinG_buffer.size())
+  {
+    logger_->err("NlsSolver::levenbergMarquardt: uwb range buffer and position buffer do not match");
+    return false;
+  }
+
   size_t num_meas = 0;
   for(auto const&e : dict_uwb_data)
   {
