@@ -24,8 +24,10 @@
 #include <Eigen/Eigen>
 #include <array>
 #include <iterator>
+#include <random>
 #include <type_traits>
 #include <vector>
+#include <algorithm>
 
 namespace uwb_init
 {
@@ -103,6 +105,9 @@ std::ostream& operator<<(std::ostream& stream, const T& v)
 
   return stream;
 }
+
+std::vector<size_t> randperm(size_t const num_samples, const size_t max_range);
+std::vector<size_t> randperm(size_t const num_samples, const size_t max_range, std::mt19937& gen);
 
 }  // namespace uwb_init
 

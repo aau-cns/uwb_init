@@ -20,7 +20,7 @@
 
 #ifndef UWB_INIT_UWB_OPTIONS_HPP_
 #define UWB_INIT_UWB_OPTIONS_HPP_
-
+#include <math.h>       /* log */
 #include <Eigen/Eigen>
 
 namespace uwb_init
@@ -78,6 +78,42 @@ constexpr const char* BiasTypeString(BiasType e)
   }
 }
 
+
+struct RANSAC_Options {
+  double p = 0.99; // propability to obtain a inlier subset
+  uint s = 10;  // samples needed for the model
+  double e = 0.15;  // relative percentage of outliers
+  uint n = 21; // number of iterations needed to achieve p ; %
+
+  RANSAC_Options(uint const n=21, double const p = 0.99, uint const s = 10, double const e = 0.15) : p(p), s(s), e(e), n(n) {
+    assert(e < 1.0 && e >= 0.0);
+    assert(p < 1.0 && p >= 0.0);
+  }
+  RANSAC_Options(double const p, uint const s, double const e) : p(p), s(s), e(e)
+  {
+    assert(e < 1.0 && e >= 0.0);
+    assert(p < 1.0 && p >= 0.0);
+    n = RANSAC_Options::num_iterations(p,e,s);
+  }
+
+  static uint num_iterations(double const p, double const e, unsigned int const s)
+  {
+    assert(e < 1.0 && e >= 0.0);
+    assert(p < 1.0 && p >= 0.0);
+
+    double e_pow = std::pow((1-e), double(s));
+    return (uint) std::ceil(log(1.0-p)/log(1.0-e_pow));
+  }
+
+  size_t num_samples_needed()
+  {
+    return n*s;
+  }
+
+
+};
+
+
 ///
 /// \brief The UwbInitOptions struct is an object containing all 'static' parameters used.
 ///
@@ -88,6 +124,8 @@ struct UwbInitOptions
 
   /// determines the type of bias used in the measurement model, to be estimated during the initialization routine
   BiasType bias_type_;
+
+  RANSAC_Options RANSAC_cfg_;
 
   /// constant bias prior covariance
   double const_bias_prior_cov_;
@@ -104,11 +142,17 @@ struct UwbInitOptions
   // Compute covariance
   bool compute_covariance_;
 
-  UwbInitOptions(const InitMethod& method, const BiasType& bias_type, const double const_bias_prior_cov = 0.1,
-                 const double dist_bias_prior_cov = 0.1, const unsigned int min_num_anchors = 1, const bool enable_ls = true,
+  UwbInitOptions(const InitMethod& method,
+                 const BiasType& bias_type,
+                 RANSAC_Options const& RANSAC_cfg,
+                 const double const_bias_prior_cov = 0.1,
+                 const double dist_bias_prior_cov = 0.1,
+                 const unsigned int min_num_anchors = 1,
+                 const bool enable_ls = true,
                  const bool compute_covariance = true)
     : init_method_(method)
     , bias_type_(bias_type)
+    , RANSAC_cfg_(RANSAC_cfg)
     , const_bias_prior_cov_(const_bias_prior_cov)
     , dist_bias_prior_cov_(dist_bias_prior_cov)
     , min_num_anchors_(min_num_anchors)
@@ -118,6 +162,8 @@ struct UwbInitOptions
   }
 
 };  // struct UwbInitOptions
+
+
 }  // namespace uwb_init
 
 #endif  // UWB_INIT_UWB_OPTIONS_HPP_

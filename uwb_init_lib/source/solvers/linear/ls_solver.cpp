@@ -37,16 +37,23 @@ LsSolver::LsSolver(const std::shared_ptr<Logger> logger, const std::shared_ptr<U
   logger_->info("LsSolver: Initialized");
   logger_->debug("LsSolver options: sigma_pos = " + std::to_string(solver_options_->sigma_pos_));
   logger_->debug("LsSolver options: sigma_meas = " + std::to_string(solver_options_->sigma_meas_));
+
+
+  std::random_device rd; // obtain a random number from hardware
+  ptr_gen_.reset(new std::mt19937(rd()));
+
 }
 
 void LsSolver::configure(const std::shared_ptr<UwbInitOptions>& init_options)
 {
+  init_method_ = init_options->init_method_;
+  bias_type_ = init_options->bias_type_;
   // Bind LS-problem initialization function based on selected method and model variables
-  switch (init_options->init_method_)
+  switch (init_method_)
   {
     // Single measurement initialization method
     case InitMethod::SINGLE:
-      switch (init_options->bias_type_)
+      switch (bias_type_)
       {
         // Unbiased measurement model (only distance between tag and uwb anchor)
         case BiasType::NO_BIAS:
@@ -67,7 +74,7 @@ void LsSolver::configure(const std::shared_ptr<UwbInitOptions>& init_options)
       break;
     // Double measurements initialization method
     case InitMethod::DOUBLE:
-      switch (init_options->bias_type_)
+      switch (bias_type_)
       {
         // Unbiased measurement model (only distance between tag and uwb anchor)
         case BiasType::NO_BIAS:
@@ -87,6 +94,9 @@ void LsSolver::configure(const std::shared_ptr<UwbInitOptions>& init_options)
       }
       break;
   }
+
+  // configure RANSAC:
+  ransac_opts_ = init_options->RANSAC_cfg_;
 
   // Logging
   logger_->info("LsSolver: Configured");
@@ -209,6 +219,241 @@ bool LsSolver::solve_ls(const UwbDataPerTag &dict_uwb_data, PositionBufferDict_t
   }
   return true;
 
+}
+
+bool uwb_init::LsSolver::solve_ls(const UwbDataPerTag &dict_uwb_data, const PositionBufferDict_t &dict_p_UinG_buffer,
+                                  Eigen::VectorXd &lsSolution, Eigen::MatrixXd &cov, UwbDataPerTag &dict_uwb_inliers)
+{
+
+  std::vector<double> costs;
+  std::vector<Eigen::VectorXd> lsSolutions;
+  std::vector<Eigen::MatrixXd> Sigmas;
+
+  costs.reserve(ransac_opts_.n);
+  lsSolutions.reserve(ransac_opts_.n);
+
+
+  if(has_Tag_enough_samples(dict_uwb_data)) {
+    logger_->info("LsSolver::solve_ls: enough data collected for RANSAC");
+  }
+
+  // Repeat the random sampling n-time, hoping that we pick once data without outliers!
+  for(size_t iter=0; iter < ransac_opts_.n; iter++)
+  {
+    // 1) take random from measurement and hope that it does not contain outlier
+    auto dict_sampled_data = LsSolver::rand_samples(dict_uwb_data, ransac_opts_.s, ptr_gen_);
+
+    // 2) solve the problem:
+    Eigen::VectorXd lsSolution_i;
+    Eigen::MatrixXd Sigma_i;
+    if(solve_ls(dict_sampled_data, dict_p_UinG_buffer, lsSolution_i, Sigma_i))
+    {
+      double cost_i = LsSolver::compute_cost(dict_uwb_data, dict_p_UinG_buffer, lsSolution_i, bias_type_);
+      costs.push_back(cost_i);
+      lsSolutions.push_back(lsSolution_i);
+      Sigmas.push_back(Sigma_i);
+      logger_->debug("LsSolver::solve_ls: RANSAC iter=" + std::to_string(iter) + ", cost=" + std::to_string(cost_i));
+    }
+  }
+
+  // 3) find the best model:
+  auto iter_min_cost = std::min_element(costs.begin(), costs.end());
+  size_t idx_best = iter_min_cost - costs.begin();
+  if(logger_->getlevel() == LoggerLevel::FULL)
+  {
+    std::stringstream ss;
+    ss << lsSolutions[idx_best].transpose();
+    logger_->debug("LsSolver::solve_ls: RANSAC: best model at iter=" + std::to_string(idx_best) + ", cost=" + std::to_string(*iter_min_cost) + " is x_est=" + ss.str());
+  }
+
+  // 4) remove outliers that fall outside the 99% of the distribution 2*(sigma_uwb+sigma_pos) using all measurement and best match
+  std::pair<UwbDataPerTag, size_t> uwb_data_clean = LsSolver::remove_ouliers(dict_uwb_data, dict_p_UinG_buffer, lsSolutions[idx_best], bias_type_, (solver_options_->sigma_meas_ + solver_options_->sigma_pos_)*3);
+  logger_->debug("LsSolver::solve_ls: [" + std::to_string(uwb_data_clean.second) + "] outliers removed");
+  dict_uwb_inliers = uwb_data_clean.first;
+
+  // 5) fit a new model on the cleaned data:
+  if(solve_ls(dict_uwb_inliers, dict_p_UinG_buffer, lsSolution, cov)) {
+    if(logger_->getlevel() == LoggerLevel::FULL)
+    {
+      double cost_final = LsSolver::compute_cost(dict_uwb_inliers, dict_p_UinG_buffer, lsSolution, bias_type_);
+      std::stringstream ss;
+      ss << lsSolution.transpose();
+      logger_->debug("LsSolver::solve_ls: final cost=" + std::to_string(cost_final) + " for x_best=" + ss.str());
+    }
+    return true;
+  }
+  else if(lsSolutions.size()) {
+    lsSolution = lsSolutions[idx_best];
+    cov = Sigmas[idx_best];
+    return true;
+  } else {
+    return false;
+  }
+
+}
+
+bool LsSolver::has_Tag_enough_samples(const UwbDataPerTag &dict_uwb_data) {
+  std::unordered_map<uint, bool> dict = LsSolver::has_Tag_enough_samples(dict_uwb_data, ransac_opts_.num_samples_needed());
+
+  bool res = true;
+  for(auto const& e : dict) {
+    if(!e.second) {
+      res = false;
+      logger_->debug("LsSolver::has_Tag_enough_samples(): more samples needed for ransac! TagID=[" + std::to_string(e.first) + "] ! min=" + std::to_string(ransac_opts_.num_samples_needed()) + ", currenty=" + std::to_string(dict_uwb_data.at(e.first).size()));
+    }
+  }
+  return res;
+}
+
+std::unordered_map<uint, bool> LsSolver::has_Tag_enough_samples(const UwbDataPerTag &dict_uwb_data,
+                                                                const size_t num_samples) {
+  std::unordered_map<uint, bool> dict_enough;
+  for(auto const&e : dict_uwb_data)
+  {
+    uint const Tag_ID = e.first;
+    if(num_samples < e.second.size()){
+      dict_enough[Tag_ID] = true;
+    } else {
+      dict_enough[Tag_ID] = false;
+    }
+  }
+  return dict_enough;
+}
+
+UwbDataPerTag uwb_init::LsSolver::rand_samples(const UwbDataPerTag &dict_uwb_data, const size_t num_samples,
+                                               std::shared_ptr<std::mt19937> ptr_gen)
+{
+  UwbDataPerTag dict_sampled_data;
+  for(auto const&e : dict_uwb_data)
+  {
+    // only if we have enough samples to fit the model, otherwise ignore Tag_ID:
+    if(num_samples < e.second.size())
+    {
+      auto indices = randperm(num_samples, e.second.size(), *ptr_gen);
+      uint const Tag_ID = e.first;
+      TimedBuffer<UwbData> const& data = e.second;
+      TimedBuffer<UwbData> sampled_data;
+      for(auto idx : indices) {
+        std::pair<double, UwbData> const& range_i = data.get_buffer()[idx];
+        sampled_data.push_back(range_i.first, range_i.second);
+      }
+
+      dict_sampled_data[Tag_ID] = sampled_data;
+    }
+  }
+  return  dict_sampled_data;
+}
+
+double LsSolver::compute_cost(const UwbDataPerTag &dict_uwb_data,
+                              const PositionBufferDict_t &dict_p_UinG_buffer,
+                              const Eigen::VectorXd &x_est,
+                              const BiasType bias_type)
+{
+  size_t const num_tags = dict_uwb_data.size();
+  size_t idx_tag = 0;
+  uint j = 0;  // num measurements
+  double abs_sum = 0.0;
+  for(auto const&e : dict_uwb_data)
+  {
+    uint const Tag_ID = e.first;
+    auto const& uwb_data = e.second;
+    auto const& p_UinG_buffer = dict_p_UinG_buffer.at(Tag_ID);
+
+    for (uint i = 0; i < uwb_data.size(); ++i)
+    {
+      // Get position at uwb timestamp
+      Eigen::Vector3d p_UinG = p_UinG_buffer.get_at_timestamp(uwb_data[i].first);
+
+      Eigen::Vector3d p_AinG(x_est(0), x_est(1), x_est(2));
+      double gamma_i = 0.0;
+      double beta_i = 1.0;
+      switch(bias_type) {
+        case BiasType::NO_BIAS:
+        {
+          break;
+        }
+        case BiasType::CONST_BIAS:
+        {
+          gamma_i = x_est(3 + idx_tag);
+          break;
+        }
+        case BiasType::ALL_BIAS:
+        {
+          gamma_i = x_est(3 + idx_tag);
+          beta_i = x_est(3 + num_tags + idx_tag);
+          break;
+        }
+      }
+
+      Eigen::Vector3d p_UtoA = p_UinG - p_AinG;
+      double d_est = beta_i * p_UtoA.norm() + gamma_i;
+      abs_sum += std::abs(d_est - uwb_data[i].second.distance_);
+      j += 1;
+    }
+    idx_tag++;
+  }
+  return abs_sum/(1.0*j);
+}
+
+std::pair<UwbDataPerTag, size_t> LsSolver::remove_ouliers(const UwbDataPerTag &dict_uwb_data, const PositionBufferDict_t &dict_p_UinG_buffer, const Eigen::VectorXd &x_est, const BiasType bias_type, double threshold) {
+  UwbDataPerTag dict_clean;
+
+  size_t const num_tags = dict_uwb_data.size();
+  size_t idx_tag = 0;
+  size_t num_outliers = 0;
+  for(auto const&e : dict_uwb_data)
+  {
+    uint const Tag_ID = e.first;
+    auto const& uwb_data = e.second;
+    auto const& p_UinG_buffer = dict_p_UinG_buffer.at(Tag_ID);
+
+    TimedBuffer<UwbData> uwb_data_clean;
+    for (uint i = 0; i < uwb_data.size(); ++i)
+    {
+      // Get position at uwb timestamp
+      Eigen::Vector3d p_UinG = p_UinG_buffer.get_at_timestamp(uwb_data[i].first);
+
+      Eigen::Vector3d p_AinG(x_est(0), x_est(1), x_est(2));
+      double gamma_i = 0.0;
+      double beta_i = 1.0;
+      switch(bias_type) {
+        case BiasType::NO_BIAS:
+        {
+          break;
+        }
+        case BiasType::CONST_BIAS:
+        {
+          gamma_i = x_est(3 + idx_tag);
+          break;
+        }
+        case BiasType::ALL_BIAS:
+        {
+          gamma_i = x_est(3 + idx_tag);
+          beta_i = x_est(3 + num_tags + idx_tag);
+          break;
+        }
+      }
+
+      Eigen::Vector3d p_UtoA = p_UinG - p_AinG;
+      double d_est = beta_i * p_UtoA.norm() + gamma_i;
+
+      // gating: check if error is below a certain threshold
+      if (std::abs(d_est - uwb_data[i].second.distance_) < threshold)
+      {
+        // insert good value:
+        uwb_data_clean.push_back(uwb_data[i].first, uwb_data[i].second);
+      }
+      else {
+        num_outliers++;
+      }
+    }
+
+    // add all good values for one tag to the dictionary
+    dict_clean[Tag_ID] = uwb_data_clean;
+    idx_tag++;
+  }
+
+  return std::make_pair(dict_clean, num_outliers);
 }
 
 bool LsSolver::ls_single_const_bias(const UwbDataPerTag &dict_uwb_data, const PositionBufferDict_t& dict_p_UinG_buffer,

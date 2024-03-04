@@ -22,6 +22,7 @@
 #define LS_SOLVER_HPP_
 
 #include <assert.h>
+#include <random>  //
 
 #include "logger/logger.hpp"
 #include "options/ls_solver_options.hpp"
@@ -81,6 +82,19 @@ public:
 
 
   /**
+   * @brief solve_ls: robust Linear Solver
+   * @param dict_uwb_data
+   * @param dict_p_UinG_buffer
+   * @param lsSolution
+   * @param cov
+   * @param dict_uwb_inliers
+   * @return
+   */
+  bool solve_ls(const UwbDataPerTag& dict_uwb_data,
+                const PositionBufferDict_t&dict_p_UinG_buffer, Eigen::VectorXd& lsSolution,
+                Eigen::MatrixXd& cov, UwbDataPerTag& dict_uwb_inliers);
+
+  /**
    * @brief The least square problem
    *
    */
@@ -88,12 +102,30 @@ public:
                      Eigen::VectorXd&)>
       ls_problem;
 
+  bool has_Tag_enough_samples(const UwbDataPerTag& dict_uwb_data);
+
+  static std::unordered_map<uint, bool> has_Tag_enough_samples(const UwbDataPerTag& dict_uwb_data,
+                                                               size_t const num_samples);
+
+  static UwbDataPerTag rand_samples(const UwbDataPerTag& dict_uwb_data, size_t const num_samples,
+                                    std::shared_ptr<std::mt19937> ptr_gen);
+
+  static double compute_cost(const UwbDataPerTag& dict_uwb_data, const PositionBufferDict_t &dict_p_UinG_buffer, Eigen::VectorXd const& x_est, const BiasType bias_type);
+
+  static std::pair<UwbDataPerTag, size_t> remove_ouliers(const UwbDataPerTag& dict_uwb_data, const PositionBufferDict_t &dict_p_UinG_buffer, Eigen::VectorXd const& x_est, const BiasType bias_type, double threshold);
+
 private:
+  /// Shard pointer to random generator
+  std::shared_ptr<std::mt19937> ptr_gen_ = nullptr;
+
   /// Shared pointer to logger
   std::shared_ptr<Logger> logger_ = nullptr;
 
   /// LsSolver parameters
   std::unique_ptr<LsSolverOptions> solver_options_ = nullptr;
+  InitMethod init_method_;
+  BiasType bias_type_;
+  RANSAC_Options ransac_opts_;
 
   ///
   /// \brief functions for least squares problem formulation depending on selected method and variables

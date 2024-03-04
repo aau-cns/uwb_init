@@ -176,7 +176,7 @@ void UwbInitializer::feed_position(const double timestamp, const Eigen::Vector3d
 
   p_UinG_buffer_[Tag_ID].push_back(timestamp, p_UinG);
 
-  logger_->debug("UwbInitializer::feed_position(): added position from [" + std::to_string(Tag_ID) + "] at timestamp " + std::to_string(timestamp));
+  //logger_->debug("UwbInitializer::feed_position(): added position from [" + std::to_string(Tag_ID) + "] at timestamp " + std::to_string(timestamp));
 }
 
 ///
@@ -228,8 +228,9 @@ bool UwbInitializer::init_anchors()
     std::vector<size_t> ID_Tags;
     for(auto const&e : uwb_data) { ID_Tags.push_back(e.first); }
 
+    UwbDataPerTag uwb_data_inliers;
     // Try to solve LS problem
-    if (init_options_->enable_ls_ && ls_solver_.solve_ls(uwb_data, p_UinG_buffer_, lsSolution, lsCov) && lsSolution.size() >= 3)
+    if (init_options_->enable_ls_ && ls_solver_.solve_ls(uwb_data, p_UinG_buffer_, lsSolution, lsCov, uwb_data_inliers) && lsSolution.size() >= 3)
     {
       // Logging
       logger_->info("Anchor[" + std::to_string(ID_Anchor) + "]: Coarse solution found");
@@ -282,7 +283,7 @@ bool UwbInitializer::init_anchors()
     }
 
     // Perform nonlinear optimization
-    if (nls_solver_.levenbergMarquardt(uwb_data, p_UinG_buffer_, nlsSolution, nlsCov))
+    if (nls_solver_.levenbergMarquardt(uwb_data_inliers, p_UinG_buffer_, nlsSolution, nlsCov))
     {
       // Logging
       logger_->info("Anchor[" + std::to_string(ID_Anchor) + "]: Solutiuon refined");

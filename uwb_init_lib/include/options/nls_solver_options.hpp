@@ -48,14 +48,19 @@ struct NlsSolverOptions
   /// Check covariance is SPD
   bool check_cov_;
 
+  /// use RANSAC
+  bool use_RANSAC_;
+
   NlsSolverOptions(const double lambda=1e-2, const double lambda_factor=10.0, const double step_cond=1e-6,
-                   const double res_cond=1e-6, const unsigned int max_iter=1e3, const bool check_cov=true)
+                   const double res_cond=1e-6, const unsigned int max_iter=1e3, const bool check_cov=true,
+                   const bool use_RANSAC = true)
     : lambda_(lambda)
     , lambda_factor_(lambda_factor)
     , step_cond_(step_cond)
     , res_cond_(res_cond)
     , max_iter_(max_iter)
     , check_cov_(check_cov)
+    , use_RANSAC_(use_RANSAC)
   {
   }
 
