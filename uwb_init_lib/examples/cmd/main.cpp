@@ -88,7 +88,7 @@ std::map<std::string, std::vector<double>> read_csv(std::string const& fn)
 // bias_gamma_carr = {1.1; 1.5};
 // p_GA = [10;10;10];
 // sigma_d = 0.1; sigma_T = 0.1;
-// --uwb_meas_csv /home/jungr/workspace/catkin_ws/test_uwb_init/uwb_init_lib/examples/cmd/data/DS_TWR_range.csv --tag_pos_csv /home/jungr/workspace/catkin_ws/test_uwb_init/uwb_init_lib/examples/cmd/data/DS_TWR_pos.csv
+// --use_nls_ransac --use_ls_ransac --enable_ls --sigma_pos 0.1 --sigma_range 0.1 --uwb_meas_csv /home/jungr/workspace/catkin_ws/test_uwb_init/uwb_init_lib/examples/cmd/data/DS_TWR_range_outliers_0.15_noise_d0.1_noise_T0.01.csv --tag_pos_csv /home/jungr/workspace/catkin_ws/test_uwb_init/uwb_init_lib/examples/cmd/data/DS_TWR_pos_sigma_T0.01.csv
 int main(int argc, char** argv)
 {
   std::string app_name = "uwb_init_cmd";
@@ -99,10 +99,14 @@ int main(int argc, char** argv)
   app.add_option("--uwb_meas_csv", uwb_meas_csv, "CSV file containing <t, ID_Tag, ID_Anchor, range>", true);
   std::string tag_pos_csv = "";
   app.add_option("--tag_pos_csv", tag_pos_csv, "CSV file containing <t, ID_Tag, x, y, z>", true);
-  bool use_ransac = false;
-  app.add_flag("--use_ransac", use_ransac, "select if ransac is turned on");
+  bool use_ls_ransac = false;
+  app.add_flag("--use_ls_ransac", use_ls_ransac, "select if ransac is turned on");
+  bool use_nls_ransac = false;
+  app.add_flag("--use_nls_ransac", use_nls_ransac, "select if ransac is turned on");
   bool use_double = false;
   app.add_flag("--use_double", use_double, "select if double or single method is used");
+  bool enable_ls = false;
+  app.add_flag("--enable_ls", enable_ls, "select if LsSolver is used first");
   double sigma_pos = 0.0;
   app.add_option("--sigma_pos", sigma_pos, "noise of position measurement");
   double sigma_range = 0.0;
@@ -117,15 +121,18 @@ int main(int argc, char** argv)
   std::unique_ptr<PlannerOptions> planner_options = nullptr;
 
   RANSAC_Options ransac_options(0.99, 10, 0.15);
+  ransac_options.thres_num_std = 5;
 
   if (use_double) {
     init_options = std::make_shared<UwbInitOptions>(InitMethod::DOUBLE, BiasType::CONST_BIAS, ransac_options);
-
   } else {
    init_options = std::make_shared<UwbInitOptions>(InitMethod::SINGLE, BiasType::CONST_BIAS, ransac_options);
   }
-  ls_options = std::make_unique<LsSolverOptions>(sigma_pos, sigma_range, true, use_ransac);
-  nls_options = std::make_unique<NlsSolverOptions>(1e-2, 10.0, 1e-6, 1e-6, 1e3);
+  init_options->enable_ls_=enable_ls;
+  ls_options = std::make_unique<LsSolverOptions>(sigma_pos, sigma_range, true, use_ls_ransac, BiasType::CONST_BIAS, ransac_options);
+
+  ransac_options.thres_num_std = 5;
+  nls_options = std::make_unique<NlsSolverOptions>(1e-2, 10.0, 1e-6, 1e-6, 1e3, true, use_nls_ransac, sigma_pos, sigma_range, BiasType::CONST_BIAS, ransac_options);
   planner_options = std::make_unique<PlannerOptions>(10, 10, 3000, 0.5, 0.2, 2, 2, 4, 4, 5, 6, 1, 0, 0);
 
           // Test initialization
@@ -171,8 +178,12 @@ int main(int argc, char** argv)
     NLSSolutions refined_sols = uwb_init.get_refined_solutions();
   }
 
-  char c;
-  std::cout << "press key + enter to continue..." << std::endl;
-  std::cin >> c;
+
+  {
+    char c;
+    std::cout << "press key + enter to continue..." << std::endl;
+    std::cin >> c;
+  }
   return 0;
+
 }
