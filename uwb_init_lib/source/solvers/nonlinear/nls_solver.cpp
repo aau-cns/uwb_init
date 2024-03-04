@@ -19,6 +19,8 @@
 // <giulio.delama@aau.at>
 
 #include "solvers/nonlinear/nls_solver.hpp"
+#include "solvers/linear/ls_solver.hpp"
+
 
 #include <assert.h>
 
@@ -38,7 +40,17 @@ NlsSolver::NlsSolver(const std::shared_ptr<Logger> logger, std::unique_ptr<NlsSo
   logger_->debug("NlsSolver options: step_cond = " + std::to_string(solver_options_->step_cond_));
   logger_->debug("NlsSolver options: res_cond = " + std::to_string(solver_options_->res_cond_));
   logger_->debug("NlsSolver options: max_iter = " + std::to_string(solver_options_->max_iter_));
+  logger_->debug("NlsSolver options: use_RANSAC = " + std::to_string(solver_options_->use_RANSAC_));
+  logger_->debug("NlsSolver options: sigma_pos = " + std::to_string(solver_options_->sigma_pos_));
+  logger_->debug("NlsSolver options: sigma_meas = " + std::to_string(solver_options_->sigma_meas_));
+  logger_->debug("NlsSolver options: bias_type = " + BiasType_to_string(solver_options_->bias_type_));
+  logger_->debug("NlsSolver options: ransac_opts = " + solver_options_->ransac_opts_.str());
+
+  std::random_device rd; // obtain a random number from hardware
+  ptr_gen_.reset(new std::mt19937(rd()));
 }
+
+
 
 bool NlsSolver::levenbergMarquardt(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer,
                                    Eigen::VectorXd& theta, Eigen::MatrixXd& cov)
@@ -57,6 +69,33 @@ bool NlsSolver::levenbergMarquardt(const std::unordered_map<uint, TimedBuffer<Uw
   for(auto const&e : dict_uwb_data)
   {
     num_meas += e.second.size();
+  }
+
+
+  bool init_theta = false;
+  switch (solver_options_->bias_type_) {
+    case BiasType::NO_BIAS:
+    {
+      if(theta.size() != 3) {
+        init_theta = true;
+      }
+      break;
+    }
+    case BiasType::CONST_BIAS: {
+      if(theta.size() != 3 + num_tags ) {
+        init_theta = true;
+      }
+    }
+    case BiasType::ALL_BIAS:
+    {
+      if(theta.size() != 3 + 2*num_tags ) {
+        init_theta = true;
+      }
+      break;
+    }
+  }
+  if (init_theta) {
+    theta = init_from_lsSolution(theta, num_tags);
   }
 
   // Lambda initialization
@@ -115,7 +154,7 @@ bool NlsSolver::levenbergMarquardt(const std::unordered_map<uint, TimedBuffer<Uw
       Eigen::VectorXd gamma_vec, beta_vec;
       size_t const idx_tag = tag_idx_vec(j);
 
-      if (theta.size() == 3 + 2*num_tags )
+      if (solver_options_->bias_type_ == BiasType::ALL_BIAS) //(theta.size() == 3 + 2*num_tags )
       {
         gamma_vec.setZero(num_tags);
         beta_vec.setZero(num_tags);
@@ -135,7 +174,7 @@ bool NlsSolver::levenbergMarquardt(const std::unordered_map<uint, TimedBuffer<Uw
         // Residual res = y - f(theta) =  uwb_meas - (beta * ||p_AinG - p_UinG|| + gamma)
         res(j) = d_TA_vec(j) - (beta_i * (theta.head(3).transpose() - p_GT_vec.row(j)).norm() + gamma_i);
       }
-      else if (theta.size() == 3 + num_tags)
+      else if (solver_options_->bias_type_ == BiasType::CONST_BIAS) //(theta.size() == 3 + num_tags)
       {
         // fill out the entry of the corresponding tag
         gamma_vec.setZero(num_tags);
@@ -150,7 +189,7 @@ bool NlsSolver::levenbergMarquardt(const std::unordered_map<uint, TimedBuffer<Uw
         // Residual res = y - f(theta) =  uwb_meas - (||p_AinG - p_UinG|| + gamma)
         res(j) = d_TA_vec(j) - ((theta.head(3).transpose() - p_GT_vec.row(j)).norm() + gamma_i);
       }
-      else if (theta.size() == 3)
+      else if (solver_options_->bias_type_ == BiasType::NO_BIAS) //(theta.size() == 3)
       {
         // Jacobian [df/dp_AinG]
         J.row(j) << (theta(0) - p_GT_vec(j, 0)) / (theta.head(3).transpose() - p_GT_vec.row(j)).norm(),
@@ -195,19 +234,19 @@ bool NlsSolver::levenbergMarquardt(const std::unordered_map<uint, TimedBuffer<Uw
       for (uint j = 0; j < res_new.size(); ++j)
       {
         size_t const idx_tag = tag_idx_vec(j);
-        if (theta.size() == 3 + 2*num_tags)
+        if (solver_options_->bias_type_ == BiasType::ALL_BIAS) //(theta.size() == 3 + 2*num_tags)
         {
           double beta_i = theta_tmp(3+num_tags+idx_tag);
           double gamma_i = theta_tmp(3+idx_tag);
           res_new(j) =
               d_TA_vec(j) - (beta_i * (theta_tmp.head(3).transpose() - p_GT_vec.row(j)).norm() + gamma_i);
         }
-        else if (theta.size() == 3 + num_tags)
+        else if (solver_options_->bias_type_ == BiasType::CONST_BIAS) //(theta.size() == 3 + num_tags)
         {
           double gamma_i = theta_tmp(3+idx_tag);
           res_new(j) = d_TA_vec(j) - ((theta_tmp.head(3).transpose() - p_GT_vec.row(j)).norm() + gamma_i);
         }
-        else if (theta.size() == 3)
+        else if (solver_options_->bias_type_ == BiasType::NO_BIAS) //(theta.size() == 3)
         {
           res_new(j) = d_TA_vec(j) - ((theta_tmp.head(3).transpose() - p_GT_vec.row(j)).norm());
         }
@@ -277,6 +316,141 @@ bool NlsSolver::levenbergMarquardt(const std::unordered_map<uint, TimedBuffer<Uw
   }
 
   return true;
+}
+
+bool NlsSolver::levenbergMarquardt(const std::unordered_map<uint, TimedBuffer<UwbData> > &dict_uwb_data, const PositionBufferDict_t &dict_p_UinG_buffer, Eigen::VectorXd &theta, Eigen::MatrixXd &cov, UwbDataPerTag &dict_uwb_inliers)
+{
+  // if RANSAC is disabled, use default method
+  if(!solver_options_->use_RANSAC_)
+  {
+    dict_uwb_inliers = dict_uwb_data;
+    return levenbergMarquardt(dict_uwb_data, dict_p_UinG_buffer, theta, cov);
+  }
+
+  // make sure to initialize the NlsSolver from the LsSolvers initial guess properly:
+
+  std::vector<double> costs;
+  std::vector<Eigen::VectorXd> lsSolutions;
+  std::vector<Eigen::MatrixXd> Sigmas;
+
+  costs.reserve(solver_options_->ransac_opts_.n);
+  lsSolutions.reserve(solver_options_->ransac_opts_.n);
+
+  if(has_Tag_enough_samples(dict_uwb_data)) {
+    logger_->info("NlsSolver::levenbergMarquardt: enough data collected for RANSAC");
+  }
+
+  size_t const num_tags = dict_uwb_data.size();
+  theta = init_from_lsSolution(theta, num_tags);
+  // Repeat the random sampling n-time, hoping that we pick once data without outliers!
+  for(size_t iter=0; iter < solver_options_->ransac_opts_.n; iter++)
+  {
+    // 1) take random from measurement and hope that it does not contain outlier
+    auto dict_sampled_data = LsSolver::rand_samples(dict_uwb_data, solver_options_->ransac_opts_.s, ptr_gen_);
+
+    // 2) solve the problem:
+    Eigen::VectorXd lsSolution_i = theta;
+    Eigen::MatrixXd Sigma_i;
+    if(levenbergMarquardt(dict_sampled_data, dict_p_UinG_buffer, lsSolution_i, Sigma_i))
+    {
+      double cost_i = LsSolver::compute_cost(dict_uwb_data, dict_p_UinG_buffer, lsSolution_i, solver_options_->bias_type_);
+      costs.push_back(cost_i);
+      lsSolutions.push_back(lsSolution_i);
+      Sigmas.push_back(Sigma_i);
+      logger_->debug("NlsSolver::levenbergMarquardt: RANSAC iter=" + std::to_string(iter) + ", cost=" + std::to_string(cost_i));
+    }
+  }
+
+  // 3) find the best model:
+  auto iter_min_cost = std::min_element(costs.begin(), costs.end());
+  size_t idx_best = iter_min_cost - costs.begin();
+  if(logger_->getlevel() == LoggerLevel::FULL)
+  {
+    std::stringstream ss;
+    ss << lsSolutions[idx_best].transpose();
+    logger_->debug("NlsSolver::levenbergMarquardt: RANSAC: best model at iter=" + std::to_string(idx_best) + ", cost=" + std::to_string(*iter_min_cost) + " is x_est=" + ss.str());
+  }
+
+  // 4) remove outliers that fall outside the 99% of the distribution 2*(sigma_uwb+sigma_pos) using all measurement and best match
+  double threshold = (solver_options_->sigma_meas_ + solver_options_->sigma_pos_)*3;
+
+  std::pair<UwbDataPerTag, size_t> uwb_data_clean = LsSolver::remove_ouliers(dict_uwb_data, dict_p_UinG_buffer, lsSolutions[idx_best], solver_options_->bias_type_, threshold);
+  logger_->debug("NlsSolver::levenbergMarquardt: [" + std::to_string(uwb_data_clean.second) + "] outliers removed above threshold=" + std::to_string(threshold));
+  dict_uwb_inliers = uwb_data_clean.first;
+
+  // 5) fit a new model on the cleaned data:
+  theta = lsSolutions[idx_best];
+  if(levenbergMarquardt(dict_uwb_inliers, dict_p_UinG_buffer, theta, cov)) {
+    if(logger_->getlevel() == LoggerLevel::FULL)
+    {
+      double cost_final = LsSolver::compute_cost(dict_uwb_inliers, dict_p_UinG_buffer, theta, solver_options_->bias_type_);
+      std::stringstream ss;
+      ss << theta.transpose();
+      logger_->debug("NlsSolver::levenbergMarquardt: final cost=" + std::to_string(cost_final) + " for x_best=" + ss.str());
+    }
+    return true;
+  }
+  else if(lsSolutions.size()) {
+    theta = lsSolutions[idx_best];
+    cov = Sigmas[idx_best];
+    return true;
+  } else {
+    return false;
+  }
+
+
+}
+
+bool NlsSolver::has_Tag_enough_samples(const UwbDataPerTag &dict_uwb_data) {
+  std::unordered_map<uint, bool> dict = LsSolver::has_Tag_enough_samples(dict_uwb_data, solver_options_->ransac_opts_.num_samples_needed());
+
+  bool res = true;
+  for(auto const& e : dict) {
+    if(!e.second) {
+      res = false;
+      logger_->debug("NlsSolver::has_Tag_enough_samples(): more samples needed for ransac! TagID=[" + std::to_string(e.first) + "] ! min=" + std::to_string(solver_options_->ransac_opts_.num_samples_needed()) + ", currenty=" + std::to_string(dict_uwb_data.at(e.first).size()));
+    }
+  }
+  return res;
+}
+
+Eigen::VectorXd NlsSolver::init_from_lsSolution(const Eigen::VectorXd &lsSolution, size_t const num_Tags) {
+
+  Eigen::VectorXd p_AinG;
+  if(lsSolution.rows() >= 3) {
+    p_AinG = lsSolution.head(3);
+  } else {
+    p_AinG.setZero(3);
+  }
+
+  Eigen::VectorXd range_biases, const_biases;
+  range_biases.setOnes(num_Tags);
+  const_biases.setZero(num_Tags);
+
+  if(lsSolution.rows() >= 3+int(num_Tags)) {
+    // copy all solutions ot the vectors
+    for(size_t idx = 0; idx < num_Tags; idx++) {
+      const_biases(idx) = lsSolution(3+idx);
+    }
+  }
+
+  Eigen::VectorXd nls_init_guess;
+  // Initial guess for NLS based on bias type
+  if (solver_options_->bias_type_ == BiasType::ALL_BIAS)
+  {
+    nls_init_guess = Eigen::VectorXd::Zero(3+2*num_Tags);
+    nls_init_guess << p_AinG, const_biases, range_biases;
+  }
+  else if(solver_options_->bias_type_ == BiasType::CONST_BIAS) {
+    nls_init_guess = Eigen::VectorXd::Zero(3+num_Tags);
+    nls_init_guess << p_AinG, const_biases;
+  }
+  else {
+    nls_init_guess = Eigen::VectorXd::Zero(3);
+    nls_init_guess << p_AinG;
+  }
+  return nls_init_guess;
+
 }
 
 }  // namespace uwb_init

@@ -21,6 +21,9 @@
 #define UWB_INIT_NLS_OPTIONS_HPP_
 
 #include <Eigen/Dense>
+#include <options/BiasType.hpp>
+#include <options/RANSAC_Options.hpp>
+
 
 namespace uwb_init
 {
@@ -51,9 +54,21 @@ struct NlsSolverOptions
   /// use RANSAC
   bool use_RANSAC_;
 
+  /// position uncertainty (default suggested value: 0.03)
+  double sigma_pos_;
+
+  /// uwb uncertainty (default suggested value: 0.1)
+  double sigma_meas_;
+
+  /// ranging bias types to be solved for (none, gamma, gamma+beta)
+  BiasType bias_type_;
+
+  RANSAC_Options ransac_opts_;
+
   NlsSolverOptions(const double lambda=1e-2, const double lambda_factor=10.0, const double step_cond=1e-6,
                    const double res_cond=1e-6, const unsigned int max_iter=1e3, const bool check_cov=true,
-                   const bool use_RANSAC = true)
+                   const bool use_RANSAC = true, const double sigma_pos=0.03, const double sigma_meas=0.1,
+                   const BiasType bias_type = BiasType::ALL_BIAS, const RANSAC_Options ransac_opts = RANSAC_Options(0.99, 10, 0.15))
     : lambda_(lambda)
     , lambda_factor_(lambda_factor)
     , step_cond_(step_cond)
@@ -61,6 +76,10 @@ struct NlsSolverOptions
     , max_iter_(max_iter)
     , check_cov_(check_cov)
     , use_RANSAC_(use_RANSAC)
+    ,sigma_pos_(sigma_pos)
+    , sigma_meas_(sigma_meas)
+    , bias_type_(bias_type)
+    , ransac_opts_(ransac_opts)
   {
   }
 

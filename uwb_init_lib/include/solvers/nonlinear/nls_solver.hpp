@@ -23,6 +23,7 @@
 
 #include "logger/logger.hpp"
 #include "options/nls_solver_options.hpp"
+#include "options/uwb_init_options.hpp"
 #include "utils/data_structs.hpp"
 #include "utils/utils.hpp"
 
@@ -40,6 +41,15 @@ public:
   NlsSolver(const std::shared_ptr<Logger> logger, std::unique_ptr<NlsSolverOptions>&& nls_solver_options);
 
   /**
+   * @brief Configure LS solver problem type (unbiased or const bias), and method (single or double)
+   *
+   * @param init_options initialization options specifying the type of model,
+   * and the method used for building the least square problem
+   */
+  void configure(const std::shared_ptr<UwbInitOptions>& init_options);
+
+
+  /**
    * @brief Function to be called to solve the nonlinear least square problem via Levenberg-Marquardt algorithm
    *
    * @param uwb_data
@@ -55,13 +65,23 @@ public:
   bool levenbergMarquardt(const std::unordered_map<uint, TimedBuffer<UwbData>>& dict_uwb_data,
                           const PositionBufferDict_t& dict_p_UinG_buffer, Eigen::VectorXd& theta, Eigen::MatrixXd& cov);
 
+  bool levenbergMarquardt(const std::unordered_map<uint, TimedBuffer<UwbData>>& dict_uwb_data,
+                          const PositionBufferDict_t& dict_p_UinG_buffer, Eigen::VectorXd& theta, Eigen::MatrixXd& cov, UwbDataPerTag& dict_uwb_inliers);
+
+
+  bool has_Tag_enough_samples(const UwbDataPerTag& dict_uwb_data);
 
 private:
+  /// Shard pointer to random generator
+  std::shared_ptr<std::mt19937> ptr_gen_ = nullptr;
+
   /// Shared pointer to logger
   std::shared_ptr<Logger> logger_ = nullptr;
 
-  // LsSolver parameters
+  /// LsSolver parameters
   std::unique_ptr<NlsSolverOptions> solver_options_ = nullptr;
+
+  Eigen::VectorXd init_from_lsSolution(Eigen::VectorXd const& lsSolution, const size_t num_Tags=1);
 };
 
 }  // namespace uwb_init
