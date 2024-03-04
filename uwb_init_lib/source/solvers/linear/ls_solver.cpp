@@ -37,7 +37,9 @@ LsSolver::LsSolver(const std::shared_ptr<Logger> logger, const std::shared_ptr<U
   logger_->info("LsSolver: Initialized");
   logger_->debug("LsSolver options: sigma_pos = " + std::to_string(solver_options_->sigma_pos_));
   logger_->debug("LsSolver options: sigma_meas = " + std::to_string(solver_options_->sigma_meas_));
-
+  logger_->debug("LsSolver options: use_RANSAC = " + std::to_string(solver_options_->use_RANSAC_));
+  logger_->debug("LsSolver options: bias_type = " + BiasType_to_string(solver_options_->bias_type_));
+  logger_->debug("LsSolver options: ransac_opts = " + solver_options_->ransac_opts_.str());
 
   std::random_device rd; // obtain a random number from hardware
   ptr_gen_.reset(new std::mt19937(rd()));
@@ -47,13 +49,14 @@ LsSolver::LsSolver(const std::shared_ptr<Logger> logger, const std::shared_ptr<U
 void LsSolver::configure(const std::shared_ptr<UwbInitOptions>& init_options)
 {
   init_method_ = init_options->init_method_;
-  bias_type_ = init_options->bias_type_;
+  solver_options_->bias_type_ = init_options->bias_type_;
+
   // Bind LS-problem initialization function based on selected method and model variables
   switch (init_method_)
   {
     // Single measurement initialization method
     case InitMethod::SINGLE:
-      switch (bias_type_)
+      switch (solver_options_->bias_type_)
       {
         // Unbiased measurement model (only distance between tag and uwb anchor)
         case BiasType::NO_BIAS:
@@ -74,7 +77,7 @@ void LsSolver::configure(const std::shared_ptr<UwbInitOptions>& init_options)
       break;
     // Double measurements initialization method
     case InitMethod::DOUBLE:
-      switch (bias_type_)
+      switch (solver_options_->bias_type_)
       {
         // Unbiased measurement model (only distance between tag and uwb anchor)
         case BiasType::NO_BIAS:
@@ -94,9 +97,6 @@ void LsSolver::configure(const std::shared_ptr<UwbInitOptions>& init_options)
       }
       break;
   }
-
-  // configure RANSAC:
-  ransac_opts_ = init_options->RANSAC_cfg_;
 
   // Logging
   logger_->info("LsSolver: Configured");
@@ -166,6 +166,17 @@ bool LsSolver::solve_ls(const TimedBuffer<UwbData>& uwb_data, const PositionBuff
 }
 
 bool LsSolver::solve_ls(const UwbDataPerTag &dict_uwb_data, PositionBufferDict_t const& dict_p_UinG_buffer, Eigen::VectorXd &lsSolution, Eigen::MatrixXd &cov) {
+  if(dict_uwb_data.size() < 1) {
+    logger_->err("LsSolver::solve_ls: empty uwb range buffer obtained");
+    return false;
+  }
+  if(dict_uwb_data.size() != dict_p_UinG_buffer.size())
+  {
+    logger_->err("LsSolver::solve_ls: uwb range buffer and position buffer do not match");
+    return false;
+  }
+
+
   // Coefficient matrix and measurement vector initialization
   Eigen::MatrixXd coeffs;  // A
   Eigen::VectorXd meas;    // b
@@ -236,8 +247,8 @@ bool uwb_init::LsSolver::solve_ls(const UwbDataPerTag &dict_uwb_data, const Posi
   std::vector<Eigen::VectorXd> lsSolutions;
   std::vector<Eigen::MatrixXd> Sigmas;
 
-  costs.reserve(ransac_opts_.n);
-  lsSolutions.reserve(ransac_opts_.n);
+  costs.reserve(solver_options_->ransac_opts_.n);
+  lsSolutions.reserve(solver_options_->ransac_opts_.n);
 
 
   if(has_Tag_enough_samples(dict_uwb_data)) {
@@ -245,17 +256,17 @@ bool uwb_init::LsSolver::solve_ls(const UwbDataPerTag &dict_uwb_data, const Posi
   }
 
   // Repeat the random sampling n-time, hoping that we pick once data without outliers!
-  for(size_t iter=0; iter < ransac_opts_.n; iter++)
+  for(size_t iter=0; iter < solver_options_->ransac_opts_.n; iter++)
   {
     // 1) take random from measurement and hope that it does not contain outlier
-    auto dict_sampled_data = LsSolver::rand_samples(dict_uwb_data, ransac_opts_.s, ptr_gen_);
+    auto dict_sampled_data = LsSolver::rand_samples(dict_uwb_data, solver_options_->ransac_opts_.s, ptr_gen_);
 
     // 2) solve the problem:
     Eigen::VectorXd lsSolution_i;
     Eigen::MatrixXd Sigma_i;
     if(solve_ls(dict_sampled_data, dict_p_UinG_buffer, lsSolution_i, Sigma_i))
     {
-      double cost_i = LsSolver::compute_cost(dict_uwb_data, dict_p_UinG_buffer, lsSolution_i, bias_type_);
+      double cost_i = LsSolver::compute_cost(dict_uwb_data, dict_p_UinG_buffer, lsSolution_i, solver_options_->bias_type_);
       costs.push_back(cost_i);
       lsSolutions.push_back(lsSolution_i);
       Sigmas.push_back(Sigma_i);
@@ -274,9 +285,9 @@ bool uwb_init::LsSolver::solve_ls(const UwbDataPerTag &dict_uwb_data, const Posi
   }
 
   // 4) remove outliers that fall outside the 99% of the distribution 2*(sigma_uwb+sigma_pos) using all measurement and best match
-  double threshold = (solver_options_->sigma_meas_ + solver_options_->sigma_pos_)*3;
+  double threshold = (solver_options_->sigma_meas_ + solver_options_->sigma_pos_)*solver_options_->ransac_opts_.thres_num_std;
 
-  std::pair<UwbDataPerTag, size_t> uwb_data_clean = LsSolver::remove_ouliers(dict_uwb_data, dict_p_UinG_buffer, lsSolutions[idx_best], bias_type_, threshold);
+  std::pair<UwbDataPerTag, size_t> uwb_data_clean = LsSolver::remove_ouliers(dict_uwb_data, dict_p_UinG_buffer, lsSolutions[idx_best], solver_options_->bias_type_, threshold);
   logger_->debug("LsSolver::solve_ls: [" + std::to_string(uwb_data_clean.second) + "] outliers removed above threshold=" + std::to_string(threshold));
   dict_uwb_inliers = uwb_data_clean.first;
 
@@ -284,7 +295,7 @@ bool uwb_init::LsSolver::solve_ls(const UwbDataPerTag &dict_uwb_data, const Posi
   if(solve_ls(dict_uwb_inliers, dict_p_UinG_buffer, lsSolution, cov)) {
     if(logger_->getlevel() == LoggerLevel::FULL)
     {
-      double cost_final = LsSolver::compute_cost(dict_uwb_inliers, dict_p_UinG_buffer, lsSolution, bias_type_);
+      double cost_final = LsSolver::compute_cost(dict_uwb_inliers, dict_p_UinG_buffer, lsSolution, solver_options_->bias_type_);
       std::stringstream ss;
       ss << lsSolution.transpose();
       logger_->debug("LsSolver::solve_ls: final cost=" + std::to_string(cost_final) + " for x_best=" + ss.str());
@@ -302,13 +313,16 @@ bool uwb_init::LsSolver::solve_ls(const UwbDataPerTag &dict_uwb_data, const Posi
 }
 
 bool LsSolver::has_Tag_enough_samples(const UwbDataPerTag &dict_uwb_data) {
-  std::unordered_map<uint, bool> dict = LsSolver::has_Tag_enough_samples(dict_uwb_data, ransac_opts_.num_samples_needed());
+  std::unordered_map<uint, bool> dict = LsSolver::has_Tag_enough_samples(dict_uwb_data,
+                                                                         solver_options_->ransac_opts_.num_samples_needed());
 
   bool res = true;
   for(auto const& e : dict) {
     if(!e.second) {
       res = false;
-      logger_->debug("LsSolver::has_Tag_enough_samples(): more samples needed for ransac! TagID=[" + std::to_string(e.first) + "] ! min=" + std::to_string(ransac_opts_.num_samples_needed()) + ", currenty=" + std::to_string(dict_uwb_data.at(e.first).size()));
+      logger_->debug("LsSolver::has_Tag_enough_samples(): more samples needed for ransac! TagID=[" + std::to_string(e.first) +
+                     "] ! min=" + std::to_string(solver_options_->ransac_opts_.num_samples_needed()) + ", currenty=" +
+                     std::to_string(dict_uwb_data.at(e.first).size()));
     }
   }
   return res;

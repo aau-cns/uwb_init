@@ -124,8 +124,6 @@ private:
   /// LsSolver parameters
   std::unique_ptr<LsSolverOptions> solver_options_ = nullptr;
   InitMethod init_method_;
-  BiasType bias_type_;
-  RANSAC_Options ransac_opts_;
 
   ///
   /// \brief functions for least squares problem formulation depending on selected method and variables
