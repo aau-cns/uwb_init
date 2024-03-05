@@ -212,6 +212,12 @@ int main(int argc, char** argv)
     opts.ransac_opts_.s = tmp_s;
   }
   nh.param<double>("prop_success", opts.ransac_opts_.p, 0.11);
+  {
+    int tmp_s;
+    nh.param<int>("threshold_num_std", tmp_s, 5);
+    opts.ransac_opts_.thres_num_std = tmp_s;
+  }
+
   opts.ransac_opts_.set_num_iterations();
   ROS_INFO_STREAM("* RANSAC: " << opts.ransac_opts_.str());
 
