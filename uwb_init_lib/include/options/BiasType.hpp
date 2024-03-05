@@ -16,6 +16,11 @@
 /// \brief The BiasType enum describes the type of biase used in the measurement model
 ///
 #include <string>
+
+namespace uwb_init
+{
+
+
 enum class BiasType
 {
   NO_BIAS = 0,     //!< use no bias for initialization, i.e. position only
@@ -29,6 +34,6 @@ enum class BiasType
 const char* BiasTypeString(BiasType e);
 
 std::string BiasType_to_string(BiasType const& e);
-
+}
 
 #endif // BIASTYPE_HPP

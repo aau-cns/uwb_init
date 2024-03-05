@@ -11,6 +11,8 @@
  ******************************************************************************/
 #include <options/RANSAC_Options.hpp>
 
+namespace uwb_init
+{
 
 RANSAC_Options::RANSAC_Options(const uint n, const double p, const uint s, const double e, const double thres_num_std) :
   p(p), s(s), e(e), n(n), thres_num_std(thres_num_std)
@@ -48,4 +50,6 @@ std::string RANSAC_Options::str() {
   ss << ", num iterations=" << n;
   ss << ", thres_num_std=" << thres_num_std;
   return ss.str();
+}
+
 }

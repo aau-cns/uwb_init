@@ -22,7 +22,7 @@
 
 namespace uwb_init
 {
-LsSolver::LsSolver(const std::shared_ptr<Logger> logger, const std::shared_ptr<UwbInitOptions>& init_options,
+LsSolver::LsSolver(const std::shared_ptr<Logger> logger,
                    std::unique_ptr<LsSolverOptions>&& ls_solver_options)
   : logger_(std::move(logger)), solver_options_(std::move(ls_solver_options))
 {
@@ -31,7 +31,7 @@ LsSolver::LsSolver(const std::shared_ptr<Logger> logger, const std::shared_ptr<U
   assert(solver_options_ != nullptr);
 
   // Configure solver
-  configure(init_options);
+  configure(solver_options_->init_method_, solver_options_->bias_type_);
 
   // Logging
   logger_->info("LsSolver: Initialized");
@@ -39,6 +39,7 @@ LsSolver::LsSolver(const std::shared_ptr<Logger> logger, const std::shared_ptr<U
   logger_->debug("LsSolver options: sigma_meas = " + std::to_string(solver_options_->sigma_meas_));
   logger_->debug("LsSolver options: use_RANSAC = " + std::to_string(solver_options_->use_RANSAC_));
   logger_->debug("LsSolver options: bias_type = " + BiasType_to_string(solver_options_->bias_type_));
+  logger_->debug("LsSolver options: init_method = " + std::string(InitMethodString(solver_options_->init_method_)));
   logger_->debug("LsSolver options: ransac_opts = " + solver_options_->ransac_opts_.str());
 
   std::random_device rd; // obtain a random number from hardware
@@ -46,13 +47,23 @@ LsSolver::LsSolver(const std::shared_ptr<Logger> logger, const std::shared_ptr<U
 
 }
 
-void LsSolver::configure(const std::shared_ptr<UwbInitOptions>& init_options)
+void LsSolver::configure(const BiasType bias_type)
 {
-  init_method_ = init_options->init_method_;
-  solver_options_->bias_type_ = init_options->bias_type_;
+  configure(solver_options_->init_method_, bias_type);
+}
+
+void LsSolver::configure(const InitMethod init_method)
+{
+  configure(init_method, solver_options_->bias_type_);
+}
+
+void LsSolver::configure(InitMethod const init_method, BiasType const bias_type)
+{
+  solver_options_->init_method_ = init_method;
+  solver_options_->bias_type_ = bias_type;
 
   // Bind LS-problem initialization function based on selected method and model variables
-  switch (init_method_)
+  switch (solver_options_->init_method_)
   {
     // Single measurement initialization method
     case InitMethod::SINGLE:
@@ -101,6 +112,10 @@ void LsSolver::configure(const std::shared_ptr<UwbInitOptions>& init_options)
   // Logging
   logger_->info("LsSolver: Configured");
 }
+
+BiasType LsSolver::bias_tpye() { return solver_options_->bias_type_; }
+
+InitMethod LsSolver::init_method() { return solver_options_->init_method_; }
 
 bool LsSolver::solve_ls(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer,
                         Eigen::VectorXd& lsSolution, Eigen::MatrixXd& cov)

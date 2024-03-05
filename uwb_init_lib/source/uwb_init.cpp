@@ -30,39 +30,32 @@ UwbInitializer::UwbInitializer(const LoggerLevel& level, std::shared_ptr<UwbInit
                                std::unique_ptr<PlannerOptions>&& planner_options)
   : logger_(std::make_shared<Logger>(level))
   , init_options_(std::move(init_options))
-  , ls_solver_(logger_, init_options_, std::move(ls_solver_options))
+  , ls_solver_(logger_, std::move(ls_solver_options))
   , nls_solver_(logger_, std::move(nls_solver_options))
   , planner_(logger_, std::move(planner_options))
 {
   // Debug assertation
   assert(logger_ != nullptr);
   assert(init_options_ != nullptr);
-
-  // Logging
-  logger_->info("UwbInitializer: " + std::string(InitMethodString(init_options_->init_method_)));
-  logger_->info("UwbInitializer: " + std::string(BiasTypeString(init_options_->bias_type_)));
 }
 
 void UwbInitializer::set_init_method(const InitMethod& method)
 {
-  init_options_->init_method_ = method;
-
   // Logging
-  logger_->info("UwbInitializer: " + std::string(InitMethodString(init_options_->init_method_)));
+  logger_->info("UwbInitializer::set_init_method(): " + std::string(InitMethodString(method)));
 
   // Configure Least Squares Solver
-  ls_solver_.configure(init_options_);
+  ls_solver_.configure(method);
 }
 
 void UwbInitializer::set_bias_type(const BiasType& type)
 {
-  init_options_->bias_type_ = type;
 
   // Logging
-  logger_->info("UwbInitializer: " + std::string(BiasTypeString(init_options_->bias_type_)));
+  logger_->info("UwbInitializer:set_bias_type(): " + std::string(BiasTypeString(type)));
 
   // Configure Least Squares Solver
-  ls_solver_.configure(init_options_);
+  ls_solver_.configure(type);
 
 }
 
@@ -436,7 +429,11 @@ bool UwbInitializer::refine_anchors()
   return true;
 }
 
-LSSolution UwbInitializer::to_LSSolution(const Eigen::VectorXd &lsSolution, const Eigen::MatrixXd &lsCov, const size_t ID_Anchor, const std::vector<size_t> &ID_Tags) {
+LSSolution UwbInitializer::to_LSSolution(const Eigen::VectorXd &lsSolution,
+                                         const Eigen::MatrixXd &lsCov,
+                                         const size_t ID_Anchor,
+                                         const std::vector<size_t> &ID_Tags)
+{
 
   size_t const num_Tags = ID_Tags.size();
   Eigen::MatrixXd Sigma = lsCov;
@@ -448,11 +445,14 @@ LSSolution UwbInitializer::to_LSSolution(const Eigen::VectorXd &lsSolution, cons
   std::unordered_map<uint, double> const_biases; // gammas
 
           // If constant bias was estimated assign the value, else resize covariance
-  if (init_options_->bias_type_ != BiasType::NO_BIAS)
+  if (ls_solver_.bias_tpye() != BiasType::NO_BIAS)
   {
-    size_t idx = 3;
+    int idx = 3;
     for(auto const &e : p_UinG_buffer_) {
-      const_biases.insert({e.first, lsSolution(idx)});
+
+      if(idx < lsSolution.rows()) {
+        const_biases.insert({e.first, lsSolution(idx)});
+      }
       idx++;
     }
   }
@@ -486,7 +486,7 @@ NLSSolution UwbInitializer::to_NLSSolution(const Eigen::VectorXd &nlsSolution, c
   Eigen::MatrixXd Sigma = nlsCov;
 
   // Switch bias type and resize covariance
-  switch (init_options_->bias_type_)
+  switch (nls_solver_.bias_type())
   {
     case BiasType::ALL_BIAS:
     {

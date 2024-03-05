@@ -20,8 +20,11 @@
 #ifndef UWB_INIT_LS_OPTIONS_HPP_
 #define UWB_INIT_LS_OPTIONS_HPP_
 
+
 #include "options/BiasType.hpp"
+#include "options/InitMethod.hpp"
 #include "options/RANSAC_Options.hpp"
+
 namespace uwb_init
 {
 ///
@@ -42,6 +45,9 @@ struct LsSolverOptions
   /// use RANSAC
   bool use_RANSAC_;
 
+  /// determines the method to use for initialization
+  InitMethod init_method_;
+
   /// ranging bias types to be solved for (none, gamma, gamma+beta)
   BiasType bias_type_;
 
@@ -51,12 +57,14 @@ struct LsSolverOptions
                   const double sigma_meas=0.1,
                   const bool check_cov=true,
                   const bool use_RANSAC = true,
+                  const InitMethod method = InitMethod::SINGLE,
                   const BiasType bias_type = BiasType::ALL_BIAS,
                   const RANSAC_Options ransac_opts = RANSAC_Options(0.99, 10, 0.15))
     : sigma_pos_(sigma_pos)
     , sigma_meas_(sigma_meas)
     , check_cov_(check_cov)
     , use_RANSAC_(use_RANSAC)
+    , init_method_(method)
     , bias_type_(bias_type)
     , ransac_opts_(ransac_opts)
   {

@@ -11,7 +11,8 @@
  ******************************************************************************/
 #include <options/BiasType.hpp>
 
-
+namespace uwb_init
+{
 std::string BiasType_to_string(const BiasType &e) {
   return std::string(BiasTypeString(e));
 }
@@ -29,4 +30,5 @@ const char *BiasTypeString(BiasType e)
     default:
       return "";
   }
+}
 }

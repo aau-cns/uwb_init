@@ -14,6 +14,9 @@
 #include <math.h>       /* log */
 #include <Eigen/Dense>
 
+namespace uwb_init
+{
+
 struct RANSAC_Options {
   double p = 0.99; // propability to obtain a inlier subset
   uint s = 10;  // samples needed for the model
@@ -34,4 +37,5 @@ struct RANSAC_Options {
   std::string str();
 };
 
+}
 #endif // RANSAC_OPTIONS_HPP

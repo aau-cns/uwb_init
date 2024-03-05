@@ -27,34 +27,6 @@
 
 namespace uwb_init
 {
-///
-/// \brief The InitMethod enum describes the method used for initialization
-///
-enum class InitMethod
-{
-  SINGLE = 0,  //!< use only one measurement to construct LLS matrix
-  DOUBLE,  //!< use a pair of measurements to construct LLS matrix
-};
-
-///
-/// \brief Return a string with the corresponding init method
-///
-constexpr const char* InitMethodString(InitMethod e)
-{
-  switch (e)
-  {
-    case InitMethod::SINGLE:
-      return "InitMethod::SINGLE";
-    case InitMethod::DOUBLE:
-      return "InitMethod::DOUBLE";
-    default:
-      return "InitMethod::UNKNOWN";
-  }
-}
-
-
-
-
 
 
 ///
@@ -62,14 +34,6 @@ constexpr const char* InitMethodString(InitMethod e)
 ///
 struct UwbInitOptions
 {
-  /// determines the method to use for initialization
-  InitMethod init_method_;
-
-  /// determines the type of bias used in the measurement model, to be estimated during the initialization routine
-  BiasType bias_type_;
-
-  RANSAC_Options RANSAC_cfg_;
-
   /// constant bias prior covariance
   double const_bias_prior_cov_;
 
@@ -85,18 +49,12 @@ struct UwbInitOptions
   // Compute covariance
   bool compute_covariance_;
 
-  UwbInitOptions(const InitMethod& method,
-                 const BiasType& bias_type,
-                 RANSAC_Options const& RANSAC_cfg,
-                 const double const_bias_prior_cov = 0.1,
+  UwbInitOptions(const double const_bias_prior_cov = 0.1,
                  const double dist_bias_prior_cov = 0.1,
                  const unsigned int min_num_anchors = 1,
                  const bool enable_ls = true,
                  const bool compute_covariance = true)
-    : init_method_(method)
-    , bias_type_(bias_type)
-    , RANSAC_cfg_(RANSAC_cfg)
-    , const_bias_prior_cov_(const_bias_prior_cov)
+    : const_bias_prior_cov_(const_bias_prior_cov)
     , dist_bias_prior_cov_(dist_bias_prior_cov)
     , min_num_anchors_(min_num_anchors)
     , enable_ls_(enable_ls)

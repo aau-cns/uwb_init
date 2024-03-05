@@ -123,15 +123,16 @@ int main(int argc, char** argv)
   RANSAC_Options ransac_options(0.99, 10, 0.15);
   ransac_options.thres_num_std = 5;
 
-  if (use_double) {
-    init_options = std::make_shared<UwbInitOptions>(InitMethod::DOUBLE, BiasType::CONST_BIAS, ransac_options);
-  } else {
-   init_options = std::make_shared<UwbInitOptions>(InitMethod::SINGLE, BiasType::CONST_BIAS, ransac_options);
-  }
+  init_options = std::make_shared<UwbInitOptions>();
   init_options->enable_ls_=enable_ls;
-  ls_options = std::make_unique<LsSolverOptions>(sigma_pos, sigma_range, true, use_ls_ransac, BiasType::CONST_BIAS, ransac_options);
 
-  ransac_options.thres_num_std = 5;
+  if (use_double) {
+    ls_options = std::make_unique<LsSolverOptions>(sigma_pos, sigma_range, true, use_ls_ransac, InitMethod::DOUBLE,  BiasType::CONST_BIAS, ransac_options);
+  } else {
+    ls_options = std::make_unique<LsSolverOptions>(sigma_pos, sigma_range, true, use_ls_ransac, InitMethod::SINGLE,  BiasType::CONST_BIAS, ransac_options);
+  }
+
+  ransac_options.thres_num_std = 3;
   nls_options = std::make_unique<NlsSolverOptions>(1e-2, 10.0, 1e-6, 1e-6, 1e3, true, use_nls_ransac, sigma_pos, sigma_range, BiasType::CONST_BIAS, ransac_options);
   planner_options = std::make_unique<PlannerOptions>(10, 10, 3000, 0.5, 0.2, 2, 2, 4, 4, 5, 6, 1, 0, 0);
 

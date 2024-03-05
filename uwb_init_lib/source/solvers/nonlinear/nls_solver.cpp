@@ -50,6 +50,13 @@ NlsSolver::NlsSolver(const std::shared_ptr<Logger> logger, std::unique_ptr<NlsSo
   ptr_gen_.reset(new std::mt19937(rd()));
 }
 
+void NlsSolver::configure(const BiasType bias_type)
+{
+  solver_options_->bias_type_ = bias_type;
+}
+
+BiasType NlsSolver::bias_type() {return solver_options_->bias_type_; }
+
 
 
 bool NlsSolver::levenbergMarquardt(const TimedBuffer<UwbData>& uwb_data, const PositionBuffer& p_UinG_buffer,

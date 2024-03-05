@@ -3,7 +3,7 @@
 
 
 | Trajectory | Measurements |
-|:----------:|:-------------|
+|:----------|:-------------|
 | ![](./examples/cmd/data/Trajectory-Anchor-Pos-Estimates.png) | ![](./examples/cmd/data/DS-TWR-outliers-0.15-noise-d0.1-noise-T0.1-measurements.png) 
 
 
