@@ -76,10 +76,7 @@ void LsSolver::configure(InitMethod const init_method, BiasType const bias_type)
           break;
         // Constant bias measurement model (distance and constant bias)
         case BiasType::CONST_BIAS:
-          ls_problem = std::bind(&LsSolver::ls_single_const_bias, this, std::placeholders::_1, std::placeholders::_2,
-                                 std::placeholders::_3, std::placeholders::_4, std::placeholders::_5);
-          break;
-        // Constant bias measurement model (distance and constant bias)
+          // fall through
         case BiasType::ALL_BIAS:
           ls_problem = std::bind(&LsSolver::ls_single_const_bias, this, std::placeholders::_1, std::placeholders::_2,
                                  std::placeholders::_3, std::placeholders::_4, std::placeholders::_5);
@@ -97,10 +94,7 @@ void LsSolver::configure(InitMethod const init_method, BiasType const bias_type)
           break;
         // Constant bias measurement model (distance and constant bias)
         case BiasType::CONST_BIAS:
-          ls_problem = std::bind(&LsSolver::ls_double_const_bias, this, std::placeholders::_1, std::placeholders::_2,
-                                 std::placeholders::_3, std::placeholders::_4, std::placeholders::_5);
-          break;
-        // Constant bias measurement model (distance and constant bias)
+          // fall through
         case BiasType::ALL_BIAS:
           ls_problem = std::bind(&LsSolver::ls_single_const_bias, this, std::placeholders::_1, std::placeholders::_2,
                                  std::placeholders::_3, std::placeholders::_4, std::placeholders::_5);
