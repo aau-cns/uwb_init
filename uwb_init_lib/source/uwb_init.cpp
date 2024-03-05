@@ -218,8 +218,7 @@ bool UwbInitializer::init_anchors()
     Eigen::VectorXd nlsSolution;
     Eigen::MatrixXd nlsCov;
 
-    std::vector<size_t> ID_Tags;
-    for(auto const&e : uwb_data) { ID_Tags.push_back(e.first); }
+
 
     UwbDataPerTag uwb_data_inliers;
     // Try to solve LS problem
@@ -227,6 +226,8 @@ bool UwbInitializer::init_anchors()
     {
       // Logging
       logger_->info("Anchor[" + std::to_string(ID_Anchor) + "]: Coarse solution found");
+      std::vector<size_t> ID_Tags;
+      for(auto const&e : uwb_data_inliers) { ID_Tags.push_back(e.first); }
 
       LSSolution ls_sol = to_LSSolution(lsSolution, lsCov, ID_Anchor, ID_Tags);
       logger_->debug(" * " + ls_sol.str());
@@ -256,6 +257,9 @@ bool UwbInitializer::init_anchors()
 
       // Increase counter
       init_count += 1;
+
+      std::vector<size_t> ID_Tags;
+      for(auto const&e : uwb_data_inliers) { ID_Tags.push_back(e.first); }
 
       NLSSolution nls_sol = to_NLSSolution(nlsSolution, nlsCov, ID_Anchor, ID_Tags);
       // Compute standard deviation

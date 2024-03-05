@@ -117,7 +117,7 @@ public:
 
   static double compute_cost(const UwbDataPerTag& dict_uwb_data, const PositionBufferDict_t &dict_p_UinG_buffer, Eigen::VectorXd const& x_est, const BiasType bias_type);
 
-  static std::pair<UwbDataPerTag, size_t> remove_ouliers(const UwbDataPerTag& dict_uwb_data, const PositionBufferDict_t &dict_p_UinG_buffer, Eigen::VectorXd const& x_est, const BiasType bias_type, double threshold);
+  static std::pair<UwbDataPerTag, size_t> remove_ouliers(const UwbDataPerTag& dict_uwb_data, const PositionBufferDict_t &dict_p_UinG_buffer, Eigen::VectorXd const& x_est, const BiasType bias_type, double threshold, size_t const min_num_samples = 1);
 
 private:
   /// Shard pointer to random generator

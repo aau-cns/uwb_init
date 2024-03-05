@@ -76,7 +76,7 @@ bool NlsSolver::levenbergMarquardt(const std::unordered_map<uint, TimedBuffer<Uw
     logger_->err("NlsSolver::levenbergMarquardt: empty uwb range buffer obtained");
     return false;
   }
-  if(dict_uwb_data.size() != dict_p_UinG_buffer.size())
+  if(dict_uwb_data.size() > dict_p_UinG_buffer.size())
   {
     logger_->err("NlsSolver::levenbergMarquardt: uwb range buffer and position buffer do not match");
     return false;
@@ -378,6 +378,13 @@ bool NlsSolver::levenbergMarquardt(const std::unordered_map<uint, TimedBuffer<Uw
     }
   }
 
+  if(costs.empty()) {
+    logger_->warn("NlsSolver::levenbergMarquardt: RANSAC: no costs computed!");
+    theta.setZero(3);
+    cov.setZero(3,3);
+    return false;
+  }
+
   // 3) find the best model:
   auto iter_min_cost = std::min_element(costs.begin(), costs.end());
   size_t idx_best = iter_min_cost - costs.begin();
@@ -389,14 +396,48 @@ bool NlsSolver::levenbergMarquardt(const std::unordered_map<uint, TimedBuffer<Uw
   }
 
   // 4) remove outliers that fall outside the 99% of the distribution 2*(sigma_uwb+sigma_pos) using all measurement and best match
-  double threshold = (solver_options_->sigma_meas_ + solver_options_->sigma_pos_)*3;
+  double threshold = (solver_options_->sigma_meas_ + solver_options_->sigma_pos_)*solver_options_->ransac_opts_.thres_num_std;
 
-  std::pair<UwbDataPerTag, size_t> uwb_data_clean = LsSolver::remove_ouliers(dict_uwb_data, dict_p_UinG_buffer, lsSolutions[idx_best], solver_options_->bias_type_, threshold);
+  std::pair<UwbDataPerTag, size_t> uwb_data_clean = LsSolver::remove_ouliers(dict_uwb_data, dict_p_UinG_buffer, lsSolutions[idx_best], solver_options_->bias_type_, threshold, solver_options_->ransac_opts_.n);
   logger_->debug("NlsSolver::levenbergMarquardt: [" + std::to_string(uwb_data_clean.second) + "] outliers removed above threshold=" + std::to_string(threshold));
   dict_uwb_inliers = uwb_data_clean.first;
 
+
+  //4.1) ATTENTION: the cleaned that might have removed tags, thus the best estimate and initial guess needs to be resized accordingly!
+  if(dict_uwb_inliers.size() < dict_uwb_data.size()) {
+
+    std::vector<size_t> ID_Tags_old;
+    for(auto const&e : dict_uwb_data) { ID_Tags_old.push_back(e.first); }
+
+    Eigen::VectorXd theta_best = lsSolutions[idx_best];
+
+    size_t const num_tags_new = dict_uwb_inliers.size();
+    // resize accordingly:
+    theta = init_from_lsSolution(theta_best({0,1,3}), num_tags_new);
+
+    if(solver_options_->bias_type_ != BiasType::NO_BIAS) {
+      int idx_tag_new = 0;
+      int idx_tag_old = 0;
+      for(auto const& e : dict_uwb_data) {
+        if(dict_uwb_inliers.find(e.first) != dict_uwb_inliers.end()) {
+          theta(3+idx_tag_new) = theta_best(3+idx_tag_old);
+          if (solver_options_->bias_type_ == BiasType::ALL_BIAS) {
+            theta(3+num_tags_new+idx_tag_new) = theta_best(3+num_tags+idx_tag_old);
+          }
+          idx_tag_new++;
+        }
+        idx_tag_old++;
+      }
+    }
+  } else
+  {
+    theta = lsSolutions[idx_best];
+  }
+
+
+
+
   // 5) fit a new model on the cleaned data:
-  theta = lsSolutions[idx_best];
   if(levenbergMarquardt(dict_uwb_inliers, dict_p_UinG_buffer, theta, cov)) {
     if(logger_->getlevel() == LoggerLevel::FULL)
     {

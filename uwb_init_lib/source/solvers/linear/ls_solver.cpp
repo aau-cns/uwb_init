@@ -179,7 +179,7 @@ bool LsSolver::solve_ls(const UwbDataPerTag &dict_uwb_data, PositionBufferDict_t
     logger_->err("LsSolver::solve_ls: empty uwb range buffer obtained");
     return false;
   }
-  if(dict_uwb_data.size() != dict_p_UinG_buffer.size())
+  if(dict_uwb_data.size() > dict_p_UinG_buffer.size())
   {
     logger_->err("LsSolver::solve_ls: uwb range buffer and position buffer do not match");
     return false;
@@ -252,6 +252,8 @@ bool uwb_init::LsSolver::solve_ls(const UwbDataPerTag &dict_uwb_data, const Posi
     return solve_ls(dict_uwb_data, dict_p_UinG_buffer, lsSolution, cov);
   }
 
+  lsSolution.setZero(3);
+  cov.setZero(3,3);
   std::vector<double> costs;
   std::vector<Eigen::VectorXd> lsSolutions;
   std::vector<Eigen::MatrixXd> Sigmas;
@@ -283,6 +285,11 @@ bool uwb_init::LsSolver::solve_ls(const UwbDataPerTag &dict_uwb_data, const Posi
     }
   }
 
+  if(costs.empty()) {
+    logger_->warn("LsSolver::solve_ls: RANSAC: no costs computed!");
+    return false;
+  }
+
   // 3) find the best model:
   auto iter_min_cost = std::min_element(costs.begin(), costs.end());
   size_t idx_best = iter_min_cost - costs.begin();
@@ -296,7 +303,7 @@ bool uwb_init::LsSolver::solve_ls(const UwbDataPerTag &dict_uwb_data, const Posi
   // 4) remove outliers that fall outside the 99% of the distribution 2*(sigma_uwb+sigma_pos) using all measurement and best match
   double threshold = (solver_options_->sigma_meas_ + solver_options_->sigma_pos_)*solver_options_->ransac_opts_.thres_num_std;
 
-  std::pair<UwbDataPerTag, size_t> uwb_data_clean = LsSolver::remove_ouliers(dict_uwb_data, dict_p_UinG_buffer, lsSolutions[idx_best], solver_options_->bias_type_, threshold);
+  std::pair<UwbDataPerTag, size_t> uwb_data_clean = LsSolver::remove_ouliers(dict_uwb_data, dict_p_UinG_buffer, lsSolutions[idx_best], solver_options_->bias_type_, threshold, solver_options_->ransac_opts_.n);
   logger_->debug("LsSolver::solve_ls: [" + std::to_string(uwb_data_clean.second) + "] outliers removed above threshold=" + std::to_string(threshold));
   dict_uwb_inliers = uwb_data_clean.first;
 
@@ -433,7 +440,7 @@ double LsSolver::compute_cost(const UwbDataPerTag &dict_uwb_data,
   return abs_sum/(1.0*j);
 }
 
-std::pair<UwbDataPerTag, size_t> LsSolver::remove_ouliers(const UwbDataPerTag &dict_uwb_data, const PositionBufferDict_t &dict_p_UinG_buffer, const Eigen::VectorXd &x_est, const BiasType bias_type, double threshold) {
+std::pair<UwbDataPerTag, size_t> LsSolver::remove_ouliers(const UwbDataPerTag &dict_uwb_data, const PositionBufferDict_t &dict_p_UinG_buffer, const Eigen::VectorXd &x_est, const BiasType bias_type, double threshold, const size_t min_num_samples) {
   UwbDataPerTag dict_clean;
 
   size_t const num_tags = dict_uwb_data.size();
@@ -487,7 +494,9 @@ std::pair<UwbDataPerTag, size_t> LsSolver::remove_ouliers(const UwbDataPerTag &d
     }
 
     // add all good values for one tag to the dictionary
-    dict_clean[Tag_ID] = uwb_data_clean;
+    if(uwb_data_clean.size() > min_num_samples) {
+      dict_clean[Tag_ID] = uwb_data_clean;
+    }
     idx_tag++;
   }
 
