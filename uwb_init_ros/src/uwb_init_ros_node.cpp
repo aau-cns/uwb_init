@@ -231,13 +231,21 @@ int main(int argc, char** argv)
   nh.param<bool>("publish_first_solution", opts.publish_first_solution_, false);
 
   // Get anchors file path from parameter server
-  if (!nh.getParam("anchors_file_path", opts.anchors_file_path_))
+  if (!nh.getParam("anchors_yaml_file_path", opts.anchors_yaml_file_path_))
   {
-    ROS_ERROR("Missing anchors_file_path parameter");
-    std::exit(EXIT_FAILURE);
+    ROS_WARN("Missing anchors_yaml_file_path parameter");
   } else {
-    ROS_INFO_STREAM("* anchors_file_path =" << opts.anchors_file_path_);
+    ROS_INFO_STREAM("* anchors_yaml_file_path =" << opts.anchors_yaml_file_path_);
   }
+
+  // Get anchors file path from parameter server
+  if (!nh.getParam("anchors_csv_file_path", opts.anchors_csv_file_path_))
+  {
+    ROS_WARN("Missing anchors_csv_file_path_ parameter");
+  } else {
+    ROS_INFO_STREAM("* anchors_csv_file_path_ =" << opts.anchors_csv_file_path_);
+  }
+
 
   // Get publish_anchors_tf option from parameter server
   nh.param<bool>("publish_anchors_tf", opts.publish_anchors_tf_, true);

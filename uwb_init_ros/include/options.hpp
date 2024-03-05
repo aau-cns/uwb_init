@@ -58,7 +58,9 @@ struct UwbInitRosOptions
 
   /// Anchors initialization options
   bool publish_first_solution_;
-  std::string anchors_file_path_;
+  std::string anchors_yaml_file_path_ = "";
+  std::string anchors_csv_file_path_ = "";
+
   bool publish_anchors_tf_;
   double uwb_min_range_;
   double uwb_max_range_;

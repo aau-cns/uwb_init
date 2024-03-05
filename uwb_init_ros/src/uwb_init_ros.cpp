@@ -347,7 +347,11 @@ void UwbInitRos::publishWaypoints(const uwb_init::Waypoints& wps)
   waypoints_pub_.publish(waypoints_msg_);
 }
 
-void UwbInitRos::saveAnchors(const uwb_init::NLSSolutions& sols) {
+void UwbInitRos::saveAnchorsYaml(const uwb_init::NLSSolutions& sols) {
+
+  if (options_.anchors_yaml_file_path_.empty()) {
+    return;
+  }
   // Create YAML emitter
   YAML::Emitter emitter;
 
@@ -432,7 +436,7 @@ void UwbInitRos::saveAnchors(const uwb_init::NLSSolutions& sols) {
   emitter << YAML::EndMap;
 
   // Check if path to file exists
-  std::filesystem::path filepath = std::filesystem::path(options_.anchors_file_path_).parent_path();
+  std::filesystem::path filepath = std::filesystem::path(options_.anchors_yaml_file_path_).parent_path();
   if (!std::filesystem::is_directory(filepath))
   {
     // create directory
@@ -445,12 +449,12 @@ void UwbInitRos::saveAnchors(const uwb_init::NLSSolutions& sols) {
   }
 
   // Generate YAML file into the options_.anchors_file_path_
-  std::ofstream file(options_.anchors_file_path_);
+  std::ofstream file(options_.anchors_yaml_file_path_);
 
   // If the file is not open, print an error message and return
   if (!file.is_open())
   {
-    ROS_ERROR_STREAM("Unable to open file " << options_.anchors_file_path_);
+    ROS_ERROR_STREAM("Unable to open file " << options_.anchors_yaml_file_path_);
     return;
   }
 
@@ -470,6 +474,38 @@ void UwbInitRos::saveAnchors(const uwb_init::NLSSolutions& sols) {
 
   // Close the file
   file.close();
+}
+
+void UwbInitRos::saveAnchorCSV(const uwb_init::NLSSolutions &sols) {
+  if (options_.anchors_csv_file_path_.empty()) {
+    return;
+  }
+  // Generate YAML file into the options_.anchors_file_path_
+  std::ofstream file(options_.anchors_csv_file_path_);
+
+          // If the file is not open, print an error message and return
+  if (!file.is_open())
+  {
+    ROS_ERROR_STREAM("Unable to open file " << options_.anchors_csv_file_path_);
+    return;
+  }
+  std::vector<std::pair<uint, uwb_init::NLSSolution>> solsVector(sols.begin(), sols.end());
+
+ // Sort the vector by the anchor id
+  std::sort(solsVector.begin(), solsVector.end(),
+            [](const std::pair<uint, uwb_init::NLSSolution>& a, const std::pair<uint, uwb_init::NLSSolution>& b) {
+              return a.second.anchor_.id_ < b.second.anchor_.id_;
+            });
+
+  file << "Anchor_ID, x, y, z, sigma_x, sigma_y, sigma_z" << std::endl;
+  for (const auto& it : solsVector) {
+    file << it.second.anchor_.id_ << "," << it.second.anchor_.p_AinG_(0) << "," << it.second.anchor_.p_AinG_(1) << "," << it.second.anchor_.p_AinG_(2) << ",";
+    file << sqrt(it.second.cov_(0,0)) << "," << sqrt(it.second.cov_(1,1)) << "," << sqrt(it.second.cov_(2,2));
+    file << std::endl;
+  }
+  // Close the file
+  file.close();
+
 }
 
 void UwbInitRos::publishAnchorTf(const uwb_init::UwbAnchor& anchor, const std::string& anchor_name)
@@ -507,8 +543,11 @@ bool UwbInitRos::initializeAnchors()
     ROS_INFO("Publishing and saving solution...");
     publishAnchors(uwb_init_.get_nls_solutions());
 
-    if (!options_.anchors_file_path_.empty()) {
-      saveAnchors(uwb_init_.get_nls_solutions());
+    if (!options_.anchors_yaml_file_path_.empty()) {
+      saveAnchorsYaml(uwb_init_.get_nls_solutions());
+    }
+    if (!options_.anchors_csv_file_path_.empty()) {
+      saveAnchorCSV(uwb_init_.get_nls_solutions());
     }
   }
 
@@ -551,8 +590,11 @@ bool UwbInitRos::refineAnchors()
   // Publish and save refined anchors
   ROS_INFO("Publishing and saving refined solution...");
   publishAnchors(uwb_init_.get_refined_solutions());
-  if (!options_.anchors_file_path_.empty()) {
-    saveAnchors(uwb_init_.get_refined_solutions());
+  if (!options_.anchors_yaml_file_path_.empty()) {
+    saveAnchorsYaml(uwb_init_.get_refined_solutions());
+  }
+  if (!options_.anchors_csv_file_path_.empty()) {
+    saveAnchorCSV(uwb_init_.get_refined_solutions());
   }
 
   return true;

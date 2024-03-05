@@ -135,7 +135,13 @@ private:
    * @brief Save anchors to yaml file
    * @param sol
    */
-  void saveAnchors(const uwb_init::NLSSolutions& sols);
+  void saveAnchorsYaml(const uwb_init::NLSSolutions& sols);
+
+  /**
+   * @brief Save anchors csv file
+   * @param sol
+   */
+  void saveAnchorCSV(const uwb_init::NLSSolutions& sols);
 
   /**
    * @brief Publish anchor transform

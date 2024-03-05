@@ -30,7 +30,9 @@
   <arg name="bias_type"                 default="constant" /> <!-- unbiased, constant, all (suggestion: use 'unbiased' if optimal waypoints are not computed)-->
   <arg name="min_num_anchors"           default="1" />        <!-- minimum number of uwb anchors to initialize (if not met initialization fails)-->
   <arg name="publish_first_solution"    default="true" />     <!-- publish first solution after initialization without optimal WPs refinement -->
-  <arg name="anchors_file_path"         default="$(find uwb_init_ros)/config/uwb_anchors.yaml" /> <!-- path where to save uwb_anchors.yaml -->
+  <arg name="anchors_yaml_file_path"         default="$(find uwb_init_ros)/config/uwb_anchors.yaml" /> <!-- path where to save uwb_anchors.yaml -->
+  <arg name="anchors_csv_file_path"         default="$(find uwb_init_ros)/config/uwb_anchors.csv" /> <!-- path where to save uwb_anchors.csv -->
+
   <arg name="frame_id_anchor"           default="global" />
   <arg name="frame_id_waypoint"         default="$(arg frame_id_anchor)" />
   <arg name="waypoint_nav_type"         default="local" /> <!-- see mission_sequencer msg definition, use local for vision! -->
@@ -120,7 +122,9 @@
     <param name="bias_type"                 type="str"  value="$(arg bias_type)" />
     <param name="min_num_anchors"           type="int"  value="$(arg min_num_anchors)" />
     <param name="publish_first_solution"    type="bool" value="$(arg publish_first_solution)" />
-    <param name="anchors_file_path"         type="str"  value="$(arg anchors_file_path)" />
+    <param name="anchors_yaml_file_path"    type="str"  value="$(arg anchors_yaml_file_path)" />
+    <param name="anchors_csv_file_path"     type="str"  value="$(arg anchors_csv_file_path)" />
+
     <param name="frame_id_anchor"           type="str"  value="$(arg frame_id_anchor)" />
     <param name="frame_id_waypoint"         type="str"  value="$(arg frame_id_waypoint)" />
     <param name="waypoint_nav_type"         type="str"  value="$(arg waypoint_nav_type)" />
@@ -205,7 +209,9 @@
     <param name="bias_type"                 type="str"  value="$(arg bias_type)" />
     <param name="min_num_anchors"           type="int"  value="$(arg min_num_anchors)" />
     <param name="publish_first_solution"    type="bool" value="$(arg publish_first_solution)" />
-    <param name="anchors_file_path"         type="str"  value="$(arg anchors_file_path)" />
+    <param name="anchors_yaml_file_path"    type="str"  value="$(arg anchors_yaml_file_path)" />
+    <param name="anchors_csv_file_path"     type="str"  value="$(arg anchors_csv_file_path)" />
+
     <param name="frame_id_anchor"           type="str"  value="$(arg frame_id_anchor)" />
     <param name="frame_id_waypoint"         type="str"  value="$(arg frame_id_waypoint)" />
     <param name="waypoint_nav_type"         type="str"  value="$(arg waypoint_nav_type)" />
