@@ -55,3 +55,13 @@ std::vector<size_t> uwb_init::randperm(const size_t num_samples, size_t const ma
     return perm;
   }
 }
+
+double uwb_init::roundn(const double num, const size_t digits) {
+  double const scaling = double(std::pow( 10, digits ));
+  return std::ceil( ( num * scaling) - double(0.499999999) ) / scaling;
+}
+
+float uwb_init::roundn(const float num, const size_t digits) {
+  float const scaling = float(std::pow( 10, digits ));
+  return std::ceil( ( num * scaling) - float(0.499999999) ) / scaling;
+}

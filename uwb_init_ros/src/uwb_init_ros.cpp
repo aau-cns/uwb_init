@@ -368,7 +368,7 @@ void UwbInitRos::saveAnchorsYaml(const uwb_init::NLSSolutions& sols) {
   int i = 0;
 
   // Anchors map
-  emitter << YAML::BeginMap;
+  emitter << YAML::Precision(3) << YAML::BeginMap;
 
   for (const auto& it : solsVector) {
     emitter << YAML::Key << "anchor" + std::to_string(i);
@@ -390,19 +390,21 @@ void UwbInitRos::saveAnchorsYaml(const uwb_init::NLSSolutions& sols) {
 
       // Write p_AinG as a vector
       emitter << YAML::Key << "p_AinG";
-      emitter << YAML::Value << YAML::Flow << YAML::BeginSeq << it.second.anchor_.p_AinG_.x()
-              << it.second.anchor_.p_AinG_.y() << it.second.anchor_.p_AinG_.z() << YAML::EndSeq;
+      emitter << YAML::Value << YAML::Flow << YAML::BeginSeq
+              << uwb_init::roundn(it.second.anchor_.p_AinG_.x(),3)
+              << uwb_init::roundn(it.second.anchor_.p_AinG_.y(),3)
+              << uwb_init::roundn(it.second.anchor_.p_AinG_.z(),3) << YAML::EndSeq;
 
       // Write bias parameters
       emitter << YAML::Key << "const_biases" << YAML::Value << YAML::Flow << YAML::BeginSeq;
       for(auto const& e : it.second.gammas_) {
-        emitter<< e.second;
+        emitter<< uwb_init::roundn(e.second,3);
       }
       emitter << YAML::EndSeq;
       emitter << YAML::Key << "dist_biases" << YAML::Value << YAML::Flow << YAML::BeginSeq;
       for(auto const& e : it.second.betas_) {
         // todo(RJ): why beta - 1.0 ?
-        emitter<< e.second;
+        emitter<< uwb_init::roundn(e.second,3);
       }
       emitter << YAML::EndSeq;
       emitter << YAML::Key << "Tag_IDs" << YAML::Value << YAML::Flow << YAML::BeginSeq;
@@ -414,13 +416,13 @@ void UwbInitRos::saveAnchorsYaml(const uwb_init::NLSSolutions& sols) {
               // Write prior p_AinG covariance as the mean of the first 3 elements of the diagonal of cov_
       double prior_p_AinG_cov =
         (std::sqrt(it.second.cov_(0, 0)) + std::sqrt(it.second.cov_(1, 1)) + std::sqrt(it.second.cov_(2, 2))) / 3;
-      emitter << YAML::Key << "prior_p_AinG_cov" << YAML::Value << prior_p_AinG_cov;
+      emitter << YAML::Key << "prior_p_AinG_cov" << YAML::Value << uwb_init::roundn(prior_p_AinG_cov,3);
 
               // Write prior bias covariance as the last two elements of the diagonal of cov_
       double prior_const_bias_cov = std::sqrt(it.second.cov_(3, 3));
       double prior_dist_bias_cov = std::sqrt(it.second.cov_(4, 4));
-      emitter << YAML::Key << "prior_const_bias_cov" << YAML::Value << prior_const_bias_cov;
-      emitter << YAML::Key << "prior_dist_bias_cov" << YAML::Value << prior_dist_bias_cov;
+      emitter << YAML::Key << "prior_const_bias_cov" << YAML::Value << uwb_init::roundn(prior_const_bias_cov,3);
+      emitter << YAML::Key << "prior_dist_bias_cov" << YAML::Value << uwb_init::roundn(prior_dist_bias_cov,3);
 
     }
     // End anchor map
@@ -498,10 +500,16 @@ void UwbInitRos::saveAnchorCSV(const uwb_init::NLSSolutions &sols) {
             });
 
   file << "Anchor_ID, x, y, z, sigma_x, sigma_y, sigma_z" << std::endl;
+
   for (const auto& it : solsVector) {
-    file << it.second.anchor_.id_ << "," << it.second.anchor_.p_AinG_(0) << "," << it.second.anchor_.p_AinG_(1) << "," << it.second.anchor_.p_AinG_(2) << ",";
-    file << sqrt(it.second.cov_(0,0)) << "," << sqrt(it.second.cov_(1,1)) << "," << sqrt(it.second.cov_(2,2));
-    file << std::endl;
+    file << it.second.anchor_.id_ << ","
+         << uwb_init::roundn(it.second.anchor_.p_AinG_(0),3) << ","
+         << uwb_init::roundn(it.second.anchor_.p_AinG_(1),3) << ","
+         << uwb_init::roundn(it.second.anchor_.p_AinG_(2),3) << ","
+         << uwb_init::roundn(sqrt(it.second.cov_(0,0)),2) << ","
+         << uwb_init::roundn(sqrt(it.second.cov_(1,1)),2) << ","
+         << uwb_init::roundn(sqrt(it.second.cov_(2,2)),2)
+         << std::endl;
   }
   // Close the file
   file.close();

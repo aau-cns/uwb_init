@@ -109,6 +109,9 @@ std::ostream& operator<<(std::ostream& stream, const T& v)
 std::vector<size_t> randperm(size_t const num_samples, const size_t max_range);
 std::vector<size_t> randperm(size_t const num_samples, const size_t max_range, std::mt19937& gen);
 
+double roundn(double const num, size_t const digits);
+float roundn(float const num, size_t const digits);
+
 }  // namespace uwb_init
 
 #endif  // UTILS_HPP_
