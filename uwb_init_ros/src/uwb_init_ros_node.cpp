@@ -164,9 +164,10 @@ int main(int argc, char** argv)
   }
 
   // Get init options from parameter server
-  bool opt_enable_ls, opt_compute_covariance;
+  bool opt_enable_ls, opt_compute_covariance, opt_use_ranac;
   nh.param<bool>("enable_ls", opt_enable_ls, false);
   nh.param<bool>("compute_covariance", opt_compute_covariance, false);
+  nh.param<bool>("use_ransac", opt_use_ranac, true);
   std::string method, bias_type;
   nh.param<std::string>("method", method, "double");
   nh.param<std::string>("bias_type", bias_type, "constant");
@@ -202,6 +203,17 @@ int main(int argc, char** argv)
     ROS_ERROR("Invalid bias type! Please use unbiased, constant or all");
     std::exit(EXIT_FAILURE);
   }
+
+  // RANSAC Options
+  nh.param<double>("perc_outlier", opts.ransac_opts_.e, 0.15);
+  {
+    int tmp_s;
+    nh.param<int>("min_samples_model", tmp_s, 10);
+    opts.ransac_opts_.s = tmp_s;
+  }
+  nh.param<double>("prop_success", opts.ransac_opts_.p, 0.11);
+  opts.ransac_opts_.set_num_iterations();
+  ROS_INFO_STREAM("* RANSAC: " << opts.ransac_opts_.str());
 
   // Get minimum number of anchors from parameter server
   int min_num_anchors;
@@ -407,16 +419,43 @@ int main(int argc, char** argv)
   nh.param<double>("wp_holdtime", opts.wp_holdtime_, 1.0);
 
   // Make options
-  opts.init_options_ = std::make_shared<uwb_init::UwbInitOptions>(
-      opt_init_method, opt_bias_type, opt_const_bias_prior_cov, opt_dist_bias_prior_cov, opt_min_num_anchors,
-      opt_enable_ls, opt_compute_covariance);
-  opts.ls_solver_options_ =
-      std::make_unique<uwb_init::LsSolverOptions>(opt_sigma_pos, opt_sigma_mes, opt_check_ls_cov_spd);
-  opts.nls_solver_options_ = std::make_unique<uwb_init::NlsSolverOptions>(
-      opt_lambda, opt_lambda_scale_factor, opt_step_cond, opt_res_cond, opt_max_iter, opt_check_nls_cov_spd);
-  opts.planner_options_ = std::make_unique<uwb_init::PlannerOptions>(
-      opt_cell_len, opt_pop_size, opt_itr_num, opt_pc, opt_pm, opt_x_n, opt_y_n, opt_z_n, opt_side_x, opt_side_y,
-      opt_side_z, opt_z_min, opt_C_e_x, opt_C_e_y);
+  opts.init_options_ = std::make_shared<uwb_init::UwbInitOptions>(opt_const_bias_prior_cov,
+                                                                  opt_dist_bias_prior_cov,
+                                                                  opt_min_num_anchors,
+                                                                  opt_enable_ls,
+                                                                  opt_compute_covariance);
+  opts.ls_solver_options_ = std::make_unique<uwb_init::LsSolverOptions>(opt_sigma_pos,
+                                                                        opt_sigma_mes,
+                                                                        opt_check_ls_cov_spd,
+                                                                        opt_use_ranac,
+                                                                        opt_init_method,
+                                                                        opt_bias_type,
+                                                                        opts.ransac_opts_);
+  opts.nls_solver_options_ = std::make_unique<uwb_init::NlsSolverOptions>(opt_lambda,
+                                                                          opt_lambda_scale_factor,
+                                                                          opt_step_cond,
+                                                                          opt_res_cond,
+                                                                          opt_max_iter,
+                                                                          opt_check_nls_cov_spd,
+                                                                          opt_use_ranac,
+                                                                          opt_sigma_pos,
+                                                                          opt_sigma_mes,
+                                                                          opt_bias_type,
+                                                                          opts.ransac_opts_);
+  opts.planner_options_ = std::make_unique<uwb_init::PlannerOptions>(opt_cell_len,
+                                                                     opt_pop_size,
+                                                                     opt_itr_num,
+                                                                     opt_pc,
+                                                                     opt_pm,
+                                                                     opt_x_n,
+                                                                     opt_y_n,
+                                                                     opt_z_n,
+                                                                     opt_side_x,
+                                                                     opt_side_y,
+                                                                     opt_side_z,
+                                                                     opt_z_min,
+                                                                     opt_C_e_x,
+                                                                     opt_C_e_y);
 
   // Instanciate UwbInitRos
   uwb_init_ros::UwbInitRos UwbInitRos(nh, std::move(opts));

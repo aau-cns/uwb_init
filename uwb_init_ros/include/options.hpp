@@ -22,6 +22,7 @@
 #include "options/nls_solver_options.hpp"
 #include "options/planner_options.hpp"
 #include "options/uwb_init_options.hpp"
+#include "options/RANSAC_Options.hpp"
 
 namespace uwb_init_ros
 {
@@ -31,6 +32,7 @@ struct UwbInitRosOptions
   uwb_init::LoggerLevel level_;
 
   /// Lib options
+  uwb_init::RANSAC_Options ransac_opts_;
   std::shared_ptr<uwb_init::UwbInitOptions> init_options_ = nullptr;
   std::unique_ptr<uwb_init::LsSolverOptions> ls_solver_options_ = nullptr;
   std::unique_ptr<uwb_init::NlsSolverOptions> nls_solver_options_ = nullptr;

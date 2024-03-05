@@ -79,9 +79,12 @@ message(STATUS "CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS}.")
 ## List library source files
 list(
     APPEND lib_sources
-    ../uwb_init_lib/source/uwb_init.cpp
+    ../uwb_init_lib/source/utils/utils.cpp
+    ../uwb_init_lib/source/options/BiasType.cpp
+    ../uwb_init_lib/source/options/RANSAC_Options.cpp
     ../uwb_init_lib/source/solvers/linear/ls_solver.cpp
     ../uwb_init_lib/source/solvers/nonlinear/nls_solver.cpp
+    ../uwb_init_lib/source/uwb_init.cpp
     ../uwb_init_lib/source/planners/wps_gen.cpp
 )
 

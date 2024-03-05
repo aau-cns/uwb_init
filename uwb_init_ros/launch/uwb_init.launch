@@ -40,6 +40,13 @@
   <arg name="uwb_min_range"             default="0.5" />    <!-- minimum uwb range to be considered for initialization -->
   <arg name="uwb_max_range"             default="30.0" />   <!-- maximum uwb range to be considered for initialization -->
   <arg name="enable_ls"                 default="true" />  <!-- enable/disable LS computation -->
+  <arg name="use_ransac"                 default="true" />  <!-- enable/disable RANSAC in LS/NLS computation -->
+
+  <!-- RANSAC configuration -->
+  <arg name="perc_outlier"             default="0.15" />    <!-- RANSAC: number of outliers in sampled data -->
+  <arg name="min_samples_model"        default="10" />    <!-- RANSAC: min. samples needed to solve model (>9 has shown good results) -->
+  <arg name="prop_success"             default="0.99" />    <!-- RANSAC: propability to draw one set without outliers -->
+
   <arg name="compute_covariance"        default="true" />  <!-- enable/disable covariance computation (TODO not implemented yet!!! => true) -->
 
   <!-- ls solver parameters -->
@@ -122,6 +129,13 @@
     <param name="uwb_max_range"             type="double"  value="$(arg uwb_max_range)" />
     <param name="enable_ls"                 type="bool" value="$(arg enable_ls)" />
     <param name="compute_covariance"        type="bool" value="$(arg compute_covariance)" />
+    <param name="use_ransac"                type="bool" value="$(arg use_ransac)" />
+
+    <!-- RANSAC parameters -->
+    <param name="perc_outlier"             type="double"  value="$(arg perc_outlier)" />
+    <param name="min_samples_model"        type="int"  value="$(arg min_samples_model)" />
+    <param name="prop_success"             type="double"  value="$(arg prop_success)" />
+
 
     <!-- ls solver parameters -->
     <param name="position_std"              type="double"  value="$(arg position_std)" />
@@ -198,6 +212,12 @@
     <param name="uwb_max_range"             type="double"  value="$(arg uwb_max_range)" />
     <param name="enable_ls"                 type="bool" value="$(arg enable_ls)" />
     <param name="compute_covariance"        type="bool" value="$(arg compute_covariance)" />
+    <param name="use_ransac"                type="bool" value="$(arg use_ransac)" />
+
+    <!-- RANSAC parameters -->
+    <param name="perc_outlier"             type="double"  value="$(arg perc_outlier)" />
+    <param name="min_samples_model"        type="int"  value="$(arg min_samples_model)" />
+    <param name="prop_success"             type="double"  value="$(arg prop_success)" />
 
     <!-- ls solver parameters -->
     <param name="position_std"              type="double"  value="$(arg position_std)" />

@@ -25,6 +25,10 @@ RANSAC_Options::RANSAC_Options(const double p, const uint s, const double e) : p
 {
   assert(e < 1.0 && e >= 0.0);
   assert(p < 1.0 && p >= 0.0);
+  set_num_iterations();
+}
+
+void RANSAC_Options::set_num_iterations() {
   n = RANSAC_Options::num_iterations(p,e,s);
 }
 

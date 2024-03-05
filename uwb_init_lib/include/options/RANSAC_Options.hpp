@@ -30,6 +30,7 @@ struct RANSAC_Options {
                  double const e = 0.15, const double thres_num_std = 3.0);
   RANSAC_Options(double const p, uint const s, double const e);
 
+  void set_num_iterations();
   static uint num_iterations(double const p, double const e, unsigned int const s);
 
   size_t num_samples_needed();
