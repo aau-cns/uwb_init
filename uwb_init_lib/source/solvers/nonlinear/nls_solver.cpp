@@ -69,7 +69,7 @@ bool NlsSolver::levenbergMarquardt(const TimedBuffer<UwbData>& uwb_data, const P
   return levenbergMarquardt(dict_uwb_data, dict_p_UinG_buffer, theta, cov);
 
 }
-bool NlsSolver::levenbergMarquardt(const std::unordered_map<uint, TimedBuffer<UwbData> > &dict_uwb_data, const PositionBufferDict_t &dict_p_UinG_buffer, Eigen::VectorXd &theta, Eigen::MatrixXd &cov)
+bool NlsSolver::levenbergMarquardt(const UwbDataPerTag &dict_uwb_data, const PositionBufferDict_t &dict_p_UinG_buffer, Eigen::VectorXd &theta, Eigen::MatrixXd &cov)
 {
   int const num_tags = dict_uwb_data.size();
   if(num_tags < 1) {
@@ -298,18 +298,18 @@ bool NlsSolver::levenbergMarquardt(const std::unordered_map<uint, TimedBuffer<Uw
     // Norm of step stopping condition
     if (d_theta.norm() < solver_options_->step_cond_)
     {
-      logger_->info("NlsSolver::levenbergMarquardt(): Norm of step is less than " +
+      logger_->debug("NlsSolver::levenbergMarquardt(): Norm of step is less than " +
                     std::to_string(solver_options_->step_cond_));
-      logger_->info("NlsSolver::levenbergMarquardt(): Converged in " + std::to_string(iter) + " iterations");
+      logger_->debug("NlsSolver::levenbergMarquardt(): Converged in " + std::to_string(iter) + " iterations");
       break;
     }
 
     // Residual stopping condition
     if (mse < solver_options_->res_cond_)
     {
-      logger_->info("NlsSolver::levenbergMarquardt(): Mean squared error is less than " +
+      logger_->debug("NlsSolver::levenbergMarquardt(): Mean squared error is less than " +
                     std::to_string(solver_options_->res_cond_));
-      logger_->info("NlsSolver::levenbergMarquardt(): Converged in " + std::to_string(iter) + " iterations");
+      logger_->debug("NlsSolver::levenbergMarquardt(): Converged in " + std::to_string(iter) + " iterations");
       break;
     }
 
@@ -335,7 +335,7 @@ bool NlsSolver::levenbergMarquardt(const std::unordered_map<uint, TimedBuffer<Uw
   return true;
 }
 
-bool NlsSolver::levenbergMarquardt(const std::unordered_map<uint, TimedBuffer<UwbData> > &dict_uwb_data, const PositionBufferDict_t &dict_p_UinG_buffer, Eigen::VectorXd &theta, Eigen::MatrixXd &cov, UwbDataPerTag &dict_uwb_inliers)
+bool NlsSolver::levenbergMarquardt(const UwbDataPerTag &dict_uwb_data, const PositionBufferDict_t &dict_p_UinG_buffer, Eigen::VectorXd &theta, Eigen::MatrixXd &cov, UwbDataPerTag &dict_uwb_inliers)
 {
   // if RANSAC is disabled, use default method
   if(!solver_options_->use_RANSAC_)
@@ -402,8 +402,12 @@ bool NlsSolver::levenbergMarquardt(const std::unordered_map<uint, TimedBuffer<Uw
   logger_->debug("NlsSolver::levenbergMarquardt: [" + std::to_string(uwb_data_clean.second) + "] outliers removed above threshold=" + std::to_string(threshold));
   dict_uwb_inliers = uwb_data_clean.first;
 
+  // 4.1) ATTENTION: all measurements might have been removed:
+  if(dict_uwb_inliers.empty()) {
+    dict_uwb_inliers = dict_uwb_data;
+  }
 
-  //4.1) ATTENTION: the cleaned that might have removed tags, thus the best estimate and initial guess needs to be resized accordingly!
+  //4.2) ATTENTION: the cleaned that might have removed tags, thus the best estimate and initial guess needs to be resized accordingly!
   if(dict_uwb_inliers.size() < dict_uwb_data.size()) {
 
     std::vector<size_t> ID_Tags_old;
@@ -429,10 +433,12 @@ bool NlsSolver::levenbergMarquardt(const std::unordered_map<uint, TimedBuffer<Uw
         idx_tag_old++;
       }
     }
-  } else
+  }
+  else
   {
     theta = lsSolutions[idx_best];
   }
+
 
 
 

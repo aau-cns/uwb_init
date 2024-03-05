@@ -142,7 +142,7 @@ void UwbInitializer::feed_uwb(const double timestamp, const UwbData uwb_measurem
   if (uwb_measurement.valid_)
   {
     if (uwb_data_buffer_.find(Anchor_ID) == uwb_data_buffer_.end()) {
-      uwb_data_buffer_.insert({Anchor_ID, std::unordered_map<uint, TimedBuffer<UwbData>>()});
+      uwb_data_buffer_.insert({Anchor_ID, UwbDataBuffer()});
     }
     if (uwb_data_buffer_[Anchor_ID].find(Tag_ID) == uwb_data_buffer_[Anchor_ID].end()) {
       uwb_data_buffer_[Anchor_ID].insert({Tag_ID, TimedBuffer<UwbData>()});

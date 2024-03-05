@@ -63,10 +63,10 @@ public:
                                         Eigen::VectorXd& theta, Eigen::MatrixXd& cov);
 
 
-  bool levenbergMarquardt(const std::unordered_map<uint, TimedBuffer<UwbData>>& dict_uwb_data,
+  bool levenbergMarquardt(const UwbDataPerTag& dict_uwb_data,
                           const PositionBufferDict_t& dict_p_UinG_buffer, Eigen::VectorXd& theta, Eigen::MatrixXd& cov);
 
-  bool levenbergMarquardt(const std::unordered_map<uint, TimedBuffer<UwbData>>& dict_uwb_data,
+  bool levenbergMarquardt(const UwbDataPerTag& dict_uwb_data,
                           const PositionBufferDict_t& dict_p_UinG_buffer, Eigen::VectorXd& theta, Eigen::MatrixXd& cov, UwbDataPerTag& dict_uwb_inliers);
 
 
