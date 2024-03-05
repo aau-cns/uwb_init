@@ -173,13 +173,9 @@ void UwbInitRos::callbackUwbTwoWayRanges(const uwb_msgs::TwoWayRangeStampedConst
   // Feed measurements
   if (collect_measurements_)
   {
-    if(!uwb_id_on_black_list(msg->UWB_ID2) && !uwb_id_is_tag(msg->UWB_ID2))
+    // case TAG -> ANCHOR
+    if(uwb_id_is_tag(msg->UWB_ID1) && !uwb_id_on_black_list(msg->UWB_ID2) && !uwb_id_is_tag(msg->UWB_ID2))
     {
-      if (!uwb_id_is_tag(msg->UWB_ID1)) {
-        ROS_WARN_THROTTLE(1, "wbInitRos::cbUwbTwoWayRanges(): UWB_ID1[%d] is not configured!", msg->UWB_ID1);
-        return;
-      }
-
       // Parse message into correct data structure
       // Valid is true if the range is greater than threshold (0.0)
       bool valid = (msg->range_raw >= options_.uwb_min_range_) && (msg->range_raw <= options_.uwb_max_range_);
@@ -189,8 +185,20 @@ void UwbInitRos::callbackUwbTwoWayRanges(const uwb_msgs::TwoWayRangeStampedConst
         uwb_init_.feed_uwb(msg->header.stamp.toSec(), data);
       }
     }
+    // case ANCHOR -> TAG
+    else if(!uwb_id_is_tag(msg->UWB_ID1) && !uwb_id_on_black_list(msg->UWB_ID1) && uwb_id_is_tag(msg->UWB_ID2))
+    {
+      // Parse message into correct data structure
+      // Valid is true if the range is greater than threshold (0.0)
+      bool valid = (msg->range_raw >= options_.uwb_min_range_) && (msg->range_raw <= options_.uwb_max_range_);
+      if (valid)
+      {
+        uwb_init::UwbData data(true, msg->range_raw, msg->UWB_ID1, msg->UWB_ID2);
+        uwb_init_.feed_uwb(msg->header.stamp.toSec(), data);
+      }
+    }
     else {
-      ROS_WARN_THROTTLE(1, "wbInitRos::cbUwbTwoWayRanges(): UWB_ID2[%d] is on black list or a tag!", msg->UWB_ID2);
+      ROS_WARN_THROTTLE(1, "wbInitRos::cbUwbTwoWayRanges():  UWB_ID1[%d] to UWB_ID2[%d] is on black list or a tag!", msg->UWB_ID1, msg->UWB_ID2);
       return;
     }
   }
@@ -346,10 +354,10 @@ void UwbInitRos::saveAnchors(const uwb_init::NLSSolutions& sols) {
   // Convert sol to vector of pairs
   std::vector<std::pair<uint, uwb_init::NLSSolution>> solsVector(sols.begin(), sols.end());
 
-  // Sort the vector by the determinant of cov_
+  // Sort the vector by the anchor id
   std::sort(solsVector.begin(), solsVector.end(),
             [](const std::pair<uint, uwb_init::NLSSolution>& a, const std::pair<uint, uwb_init::NLSSolution>& b) {
-              return a.second.cov_.determinant() < b.second.cov_.determinant();
+              return a.second.anchor_.id_ < b.second.anchor_.id_;
             });
 
   // Counter
@@ -376,12 +384,12 @@ void UwbInitRos::saveAnchors(const uwb_init::NLSSolutions& sols) {
         emitter << YAML::Key << "fix" << YAML::Value << "false";
       }
 
-              // Write p_AinG as a vector
+      // Write p_AinG as a vector
       emitter << YAML::Key << "p_AinG";
       emitter << YAML::Value << YAML::Flow << YAML::BeginSeq << it.second.anchor_.p_AinG_.x()
               << it.second.anchor_.p_AinG_.y() << it.second.anchor_.p_AinG_.z() << YAML::EndSeq;
 
-              // Write bias parameters
+      // Write bias parameters
       emitter << YAML::Key << "const_biases" << YAML::Value << YAML::Flow << YAML::BeginSeq;
       for(auto const& e : it.second.gammas_) {
         emitter<< e.second;
@@ -390,7 +398,7 @@ void UwbInitRos::saveAnchors(const uwb_init::NLSSolutions& sols) {
       emitter << YAML::Key << "dist_biases" << YAML::Value << YAML::Flow << YAML::BeginSeq;
       for(auto const& e : it.second.betas_) {
         // todo(RJ): why beta - 1.0 ?
-        emitter<< e.second - 1.0;
+        emitter<< e.second;
       }
       emitter << YAML::EndSeq;
       emitter << YAML::Key << "Tag_IDs" << YAML::Value << YAML::Flow << YAML::BeginSeq;
