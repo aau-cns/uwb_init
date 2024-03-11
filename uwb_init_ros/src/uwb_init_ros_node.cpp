@@ -224,7 +224,7 @@ int main(int argc, char** argv)
   // Get minimum number of anchors from parameter server
   int min_num_anchors;
   uint opt_min_num_anchors;
-  nh.param<int>("min_num_anchors_", min_num_anchors, 4);
+  nh.param<int>("min_num_anchors", min_num_anchors, 4);
   opt_min_num_anchors = uint(min_num_anchors);
 
   // Get publishing options from parameter server
