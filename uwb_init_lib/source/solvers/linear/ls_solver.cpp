@@ -303,7 +303,13 @@ bool uwb_init::LsSolver::solve_ls(const UwbDataPerTag &dict_uwb_data, const Posi
   // 4) remove outliers that fall outside the 99% of the distribution 2*(sigma_uwb+sigma_pos) using all measurement and best match
   double threshold = (solver_options_->sigma_meas_ + solver_options_->sigma_pos_)*solver_options_->ransac_opts_.thres_num_std;
 
-  std::pair<UwbDataPerTag, size_t> uwb_data_clean = LsSolver::remove_ouliers(dict_uwb_data, dict_p_UinG_buffer, lsSolutions[idx_best], solver_options_->bias_type_, threshold, solver_options_->ransac_opts_.n);
+  std::pair<UwbDataPerTag, size_t> uwb_data_clean = LsSolver::remove_ouliers(dict_uwb_data,
+                                                                             dict_p_UinG_buffer,
+                                                                             lsSolutions[idx_best],
+                                                                             solver_options_->bias_type_,
+                                                                             threshold,
+                                                                             solver_options_->ransac_opts_.s);
+
   logger_->debug("LsSolver::solve_ls: [" + std::to_string(uwb_data_clean.second) + "] outliers removed above threshold=" + std::to_string(threshold));
   dict_uwb_inliers = uwb_data_clean.first;
 
@@ -432,12 +438,12 @@ double LsSolver::compute_cost(const UwbDataPerTag &dict_uwb_data,
 
       Eigen::Vector3d p_UtoA = p_UinG - p_AinG;
       double d_est = beta_i * p_UtoA.norm() + gamma_i;
-      abs_sum += std::abs(d_est - uwb_data[i].second.distance_);
+      abs_sum += std::pow(d_est - uwb_data[i].second.distance_, 2);
       j += 1;
     }
     idx_tag++;
   }
-  return abs_sum/(1.0*j);
+  return std::sqrt(abs_sum/(1.0*j));
 }
 
 std::pair<UwbDataPerTag, size_t> LsSolver::remove_ouliers(const UwbDataPerTag &dict_uwb_data, const PositionBufferDict_t &dict_p_UinG_buffer, const Eigen::VectorXd &x_est, const BiasType bias_type, double threshold, const size_t min_num_samples) {
