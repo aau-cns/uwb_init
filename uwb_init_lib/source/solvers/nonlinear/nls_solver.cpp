@@ -44,7 +44,10 @@ NlsSolver::NlsSolver(const std::shared_ptr<Logger> logger, std::unique_ptr<NlsSo
   logger_->debug("NlsSolver options: sigma_pos = " + std::to_string(solver_options_->sigma_pos_));
   logger_->debug("NlsSolver options: sigma_meas = " + std::to_string(solver_options_->sigma_meas_));
   logger_->debug("NlsSolver options: bias_type = " + BiasType_to_string(solver_options_->bias_type_));
-  logger_->debug("NlsSolver options: ransac_opts = " + solver_options_->ransac_opts_.str());
+  if(solver_options_->use_RANSAC_)
+  {
+    logger_->debug("NlsSolver options: ransac_opts = " + solver_options_->ransac_opts_.str());
+  }
 
   std::random_device rd; // obtain a random number from hardware
   ptr_gen_.reset(new std::mt19937(rd()));
@@ -298,18 +301,18 @@ bool NlsSolver::levenbergMarquardt(const UwbDataPerTag &dict_uwb_data, const Pos
     // Norm of step stopping condition
     if (d_theta.norm() < solver_options_->step_cond_)
     {
-      logger_->debug("NlsSolver::levenbergMarquardt(): Norm of step is less than " +
-                    std::to_string(solver_options_->step_cond_));
-      logger_->debug("NlsSolver::levenbergMarquardt(): Converged in " + std::to_string(iter) + " iterations");
+      //logger_->debug("NlsSolver::levenbergMarquardt(): Norm of step is less than " +
+      //              std::to_string(solver_options_->step_cond_));
+      //logger_->debug("NlsSolver::levenbergMarquardt(): Converged in " + std::to_string(iter) + " iterations");
       break;
     }
 
     // Residual stopping condition
     if (mse < solver_options_->res_cond_)
     {
-      logger_->debug("NlsSolver::levenbergMarquardt(): Mean squared error is less than " +
-                    std::to_string(solver_options_->res_cond_));
-      logger_->debug("NlsSolver::levenbergMarquardt(): Converged in " + std::to_string(iter) + " iterations");
+      //logger_->debug("NlsSolver::levenbergMarquardt(): Mean squared error is less than " +
+      //              std::to_string(solver_options_->res_cond_));
+      //logger_->debug("NlsSolver::levenbergMarquardt(): Converged in " + std::to_string(iter) + " iterations");
       break;
     }
 
@@ -398,7 +401,13 @@ bool NlsSolver::levenbergMarquardt(const UwbDataPerTag &dict_uwb_data, const Pos
   // 4) remove outliers that fall outside the 99% of the distribution 2*(sigma_uwb+sigma_pos) using all measurement and best match
   double threshold = (solver_options_->sigma_meas_ + solver_options_->sigma_pos_)*solver_options_->ransac_opts_.thres_num_std;
 
-  std::pair<UwbDataPerTag, size_t> uwb_data_clean = LsSolver::remove_ouliers(dict_uwb_data, dict_p_UinG_buffer, lsSolutions[idx_best], solver_options_->bias_type_, threshold, solver_options_->ransac_opts_.n);
+  std::pair<UwbDataPerTag, size_t> uwb_data_clean = LsSolver::remove_ouliers(dict_uwb_data,
+                                                                             dict_p_UinG_buffer,
+                                                                             lsSolutions[idx_best],
+                                                                             solver_options_->bias_type_,
+                                                                             threshold,
+                                                                             solver_options_->ransac_opts_.s);
+
   logger_->debug("NlsSolver::levenbergMarquardt: [" + std::to_string(uwb_data_clean.second) + "] outliers removed above threshold=" + std::to_string(threshold));
   dict_uwb_inliers = uwb_data_clean.first;
 
@@ -413,7 +422,7 @@ bool NlsSolver::levenbergMarquardt(const UwbDataPerTag &dict_uwb_data, const Pos
     std::vector<size_t> ID_Tags_old;
     for(auto const&e : dict_uwb_data) { ID_Tags_old.push_back(e.first); }
 
-    Eigen::VectorXd theta_best = lsSolutions[idx_best];
+    Eigen::VectorXd theta_best = theta; //lsSolutions[idx_best];
 
     size_t const num_tags_new = dict_uwb_inliers.size();
     // resize accordingly:
@@ -436,7 +445,7 @@ bool NlsSolver::levenbergMarquardt(const UwbDataPerTag &dict_uwb_data, const Pos
   }
   else
   {
-    theta = lsSolutions[idx_best];
+     // theta = lsSolutions[idx_best];
   }
 
 
