@@ -23,8 +23,23 @@ if(UWB_INIT_USE_SYSTEM_EIGEN)
   include(CMakeFindDependencyMacro)
   find_package(Eigen3 3.4 REQUIRED)
   find_dependency(Eigen3 3.4)
+  list(APPEND libs Eigen)
 else()
-  find_package(Eigen REQUIRED)
+  include(FetchContent)
+
+  # Eigen
+  FetchContent_Declare(
+      Eigen
+      GIT_REPOSITORY  https://gitlab.com/libeigen/eigen.git
+      GIT_TAG         3.4.0
+      GIT_SHALLOW     TRUE
+      GIT_PROGRESS    TRUE
+  )
+  set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+  set(EIGEN_BUILD_DOC OFF)
+  set(EIGEN_BUILD_PKGCONFIG OFF)
+  FetchContent_MakeAvailable(Eigen)
+  list(APPEND libs Eigen3::Eigen)
 endif()
 
 message(" **************************************")
@@ -97,17 +112,17 @@ add_library(${PROJECT_NAME} STATIC ${lib_sources})
 target_include_directories(${PROJECT_NAME}
   PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/include
-
+  ${EIGEN3_INCLUDE_DIR}
   INTERFACE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 )
 
 target_link_libraries(${PROJECT_NAME}
   PUBLIC
-  Eigen
+  ${libs}
 
   INTERFACE
-  $<BUILD_INTERFACE:Eigen>
+  $<BUILD_INTERFACE:${libs}>
 )
 
 
@@ -122,13 +137,16 @@ endif()
 if(${OPTION_BUILD_TESTS})
     add_executable(test_wps test/test_wps_gen.cpp)
     #target_include_directories(test_wps PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include ${EIGEN3_INCLUDE_DIR})
-    target_link_libraries(test_wps ${PROJECT_NAME} Eigen)
+    target_link_libraries(test_wps ${PROJECT_NAME}
+)
     add_executable(test_utils test/test_utils.cpp)
     #target_include_directories(test_utils) # PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include ${EIGEN3_INCLUDE_DIR})
-    target_link_libraries(test_utils ${PROJECT_NAME} GTest::gtest_main Eigen)
+    target_link_libraries(test_utils ${PROJECT_NAME} GTest::gtest_main
+)
     add_executable(test_init test/test_init.cpp)
     #target_include_directories(test_init PRIVATE) # ${CMAKE_CURRENT_SOURCE_DIR}/include ${EIGEN3_INCLUDE_DIR})
-    target_link_libraries(test_init ${PROJECT_NAME} Eigen)
+    target_link_libraries(test_init ${PROJECT_NAME}
+)
 
     include(GoogleTest)
     gtest_discover_tests(test_utils)

@@ -21,7 +21,7 @@
 #ifndef UTILS_HPP_
 #define UTILS_HPP_
 
-#include <Eigen/Eigen>
+#include <Eigen/Dense>
 #include <array>
 #include <iterator>
 #include <random>

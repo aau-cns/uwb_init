@@ -169,10 +169,10 @@ void UwbInitRos::callbackUwbRanges(const mdek_uwb_driver::UwbConstPtr& msg)
 
 void UwbInitRos::callbackUwbTwoWayRanges(const uwb_msgs::TwoWayRangeStampedConstPtr& msg)
 {
-  std::scoped_lock lock{mtx_service_};
   // Feed measurements
   if (collect_measurements_)
   {
+    std::scoped_lock lock{mtx_service_};
     // case TAG -> ANCHOR
     if(uwb_id_is_tag(msg->UWB_ID1) && !uwb_id_on_black_list(msg->UWB_ID2) && !uwb_id_is_tag(msg->UWB_ID2))
     {
@@ -198,7 +198,7 @@ void UwbInitRos::callbackUwbTwoWayRanges(const uwb_msgs::TwoWayRangeStampedConst
       }
     }
     else {
-      ROS_WARN_THROTTLE(1, "wbInitRos::cbUwbTwoWayRanges():  UWB_ID1[%d] to UWB_ID2[%d] is on black list or a tag!", msg->UWB_ID1, msg->UWB_ID2);
+      ROS_WARN_THROTTLE(10, "wbInitRos::cbUwbTwoWayRanges():  UWB_ID1[%d] to UWB_ID2[%d] is on black list or a tag!", msg->UWB_ID1, msg->UWB_ID2);
       return;
     }
   }
@@ -535,11 +535,18 @@ bool UwbInitRos::initializeAnchors()
   ROS_INFO("Performing anchor inizalization...");
 
   // Initialize anchors
-  if (!uwb_init_.init_anchors())
+  try
   {
-    ROS_WARN("Initialization of anchor failed. Please collect additional data and repeat.");
-    ROS_WARN_STREAM("Call " << options_.service_start_ << " to start collecting measurements.");
-    return false;
+    if (!uwb_init_.init_anchors())
+    {
+      ROS_WARN("Initialization of anchor failed. Please collect additional data and repeat.");
+      ROS_WARN_STREAM("Call " << options_.service_start_ << " to start collecting measurements.");
+      return false;
+    }
+  }
+  catch(const std::exception& e) {
+      std::cout << e.what();
+    throw;
   }
 
   // Stop collecting measurements

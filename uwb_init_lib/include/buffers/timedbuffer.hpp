@@ -61,10 +61,7 @@ public:
    * @brief Return the size of the buffer
    * @return Size of buffer
    */
-  inline size_t size() const
-  {
-    return buffer_.size();
-  }
+  inline const size_t size() const { return buffer_.size(); }
 
   /**
    * @brief Return true if the buffer is empty

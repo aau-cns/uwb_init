@@ -44,8 +44,6 @@ FetchContent_Declare(
 list(APPEND external yaml-cpp)
 list(APPEND include_dirs ${YAML_CPP_INCLUDE_DIR})
 list(APPEND libs yaml-cpp::yaml-cpp ${YAML_CPP_LIBRARIES})
-#find_package(yaml-cpp REQUIRED)
-#list(APPEND libs yaml-cpp ${YAML_CPP_LIBRARIES})
 
 FetchContent_MakeAvailable(${external})
 
@@ -71,8 +69,8 @@ endif()
 message(STATUS "CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE}.")
 
 # Set CMAKE compile flags
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O0 -fsee -fomit-frame-pointer -fno-signed-zeros -fno-math-errno -funroll-loops -fno-unsafe-math-optimizations")
-set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g3 -Wall -Wextra -Wuninitialized -Wmaybe-uninitialized -pedantic -fno-omit-frame-pointer -fsanitize=undefined")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O2 -fsee -fomit-frame-pointer -fno-signed-zeros -fno-math-errno -funroll-loops -fno-unsafe-math-optimizations")
+set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g3 -Wall -Wextra -Werror -Wuninitialized -Wmaybe-uninitialized -pedantic -fno-omit-frame-pointer -fsanitize=undefined")
 message(STATUS "CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS}.")
 
 
@@ -116,18 +114,6 @@ set(ros_packages
 
 ## Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS ${ros_packages})
-
-## Generate messages in the 'msg' folder
-#add_message_files(DIRECTORY msg
-#    FILES
-#    UwbAnchor.msg
-#    UwbAnchorArrayStamped.msg
-#)
-
-## Generate added messages and services with any dependencies listed here
-#generate_messages(
-#  DEPENDENCIES std_msgs nav_msgs sensor_msgs geometry_msgs
-#)
 
 ## The catkin_package macro generates cmake config files for your package
 ## Declare things to be passed to dependent projects

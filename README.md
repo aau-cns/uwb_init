@@ -118,7 +118,10 @@ The provided launchfile and node allows the setting of the following parameters.
 #### ROS Topics and Services
 | ROS parameter | description | default value |
 |---|---|---|
-| estimated_pose_topic | name of the pose topic used for anchor initialization | `/uvio/poseimu` |
+| estimated_pose_topic | name of the pose topic used for anchor initialization  | `/uvio/poseimu` |
+| estimated_pose_cov_topic | name of the pose with covariance topic used for anchor initialization | `` |
+| estimated_transform_topic | name of the transform stamped topic used for anchor initialization | `` |
+| uwb_twr_topics | dictionary of two-way ranging topics: `{<ID>: topic, }` | `{1: /uwb_driver_node/twr}` |
 | uwb_range_topic | name of the uwb topic used for anchor initialization  | `/uwb_driver_node/uwb` |
 | uwb_anchors_topic | name of the topic used to publish the anchors after initialization | `~uwb_anchors` |
 | waypoints_topic | name of topic used to publish the generated optimal waypoints | `~wps` |

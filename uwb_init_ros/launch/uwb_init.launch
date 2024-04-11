@@ -2,24 +2,25 @@
 <launch>
 
    <arg name="node_name"                default="uwb_init_ros" />
-  <!-- topic parameters -->
+   <arg name="logger_level"              default="info" />     <!-- full, info, warning, error, inactive -->
+
+<!-- topic parameters -->
   <arg name="estimated_pose_cov_topic"  default="/uvio/poseimu" />
   <arg name="estimated_pose_topic"      default="" />
   <arg name="estimated_transform_topic" default="" />
   <arg name="uwb_range_topic"           default="/uwb_driver_node/uwb" />
-
-  <arg name="uwb_twr_topics"             default="{1: /uwb_driver_node/twr}" />
-  <arg name="uwb_id_black_list"         default="[]" />
+  <!-- dictionary of two-way ranging topics: {<ID>: topic, }  -->
+  <arg name="uwb_twr_topics"             default="{1: /uwb_driver_node/twr}" />  <!-- topics should match the IDs in dict_p_UinI and dict_p_AinG  -->
 
   <arg name="start_service"             default="/uwb_init/start" />
   <arg name="reset_service"             default="/uwb_init/reset" />
   <arg name="initialization_service"    default="/uwb_init/initialize" />
   <arg name="planner_service"           default="/uwb_init/compute_wps" />
   <arg name="refine_service"            default="/uwb_init/refine" />
-  <arg name="logger_level"              default="info" />     <!-- full, info, warning, error, inactive -->
   <arg name="uwb_anchors_topic"         default="uwb_anchors" />
   <arg name="waypoints_topic"           default="wps" />
 
+  <arg name="uwb_id_black_list"         default="[]" /> <!-- twr messages to these IDs will be ignored -->
   <!-- calibration: [x,y,z] or {<ID>: [x,y,z], ...}  -->
   <arg name="dict_p_UinI"              default="{0: [0.01, -0.01, -0.05]}" />
   <!-- stationary anchor positions: [x,y,z] or {<ID>: [x,y,z], ...}  -->
@@ -30,33 +31,32 @@
   <arg name="bias_type"                 default="constant" /> <!-- unbiased, constant, all (suggestion: use 'unbiased' if optimal waypoints are not computed)-->
   <arg name="min_num_anchors"           default="1" />        <!-- minimum number of uwb anchors to initialize (if not met initialization fails)-->
   <arg name="publish_first_solution"    default="true" />     <!-- publish first solution after initialization without optimal WPs refinement -->
-  <arg name="anchors_yaml_file_path"         default="$(find uwb_init_ros)/config/uwb_anchors.yaml" /> <!-- path where to save uwb_anchors.yaml -->
-  <arg name="anchors_csv_file_path"         default="$(find uwb_init_ros)/config/uwb_anchors.csv" /> <!-- path where to save uwb_anchors.csv -->
+  <arg name="anchors_yaml_file_path"    default="$(find uwb_init_ros)/config/uwb_anchors.yaml" /> <!-- path where to save uwb_anchors.yaml -->
+  <arg name="anchors_csv_file_path"     default="$(find uwb_init_ros)/config/uwb_anchors.csv" />  <!-- path where to save uwb_anchors.csv -->
 
   <arg name="frame_id_anchor"           default="global" />
   <arg name="frame_id_waypoint"         default="$(arg frame_id_anchor)" />
-  <arg name="waypoint_nav_type"         default="local" /> <!-- see mission_sequencer msg definition, use local for vision! -->
+  <arg name="waypoint_nav_type"         default="local" />  <!-- see mission_sequencer msg definition, use local for vision! -->
   <arg name="publish_anchors_tf"        default="true" />
   <arg name="const_bias_proior_cov"     default="0.01" />   <!-- constant bias prior covariance, used if not estimated (unbiased)-->
-  <arg name="dist_bias_proior_cov"      default="0.01" />  <!-- distance bias prior covariance, used if not estimated (unbiased or constant) -->
+  <arg name="dist_bias_proior_cov"      default="0.01" />   <!-- distance bias prior covariance, used if not estimated (unbiased or constant) -->
   <arg name="uwb_min_range"             default="0.5" />    <!-- minimum uwb range to be considered for initialization -->
   <arg name="uwb_max_range"             default="30.0" />   <!-- maximum uwb range to be considered for initialization -->
-  <arg name="enable_ls"                 default="true" />  <!-- enable/disable LS computation -->
+  <arg name="enable_ls"                 default="true" />   <!-- enable/disable LS computation -->
   <arg name="use_ransac"                 default="true" />  <!-- enable/disable RANSAC in LS/NLS computation -->
 
   <!-- RANSAC configuration -->
   <arg name="perc_outlier"             default="0.15" />    <!-- RANSAC: number of outliers in sampled data -->
-  <arg name="min_samples_model"        default="10" />    <!-- RANSAC: min. samples needed to solve model (>9 has shown good results) -->
-  <arg name="threshold_num_std"        default="5" />    <!-- RANSAC: number of standard deviation used for outlier rejection  -->
-
+  <arg name="min_samples_model"        default="10" />      <!-- RANSAC: min. samples needed to solve model (>9 has shown good results) -->
+  <arg name="threshold_num_std"        default="5" />       <!-- RANSAC: number of standard deviation used for outlier rejection  -->
   <arg name="prop_success"             default="0.99" />    <!-- RANSAC: propability to draw one set without outliers -->
 
-  <arg name="compute_covariance"        default="true" />  <!-- enable/disable covariance computation (TODO not implemented yet!!! => true) -->
+  <arg name="compute_covariance"        default="true" />   <!-- enable/disable covariance computation (TODO not implemented yet!!! => true) -->
 
   <!-- ls solver parameters -->
   <arg name="position_std"              default="0.1" />
   <arg name="uwb_range_std"             default="0.2" />
-  <arg name="check_ls_cov_spd"          default="true" />  <!-- enable/disable check for Semi-Positive Definite covariance of the LS solutions -->
+  <arg name="check_ls_cov_spd"          default="true" />   <!-- enable/disable check for Semi-Positive Definite covariance of the LS solutions -->
 
   <!-- nls solver parameters -->
   <arg name="levenberg_marquardt_lambda"    default="0.001" />

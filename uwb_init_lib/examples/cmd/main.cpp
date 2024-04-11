@@ -111,6 +111,12 @@ int main(int argc, char** argv)
   app.add_option("--sigma_pos", sigma_pos, "noise of position measurement");
   double sigma_range = 0.0;
   app.add_option("--sigma_range", sigma_range, "noise of distance measurement");
+  double propability_inlierset = 0.99;
+  app.add_option("--propability_inlierset", propability_inlierset, "propability to obtain a inlier subset");
+  double model_samples = 10;
+  app.add_option("--model_samples", model_samples, "samples needed for the model");
+  double perc_outliers = 0.15;
+  app.add_option("--perc_outliers", perc_outliers, "relative percentage of outliers");
 
   CLI11_PARSE(app, argc, argv);
   // Print library info
@@ -120,7 +126,7 @@ int main(int argc, char** argv)
   std::unique_ptr<NlsSolverOptions> nls_options = nullptr;
   std::unique_ptr<PlannerOptions> planner_options = nullptr;
 
-  RANSAC_Options ransac_options(0.99, 10, 0.15);
+  RANSAC_Options ransac_options(propability_inlierset, (uint) model_samples, perc_outliers);
   ransac_options.thres_num_std = 5;
 
   init_options = std::make_shared<UwbInitOptions>();
