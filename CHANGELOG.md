@@ -14,6 +14,7 @@ This feature includes support for:
  
 ### Added
 
+- support for nav_msgs::Odometry as pose update
 - Readme in uwb_init_lib
 - optionally saving calibrated anchors in CSV file (id, x,y,z,sigma_x,sigma_y,sigma_z) 
 - command line example tool to run a anchor calibration  
@@ -36,8 +37,8 @@ This feature includes support for:
 
 ### Fixed
 
+- distance bias in anchor_calib YAML file is directly written. Previously it was substracted by 1, like "yaml << dist_bias - 1.0;" 
 - CMakeLists.txt: fix populated internal dependency + install binary
 - semicolon after method removed and typos fixed
 - TimedBuffer: return value fixed
 - CMakeLists.txt: fix issues with debug build (#2)
-
