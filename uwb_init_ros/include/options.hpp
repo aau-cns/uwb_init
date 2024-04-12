@@ -42,6 +42,7 @@ struct UwbInitRosOptions
   std::string estimated_pose_cov_topic_{""};
   std::string estimated_pose_topic_{""};
   std::string estimated_transform_topic_{""};
+  std::string estimated_odometry_topic_{""};
 
   std::string uwb_range_topic_;
   std::vector<std::string> uwb_twr_topics_;

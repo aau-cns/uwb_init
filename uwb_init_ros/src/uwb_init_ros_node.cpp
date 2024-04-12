@@ -38,6 +38,9 @@ int main(int argc, char** argv)
   if (nh.getParam("estimated_transform_topic", opts.estimated_transform_topic_)) {
     pose_topic_set = true;
   }
+  if (nh.getParam("estimated_odometry_topic", opts.estimated_odometry_topic_)) {
+    pose_topic_set = true;
+  }
 
   if (!pose_topic_set) {
     ROS_ERROR("Missing estimated_pose_topic parameter");

@@ -28,6 +28,7 @@
 #include <uwb_msgs/TwoWayRangeStamped.h>
 #include <uwb_msgs/UwbAnchor.h>
 #include <uwb_msgs/UwbAnchorArrayStamped.h>
+#include <nav_msgs/Odometry.h>
 #include <yaml-cpp/yaml.h>
 
 #include <Eigen/Eigen>
@@ -61,6 +62,8 @@ private:
   void callbackPose(const geometry_msgs::PoseStamped::ConstPtr& msg);
   void callbackPoseWithCov(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg);
   void callbackTransform(const geometry_msgs::TransformStamped::ConstPtr& msg);
+  void callbackOdometry(const nav_msgs::Odometry::ConstPtr& msg);
+
 
   /**
    * @brief uwb ranges callback
@@ -186,6 +189,8 @@ private:
   ros::Subscriber estimated_pose_sub_;
   ros::Subscriber estimated_pose_cov_sub_;
   ros::Subscriber estimated_transform_sub_;
+  ros::Subscriber estimated_odom_sub_;
+
 
   /// Publishers
   ros::Publisher uwb_anchors_pub_;

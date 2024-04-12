@@ -4,10 +4,11 @@
    <arg name="node_name"                default="uwb_init_ros" />
    <arg name="logger_level"              default="info" />     <!-- full, info, warning, error, inactive -->
 
-<!-- topic parameters -->
-  <arg name="estimated_pose_cov_topic"  default="/uvio/poseimu" />
+  <!-- topic parameters -->
+  <arg name="estimated_pose_cov_topic"  default="" />
   <arg name="estimated_pose_topic"      default="" />
   <arg name="estimated_transform_topic" default="" />
+  <arg name="estimated_odometry_topic"  default="" />
   <arg name="uwb_range_topic"           default="/uwb_driver_node/uwb" />
   <!-- dictionary of two-way ranging topics: {<ID>: topic, }  -->
   <arg name="uwb_twr_topics"             default="{1: /uwb_driver_node/twr}" />  <!-- topics should match the IDs in dict_p_UinI and dict_p_AinG  -->
@@ -43,13 +44,13 @@
   <arg name="uwb_min_range"             default="0.5" />    <!-- minimum uwb range to be considered for initialization -->
   <arg name="uwb_max_range"             default="30.0" />   <!-- maximum uwb range to be considered for initialization -->
   <arg name="enable_ls"                 default="true" />   <!-- enable/disable LS computation -->
-  <arg name="use_ransac"                 default="true" />  <!-- enable/disable RANSAC in LS/NLS computation -->
+  <arg name="use_ransac"                default="true" />  <!-- enable/disable RANSAC in LS/NLS computation -->
 
   <!-- RANSAC configuration -->
-  <arg name="perc_outlier"             default="0.15" />    <!-- RANSAC: number of outliers in sampled data -->
-  <arg name="min_samples_model"        default="10" />      <!-- RANSAC: min. samples needed to solve model (>9 has shown good results) -->
-  <arg name="threshold_num_std"        default="5" />       <!-- RANSAC: number of standard deviation used for outlier rejection  -->
-  <arg name="prop_success"             default="0.99" />    <!-- RANSAC: propability to draw one set without outliers -->
+  <arg name="perc_outlier"              default="0.15" />    <!-- RANSAC: number of outliers in sampled data -->
+  <arg name="min_samples_model"         default="10" />      <!-- RANSAC: min. samples needed to solve model (>9 has shown good results) -->
+  <arg name="threshold_num_std"         default="5" />       <!-- RANSAC: number of standard deviation used for outlier rejection  -->
+  <arg name="prop_success"              default="0.99" />    <!-- RANSAC: propability to draw one set without outliers -->
 
   <arg name="compute_covariance"        default="true" />   <!-- enable/disable covariance computation (TODO not implemented yet!!! => true) -->
 
@@ -98,6 +99,7 @@
     <param name="estimated_pose_cov_topic"  type="str"  value="$(arg estimated_pose_cov_topic)" />
     <param name="estimated_pose_topic"      type="str"  value="$(arg estimated_pose_topic)" />
     <param name="estimated_transform_topic" type="str"  value="$(arg estimated_transform_topic)" />
+    <param name="estimated_odometry_topic" type="str"  value="$(arg estimated_odometry_topic)" />
     <param name="uwb_range_topic"           type="str"  value="$(arg uwb_range_topic)" />
     <param name="uwb_twr_topics"             type="str"  value="$(arg uwb_twr_topics)" />
     <rosparam param="uwb_id_black_list"     subst_value="True">$(arg uwb_id_black_list)</rosparam>
@@ -186,6 +188,7 @@
     <param name="estimated_pose_cov_topic"  type="str"  value="$(arg estimated_pose_cov_topic)" />
     <param name="estimated_pose_topic"      type="str"  value="$(arg estimated_pose_topic)" />
     <param name="estimated_transform_topic" type="str"  value="$(arg estimated_transform_topic)" />
+    <param name="estimated_odometry_topic" type="str"  value="$(arg estimated_odometry_topic)" />
     <param name="uwb_range_topic"           type="str"  value="$(arg uwb_range_topic)" />
     <param name="uwb_twr_topics"             type="str"  value="$(arg uwb_twr_topics)" />
     <rosparam param="uwb_id_black_list"     subst_value="True">$(arg uwb_id_black_list)</rosparam>

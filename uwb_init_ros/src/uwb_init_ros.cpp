@@ -40,6 +40,11 @@ UwbInitRos::UwbInitRos(const ros::NodeHandle& nh, UwbInitRosOptions&& options)
       = nh_.subscribe(options_.estimated_transform_topic_, queue_sz, &UwbInitRos::callbackTransform, this);
     ROS_INFO("Subsribing to %s", estimated_transform_sub_.getTopic().c_str());
   }
+  if (!options_.estimated_odometry_topic_.empty()) {
+    estimated_odom_sub_
+      = nh_.subscribe(options_.estimated_odometry_topic_, queue_sz, &UwbInitRos::callbackOdometry, this);
+    ROS_INFO("Subsribing to %s", estimated_odom_sub_.getTopic().c_str());
+  }
 
   if (!options_.uwb_range_topic_.empty()) {
     uwb_range_sub_ = nh_.subscribe(options_.uwb_range_topic_, queue_sz, &UwbInitRos::callbackUwbRanges, this);
@@ -118,6 +123,26 @@ void UwbInitRos::callbackTransform(const geometry_msgs::TransformStamped::ConstP
                           msg->transform.rotation.z);
 
   // Feed p_UinG
+  if (collect_measurements_)
+  {
+    std::scoped_lock lock{mtx_service_};
+    // Feed p_UinG
+    for (auto const& e : options_.dict_p_UinI_)
+    {
+      // Compute position of UWB module in Global frame
+      p_UinG_ = p_IinG + q_GI.toRotationMatrix() * e.second;
+      uwb_init_.feed_position(msg->header.stamp.toSec(), p_UinG_, e.first);
+    }
+  }
+}
+
+void UwbInitRos::callbackOdometry(const nav_msgs::Odometry::ConstPtr &msg) {
+  // Get pose
+  Eigen::Vector3d p_IinG(msg->pose.pose.position.x, msg->pose.pose.position.y, msg->pose.pose.position.z);
+  Eigen::Quaterniond q_GI(msg->pose.pose.orientation.w, msg->pose.pose.orientation.x, msg->pose.pose.orientation.y,
+                          msg->pose.pose.orientation.z);
+
+          // Feed p_UinG
   if (collect_measurements_)
   {
     std::scoped_lock lock{mtx_service_};
