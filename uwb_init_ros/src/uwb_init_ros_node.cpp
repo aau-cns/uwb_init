@@ -26,16 +26,61 @@ int main(int argc, char** argv)
   // Instantiate options
   uwb_init_ros::UwbInitRosOptions opts;
 
+  // at least one uwb topic needs to be provided:
+  bool pose_topic_set = false;
   // Get topics to subscribe to from parameter server
-  if (!nh.getParam("estimated_pose_topic", opts.estimated_pose_topic_))
-  {
+  if (nh.getParam("estimated_pose_cov_topic", opts.estimated_pose_cov_topic_)) {
+    pose_topic_set = true;
+  }
+  if (nh.getParam("estimated_pose_topic", opts.estimated_pose_topic_)) {
+    pose_topic_set = true;
+  }
+  if (nh.getParam("estimated_transform_topic", opts.estimated_transform_topic_)) {
+    pose_topic_set = true;
+  }
+  if (nh.getParam("estimated_odometry_topic", opts.estimated_odometry_topic_)) {
+    pose_topic_set = true;
+  }
+
+  if (!pose_topic_set) {
     ROS_ERROR("Missing estimated_pose_topic parameter");
     std::exit(EXIT_FAILURE);
   }
 
-  if (!nh.getParam("uwb_range_topic", opts.uwb_range_topic_))
+  // at least one uwb topic needs to be provided:
+  bool uwb_topic_set = false;
+  if (nh.getParam("uwb_range_topic", opts.uwb_range_topic_))
   {
-    ROS_ERROR("Missing uwb_range_topic parameter");
+    uwb_topic_set = true;
+  }
+
+  std::string uwb_twr_topics_str;
+  nh.param<std::string>("uwb_twr_topics", uwb_twr_topics_str, uwb_twr_topics_str);
+  if (uwb_twr_topics_str.size()) {
+    YAML::Node node = YAML::Load(uwb_twr_topics_str);
+    if (node.IsMap()) {
+      for (YAML::iterator it = node.begin(); it != node.end(); ++it) {
+        size_t Tag_ID = it->first.as<int>();
+        std::string topic = it->second.as<std::string>();
+        opts.uwb_twr_topics_.push_back(topic);
+        ROS_INFO_STREAM("twr topic: ID=" << Tag_ID << " topic = " << topic);
+      }
+    } else if (node.IsSequence()) {
+      opts.uwb_twr_topics_ = node.as<std::vector<std::string>>();
+    } else if (node.IsScalar()) {
+      opts.uwb_twr_topics_.push_back(node.as<std::string>());
+    } else {
+      ROS_ERROR_STREAM("Unsupported format for uwb_twr_topics : "
+                       << uwb_twr_topics_str << " either {<ID>: <string>, ...} or [<string>,...] or <string>");
+      std::exit(EXIT_FAILURE);
+    }
+    uwb_topic_set = true;
+  }
+
+
+  if (!uwb_topic_set)
+  {
+    ROS_ERROR("Missing uwb_range_topic or uwb_twr_topics parameter");
     std::exit(EXIT_FAILURE);
   }
 
@@ -93,7 +138,7 @@ int main(int argc, char** argv)
   {
     // in case no frame_id for waypoints is given, assume the same frame_id for both
     opts.frame_id_waypoints_ = opts.frame_id_anchors_;
-    ROS_INFO("Missing frame_id_waypoint parameter, using %s", opts.frame_id_waypoints_);
+    ROS_INFO("Missing frame_id_waypoint parameter, using %s", opts.frame_id_waypoints_.c_str());
   }
 
   // parse waypoint nav type
@@ -115,16 +160,17 @@ int main(int argc, char** argv)
       opts.wp_nav_type_ = (uint)mission_sequencer::MissionWaypointArray::CUR_POSE;
     else
     {
-      ROS_ERROR("Unknown waypoint_nav_type type '%s'.", wp_nav_type_str);
-      ROS_INFO("  Pleas use either 'global', 'local', 'position' (current), or 'pose' (current).", wp_nav_type_str);
+      ROS_ERROR("Unknown waypoint_nav_type type '%s'.", wp_nav_type_str.c_str());
+      ROS_INFO("  Pleas use either 'global', 'local', 'position' (current), or 'pose' (current)");
       std::exit(EXIT_FAILURE);
     }
   }
 
   // Get init options from parameter server
-  bool opt_enable_ls, opt_compute_covariance;
+  bool opt_enable_ls, opt_compute_covariance, opt_use_ranac;
   nh.param<bool>("enable_ls", opt_enable_ls, false);
   nh.param<bool>("compute_covariance", opt_compute_covariance, false);
+  nh.param<bool>("use_ransac", opt_use_ranac, true);
   std::string method, bias_type;
   nh.param<std::string>("method", method, "double");
   nh.param<std::string>("bias_type", bias_type, "constant");
@@ -161,21 +207,48 @@ int main(int argc, char** argv)
     std::exit(EXIT_FAILURE);
   }
 
+  // RANSAC Options
+  nh.param<double>("perc_outlier", opts.ransac_opts_.e, 0.15);
+  {
+    int tmp_s;
+    nh.param<int>("min_samples_model", tmp_s, 10);
+    opts.ransac_opts_.s = tmp_s;
+  }
+  nh.param<double>("prop_success", opts.ransac_opts_.p, 0.11);
+  {
+    int tmp_s;
+    nh.param<int>("threshold_num_std", tmp_s, 5);
+    opts.ransac_opts_.thres_num_std = tmp_s;
+  }
+
+  opts.ransac_opts_.set_num_iterations();
+  ROS_INFO_STREAM("* RANSAC: " << opts.ransac_opts_.str());
+
   // Get minimum number of anchors from parameter server
   int min_num_anchors;
   uint opt_min_num_anchors;
-  nh.param<int>("min_num_anchors_", min_num_anchors, 4);
+  nh.param<int>("min_num_anchors", min_num_anchors, 4);
   opt_min_num_anchors = uint(min_num_anchors);
 
   // Get publishing options from parameter server
   nh.param<bool>("publish_first_solution", opts.publish_first_solution_, false);
 
   // Get anchors file path from parameter server
-  if (!nh.getParam("anchors_file_path", opts.anchors_file_path_))
+  if (!nh.getParam("anchors_yaml_file_path", opts.anchors_yaml_file_path_))
   {
-    ROS_ERROR("Missing anchors_file_path parameter");
-    std::exit(EXIT_FAILURE);
+    ROS_WARN("Missing anchors_yaml_file_path parameter");
+  } else {
+    ROS_INFO_STREAM("* anchors_yaml_file_path =" << opts.anchors_yaml_file_path_);
   }
+
+  // Get anchors file path from parameter server
+  if (!nh.getParam("anchors_csv_file_path", opts.anchors_csv_file_path_))
+  {
+    ROS_WARN("Missing anchors_csv_file_path_ parameter");
+  } else {
+    ROS_INFO_STREAM("* anchors_csv_file_path_ =" << opts.anchors_csv_file_path_);
+  }
+
 
   // Get publish_anchors_tf option from parameter server
   nh.param<bool>("publish_anchors_tf", opts.publish_anchors_tf_, true);
@@ -270,26 +343,136 @@ int main(int argc, char** argv)
   // Get calibration UWB tag -> IMU
   std::vector<double> p_ItoU;
   std::vector<double> p_ItoU_default = { 0.0, 0.0, 0.0 };
-  nh.param<std::vector<double>>("p_ItoU", p_ItoU, p_ItoU_default);
-  Eigen::Vector3d p_UinI(p_ItoU.data());
-  opts.p_UinI_ = p_UinI;
-  ROS_INFO_STREAM("Calibration p_UinI = " << p_UinI.transpose());
+
+
+  if(nh.hasParam("p_ItoU")) {
+
+    nh.param<std::vector<double>>("p_ItoU", p_ItoU, p_ItoU_default);
+    Eigen::Vector3d p_UinI(p_ItoU.data());
+    opts.dict_p_UinI_.insert({0, p_UinI});
+    ROS_INFO_STREAM("Calibration p_UinI = " << p_UinI.transpose());
+  }
+  else if(nh.hasParam("dict_p_ItoU")) {
+    std::string dict_p_ItoU_str;
+    nh.param<std::string>("dict_p_ItoU", dict_p_ItoU_str, dict_p_ItoU_str);
+    if(!dict_p_ItoU_str.empty()) {
+      YAML::Node node = YAML::Load(dict_p_ItoU_str);
+      if (node.IsMap()) {
+        for (YAML::iterator it = node.begin(); it != node.end(); ++it) {
+          size_t Tag_ID = it->first.as<int>();
+          std::vector<double> pos = it->second.as<std::vector<double>>();
+
+          Eigen::Vector3d p_UinI(pos.data());
+          ROS_INFO_STREAM("Calibration: Tag_ID=" << Tag_ID << " p_UinI = " << p_UinI.transpose());
+          opts.dict_p_UinI_.insert({Tag_ID, p_UinI});
+        }
+      }
+      else if (node.IsSequence()) {
+        size_t Tag_ID = 0;
+        std::vector<double> pos = node.as<std::vector<double>>();
+
+        Eigen::Vector3d p_UinI(pos.data());
+        ROS_INFO_STREAM("Calibration: Tag_ID=" << Tag_ID << " p_UinI = " << p_UinI.transpose());
+        opts.dict_p_UinI_.insert({Tag_ID, p_UinI});
+
+      }
+      else {
+        ROS_ERROR_STREAM("Unsupported format for dict_p_ItoU: " << dict_p_ItoU_str << " either {<ID>: [x,y,z], ...} or [x,y,z]");
+        std::exit(EXIT_FAILURE);
+      }
+    }
+  }
+  else {
+    ROS_ERROR_STREAM("Neither p_ItoU nor dict_p_ItoU defined");
+    std::exit(EXIT_FAILURE);
+  }
+
+  // load dictionary with stationary anchor positions and IDs
+  if(nh.hasParam("dict_p_GtoA")) {
+    std::string dict_p_GtoA_str;
+    nh.param<std::string>("dict_p_GtoA", dict_p_GtoA_str, dict_p_GtoA_str);
+    if(!dict_p_GtoA_str.empty()) {
+      YAML::Node node = YAML::Load(dict_p_GtoA_str);
+      if (node.IsMap()) {
+        for (YAML::iterator it = node.begin(); it != node.end(); ++it) {
+          size_t Anchor_ID = it->first.as<int>();
+          std::vector<double> pos = it->second.as<std::vector<double>>();
+
+          Eigen::Vector3d p(pos.data());
+          ROS_INFO_STREAM("Calibration: Anchor_ID=" << Anchor_ID << " p_AinG = " << p.transpose());
+          opts.dict_p_AinG_.insert({Anchor_ID, p});
+        }
+      }
+      else if (node.IsSequence()) {
+        size_t Anchor_ID = 0;
+        std::vector<double> pos = node.as<std::vector<double>>();
+
+        Eigen::Vector3d p(pos.data());
+        ROS_INFO_STREAM("Calibration: Anchor_ID=" << Anchor_ID << " p_AinG = " << p.transpose());
+        opts.dict_p_AinG_.insert({Anchor_ID, p});
+
+      }
+      else {
+        ROS_ERROR_STREAM("Unsupported format for dict_p_GtoA: " << dict_p_GtoA_str << " either {<ID>: [x,y,z], ...} or [x,y,z]");
+        std::exit(EXIT_FAILURE);
+      }
+    }
+  }
+
+
+  // Get black list of UWB anchors
+  std::vector<double> uwb_id_black_list_default;
+  nh.param<std::vector<double>>("uwb_id_black_list", uwb_id_black_list_default, uwb_id_black_list_default);
+
+  std::stringstream ss_id;
+  for (auto const& id : uwb_id_black_list_default) {
+    opts.uwb_id_black_list.push_back(static_cast<size_t>(id));
+    ss_id << id << ",";
+  }
+  ROS_INFO_STREAM("UWB IDs on black list: " << ss_id.str());
 
   // Get waypoint flight options from parameter server
   nh.param<double>("wp_yaw", opts.wp_yaw_, 0.0);
   nh.param<double>("wp_holdtime", opts.wp_holdtime_, 1.0);
 
   // Make options
-  opts.init_options_ = std::make_shared<uwb_init::UwbInitOptions>(
-      opt_init_method, opt_bias_type, opt_const_bias_prior_cov, opt_dist_bias_prior_cov, opt_min_num_anchors,
-      opt_enable_ls, opt_compute_covariance);
-  opts.ls_solver_options_ =
-      std::make_unique<uwb_init::LsSolverOptions>(opt_sigma_pos, opt_sigma_mes, opt_check_ls_cov_spd);
-  opts.nls_solver_options_ = std::make_unique<uwb_init::NlsSolverOptions>(
-      opt_lambda, opt_lambda_scale_factor, opt_step_cond, opt_res_cond, opt_max_iter, opt_check_nls_cov_spd);
-  opts.planner_options_ = std::make_unique<uwb_init::PlannerOptions>(
-      opt_cell_len, opt_pop_size, opt_itr_num, opt_pc, opt_pm, opt_x_n, opt_y_n, opt_z_n, opt_side_x, opt_side_y,
-      opt_side_z, opt_z_min, opt_C_e_x, opt_C_e_y);
+  opts.init_options_ = std::make_shared<uwb_init::UwbInitOptions>(opt_const_bias_prior_cov,
+                                                                  opt_dist_bias_prior_cov,
+                                                                  opt_min_num_anchors,
+                                                                  opt_enable_ls,
+                                                                  opt_compute_covariance);
+  opts.ls_solver_options_ = std::make_unique<uwb_init::LsSolverOptions>(opt_sigma_pos,
+                                                                        opt_sigma_mes,
+                                                                        opt_check_ls_cov_spd,
+                                                                        opt_use_ranac,
+                                                                        opt_init_method,
+                                                                        opt_bias_type,
+                                                                        opts.ransac_opts_);
+  opts.nls_solver_options_ = std::make_unique<uwb_init::NlsSolverOptions>(opt_lambda,
+                                                                          opt_lambda_scale_factor,
+                                                                          opt_step_cond,
+                                                                          opt_res_cond,
+                                                                          opt_max_iter,
+                                                                          opt_check_nls_cov_spd,
+                                                                          opt_use_ranac,
+                                                                          opt_sigma_pos,
+                                                                          opt_sigma_mes,
+                                                                          opt_bias_type,
+                                                                          opts.ransac_opts_);
+  opts.planner_options_ = std::make_unique<uwb_init::PlannerOptions>(opt_cell_len,
+                                                                     opt_pop_size,
+                                                                     opt_itr_num,
+                                                                     opt_pc,
+                                                                     opt_pm,
+                                                                     opt_x_n,
+                                                                     opt_y_n,
+                                                                     opt_z_n,
+                                                                     opt_side_x,
+                                                                     opt_side_y,
+                                                                     opt_side_z,
+                                                                     opt_z_min,
+                                                                     opt_C_e_x,
+                                                                     opt_C_e_y);
 
   // Instanciate UwbInitRos
   uwb_init_ros::UwbInitRos UwbInitRos(nh, std::move(opts));

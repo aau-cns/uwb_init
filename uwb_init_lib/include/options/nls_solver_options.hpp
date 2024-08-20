@@ -20,7 +20,10 @@
 #ifndef UWB_INIT_NLS_OPTIONS_HPP_
 #define UWB_INIT_NLS_OPTIONS_HPP_
 
-#include <Eigen/Eigen>
+#include <Eigen/Dense>
+#include <options/BiasType.hpp>
+#include <options/RANSAC_Options.hpp>
+
 
 namespace uwb_init
 {
@@ -43,19 +46,40 @@ struct NlsSolverOptions
   double res_cond_;
 
   /// Stopping condition for maximum number of iterations (suggested defualt value: 1e3)
-  uint max_iter_;
+  unsigned int max_iter_;
 
   /// Check covariance is SPD
   bool check_cov_;
 
-  NlsSolverOptions(const double& lambda, const double& lambda_factor, const double& step_cond, const double& res_cond,
-                   const uint& max_iter, const bool check_cov)
+  /// use RANSAC
+  bool use_RANSAC_;
+
+  /// position uncertainty (default suggested value: 0.03)
+  double sigma_pos_;
+
+  /// uwb uncertainty (default suggested value: 0.1)
+  double sigma_meas_;
+
+  /// ranging bias types to be solved for (none, gamma, gamma+beta)
+  BiasType bias_type_;
+
+  RANSAC_Options ransac_opts_;
+
+  NlsSolverOptions(const double lambda=1e-2, const double lambda_factor=10.0, const double step_cond=1e-6,
+                   const double res_cond=1e-6, const unsigned int max_iter=1e3, const bool check_cov=true,
+                   const bool use_RANSAC = true, const double sigma_pos=0.03, const double sigma_meas=0.1,
+                   const BiasType bias_type = BiasType::ALL_BIAS, const RANSAC_Options ransac_opts = RANSAC_Options(0.99, 10, 0.15))
     : lambda_(lambda)
     , lambda_factor_(lambda_factor)
     , step_cond_(step_cond)
     , res_cond_(res_cond)
     , max_iter_(max_iter)
     , check_cov_(check_cov)
+    , use_RANSAC_(use_RANSAC)
+    ,sigma_pos_(sigma_pos)
+    , sigma_meas_(sigma_meas)
+    , bias_type_(bias_type)
+    , ransac_opts_(ransac_opts)
   {
   }
 

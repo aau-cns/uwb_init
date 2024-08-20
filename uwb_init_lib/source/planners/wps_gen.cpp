@@ -107,7 +107,7 @@ void OptWpsGenerator::sortrows(Eigen::MatrixXd& A_nx3, int idx)
 
   for (uint i = 0; i < A_nx3.rows(); ++i)
     A_nx3.row(i) = vec[i];
-};
+}
 
 Eigen::VectorXd OptWpsGenerator::repelem(Eigen::VectorXd V, Eigen::VectorXd N)
 {
