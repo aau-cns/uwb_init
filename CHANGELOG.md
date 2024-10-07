@@ -4,16 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
  
-## [Unreleased] - 2024-04-11
- 
-This feature includes support for:
-- two-way ranging measurments, 
-- calibration (position and pairwise biases) using multiple tags or known stationary anchors,
-- and an outlier rejection method based on RANSAC.
+## [Unreleased] - 2024-10-07
 
+- uwb_init_trigger: standalone ros node that triggers the uwb_init nodes services automatically after a timeout or via dyn. reconf. gui. 
  
 ### Added
 
+- two-way ranging measurments, 
+- calibration (position and pairwise biases) using multiple tags or known stationary anchors,
+- and an outlier rejection method based on RANSAC.
 - support for nav_msgs::Odometry as pose update
 - Readme in uwb_init_lib
 - optionally saving calibrated anchors in CSV file (id, x,y,z,sigma_x,sigma_y,sigma_z) 
