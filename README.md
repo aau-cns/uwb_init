@@ -31,6 +31,16 @@ corresponding [academic paper] and consult the `LICENSE` file for a detailed exp
 }
 ```
 
+```latex
+@inproceedings{Jung2024,
+   author       = {Jung, Roland and Santoro, Luca and Brunelli, Davide and Fontanelli, Daniele and Weiss, Stephan},
+   booktitle    = {2024 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)},
+   title        = {Modular Meshed Ultra-Wideband Aided Inertial Navigation with Robust Anchor Calibration},
+   year         = {2024},
+  organization  = {IEEE}
+}
+```
+
 ## Getting Started
 
 The main folder constains the C++ library and its ROS wrapper.
@@ -136,6 +146,8 @@ In case of issues, feature requests, or other questions please open a [New Issue
 * Giulio Delama ([email](mailto:giulio.delama@aau.at?subject=[UWB%20Init]))
 * Alessandro Fornasier ([email](mailto:alessandro.fornasier@ieee.org?subject=[UWB%20Init]))
 * Martin Scheiber ([email](mailto:martin.scheiber@ieee.org?subject=[UWB%20Init]))
+* Roland Jung ([email](mailto:roland.jung@ieee.org?subject=[UWB%20Init]))
 
 <!-- LINKS: -->
-[academic paper]: https://arxiv.org/abs/2308.00513
+[Delama2023]: https://arxiv.org/abs/2308.00513
+[Jung2024]: https://www.arxiv.org/abs/2408.14081
