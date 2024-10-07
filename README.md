@@ -18,8 +18,7 @@ patents is granted.
 
 ### Usage for academic purposes
 
-If you use this software in an academic research setting, please cite the
-corresponding [academic paper] and consult the `LICENSE` file for a detailed explanation.
+If you use this software in an academic research setting, please cite [Delama2023] or [Jung2024] and consult the `LICENSE` file for a detailed explanation.
 
 ```latex
 @inproceedings{Delama2023,
