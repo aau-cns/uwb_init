@@ -18,8 +18,7 @@ patents is granted.
 
 ### Usage for academic purposes
 
-If you use this software in an academic research setting, please cite the
-corresponding [academic paper] and consult the `LICENSE` file for a detailed explanation.
+If you use this software in an academic research setting, please cite [Delama2023] or [Jung2024] and consult the `LICENSE` file for a detailed explanation.
 
 ```latex
 @inproceedings{Delama2023,
@@ -27,6 +26,16 @@ corresponding [academic paper] and consult the `LICENSE` file for a detailed exp
    booktitle    = {2023 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)},
    title        = {UVIO: An UWB-Aided Visual-Inertial Odometry Framework with Bias-Compensated Anchors Initialization},
    year         = {2023},
+  organization  = {IEEE}
+}
+```
+
+```latex
+@inproceedings{Jung2024,
+   author       = {Jung, Roland and Santoro, Luca and Brunelli, Davide and Fontanelli, Daniele and Weiss, Stephan},
+   booktitle    = {2024 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)},
+   title        = {Modular Meshed Ultra-Wideband Aided Inertial Navigation with Robust Anchor Calibration},
+   year         = {2024},
   organization  = {IEEE}
 }
 ```
@@ -136,6 +145,8 @@ In case of issues, feature requests, or other questions please open a [New Issue
 * Giulio Delama ([email](mailto:giulio.delama@aau.at?subject=[UWB%20Init]))
 * Alessandro Fornasier ([email](mailto:alessandro.fornasier@ieee.org?subject=[UWB%20Init]))
 * Martin Scheiber ([email](mailto:martin.scheiber@ieee.org?subject=[UWB%20Init]))
+* Roland Jung ([email](mailto:roland.jung@ieee.org?subject=[UWB%20Init]))
 
 <!-- LINKS: -->
-[academic paper]: https://arxiv.org/abs/2308.00513
+[Delama2023]: https://arxiv.org/abs/2308.00513
+[Jung2024]: https://www.arxiv.org/abs/2408.14081

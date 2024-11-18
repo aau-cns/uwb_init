@@ -1,0 +1,46 @@
+<!-- ROS launch file -->
+<launch>
+    <arg name="node_name"       default="uwb_init_trigger" />
+    <arg name="output"          default="screen" />
+
+    <!-- default vaules for private ROS parameters -->
+    <arg name="config_file"     default="$(find uwb_init_trigger)/config/default_config.yaml" />
+    <!-- run the process in a new xterm window -->
+    <arg name="launch_prefix"   default="xterm -hold -geometry 50x20 -e" />
+
+
+
+    <arg name="start_service"             default="/uwb_init/start" />
+    <arg name="reset_service"             default="/uwb_init/reset" />
+    <arg name="initialization_service"    default="/uwb_init/initialize" />
+    <arg name="planner_service"           default="/uwb_init/compute_wps" />
+    <arg name="refine_service"            default="/uwb_init/refine" />
+
+    <arg name="auto_trigger"              default="False" />
+    <arg name="timeout_rec"               default="20.0" />
+    <arg name="timeout_cal"               default="30.0" />
+
+    <arg name="trigger_start"             default="/uwb_init_trigger/start" />
+    <arg name="trigger_init"              default="/uwb_init_trigger/init" />
+
+    <!-- the node -->
+    <node name="$(arg node_name)" pkg="uwb_init_trigger" type="uwb_init_trigger_node" launch-prefix="$(arg launch_prefix)" output="$(arg output)" respawn="false">
+        <!-- load the parameter file -->
+        <rosparam file="$(arg config_file)" command="load" />
+
+        <!-- topic remapping -->
+        <param name="start_service"             type="str"  value="$(arg start_service)" />
+        <param name="reset_service"             type="str"  value="$(arg reset_service)" />
+        <param name="initialization_service"    type="str"  value="$(arg initialization_service)" />
+        <param name="planner_service"           type="str"  value="$(arg planner_service)" />
+        <param name="refine_service"            type="str"  value="$(arg refine_service)" />
+
+        <param name="auto_trigger"              value="$(arg auto_trigger)" />
+        <param name="timeout_rec"               value="$(arg timeout_rec)" />
+        <param name="timeout_cal"               value="$(arg timeout_cal)" />
+
+        <remap from="/start" to="$(arg trigger_start)" />
+        <remap from="/init" to="$(arg trigger_init)" />
+
+    </node>
+</launch>
