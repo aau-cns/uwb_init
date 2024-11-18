@@ -229,7 +229,8 @@ void UwbInitRos::callbackUwbTwoWayRanges(const uwb_msgs::TwoWayRangeStampedConst
   }
 }
 
-bool UwbInitRos::callbackServiceStart(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
+bool UwbInitRos::callbackServiceStart([[maybe_unused]] std_srvs::Empty::Request& req,
+                                      [[maybe_unused]] std_srvs::Empty::Response& res)
 {
   std::scoped_lock lock{mtx_service_};
   ROS_INFO("Start service called.");
@@ -240,7 +241,8 @@ bool UwbInitRos::callbackServiceStart(std_srvs::Empty::Request& req, std_srvs::E
   return true;
 }
 
-bool UwbInitRos::callbackServiceReset(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
+bool UwbInitRos::callbackServiceReset([[maybe_unused]] std_srvs::Empty::Request& req,
+                                      [[maybe_unused]] std_srvs::Empty::Response& res)
 {
   std::scoped_lock lock{mtx_service_};
   ROS_INFO("Reset service called.");
@@ -249,7 +251,8 @@ bool UwbInitRos::callbackServiceReset(std_srvs::Empty::Request& req, std_srvs::E
   return true;
 }
 
-bool UwbInitRos::callbackServiceInit(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
+bool UwbInitRos::callbackServiceInit([[maybe_unused]] std_srvs::Empty::Request& req,
+                                     [[maybe_unused]] std_srvs::Empty::Response& res)
 {
   std::scoped_lock lock{mtx_service_};
   // Stop collecting measurements
@@ -260,14 +263,16 @@ bool UwbInitRos::callbackServiceInit(std_srvs::Empty::Request& req, std_srvs::Em
   return initializeAnchors();
 }
 
-bool UwbInitRos::callbackServiceWps(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
+bool UwbInitRos::callbackServiceWps([[maybe_unused]] std_srvs::Empty::Request& req,
+                                    [[maybe_unused]] std_srvs::Empty::Response& res)
 {
   std::scoped_lock lock{mtx_service_};
   ROS_INFO("Waypoints generation service called.");
   return computeWaypoints();
 }
 
-bool UwbInitRos::callbackServiceRefine(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res)
+bool UwbInitRos::callbackServiceRefine([[maybe_unused]] std_srvs::Empty::Request& req,
+                                       [[maybe_unused]] std_srvs::Empty::Response& res)
 {
   std::scoped_lock lock{mtx_service_};
   // Stop collecting measurements
