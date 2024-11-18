@@ -30,18 +30,20 @@ list(APPEND include_dirs ${EIGEN3_INCLUDE_DIR})
 list(APPEND libs Eigen3::Eigen ${EIGEN3_LIBRARIES})
 
 # YamlCPP
+
+if(NOT YAML_CPP_VERSION)
+  set( YAML_CPP_VERSION "0.8.0" )
+endif()
+
 FetchContent_Declare(
     yaml-cpp
-    GIT_REPOSITORY  https://github.com/jbeder/yaml-cpp.git
-    GIT_TAG         master
+    URL https://github.com/jbeder/yaml-cpp/archive/refs/tags/${YAML_CPP_VERSION}.tar.gz
     GIT_SHALLOW     TRUE
     GIT_PROGRESS    TRUE
 )
 list(APPEND external yaml-cpp)
 list(APPEND include_dirs ${YAML_CPP_INCLUDE_DIR})
 list(APPEND libs yaml-cpp::yaml-cpp ${YAML_CPP_LIBRARIES})
-#find_package(yaml-cpp REQUIRED)
-#list(APPEND libs yaml-cpp ${YAML_CPP_LIBRARIES})
 
 FetchContent_MakeAvailable(${external})
 
@@ -67,7 +69,7 @@ endif()
 message(STATUS "CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE}.")
 
 # Set CMAKE compile flags
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O0 -fsee -fomit-frame-pointer -fno-signed-zeros -fno-math-errno -funroll-loops -fno-unsafe-math-optimizations")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -O2 -fsee -fomit-frame-pointer -fno-signed-zeros -fno-math-errno -funroll-loops -fno-unsafe-math-optimizations")
 set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g3 -Wall -Wextra -Werror -Wuninitialized -Wmaybe-uninitialized -pedantic -fno-omit-frame-pointer -fsanitize=undefined")
 message(STATUS "CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS}.")
 
@@ -75,9 +77,12 @@ message(STATUS "CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS}.")
 ## List library source files
 list(
     APPEND lib_sources
-    ../uwb_init_lib/source/uwb_init.cpp
+    ../uwb_init_lib/source/utils/utils.cpp
+    ../uwb_init_lib/source/options/BiasType.cpp
+    ../uwb_init_lib/source/options/RANSAC_Options.cpp
     ../uwb_init_lib/source/solvers/linear/ls_solver.cpp
     ../uwb_init_lib/source/solvers/nonlinear/nls_solver.cpp
+    ../uwb_init_lib/source/uwb_init.cpp
     ../uwb_init_lib/source/planners/wps_gen.cpp
 )
 
@@ -93,20 +98,22 @@ include_directories(${include_dirs})
 ## ROS ##
 #########
 
+set(ros_packages
+  roscpp
+  rosbag
+  tf
+  dynamic_reconfigure
+  std_msgs
+  nav_msgs
+  sensor_msgs
+  geometry_msgs
+  mdek_uwb_driver
+  uwb_msgs
+  mission_sequencer
+)
+
 ## Find catkin macros and libraries
-find_package(catkin REQUIRED COMPONENTS roscpp rosbag tf dynamic_reconfigure message_generation std_msgs nav_msgs sensor_msgs geometry_msgs mdek_uwb_driver mission_sequencer)
-
-## Generate messages in the 'msg' folder
-add_message_files(DIRECTORY msg
-    FILES
-    UwbAnchor.msg
-    UwbAnchorArrayStamped.msg
-)
-
-## Generate added messages and services with any dependencies listed here
-generate_messages(
-  DEPENDENCIES std_msgs nav_msgs sensor_msgs geometry_msgs
-)
+find_package(catkin REQUIRED COMPONENTS ${ros_packages})
 
 ## The catkin_package macro generates cmake config files for your package
 ## Declare things to be passed to dependent projects
@@ -116,8 +123,8 @@ generate_messages(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-  CATKIN_DEPENDS roscpp rosbag tf std_msgs nav_msgs sensor_msgs geometry_msgs mdek_uwb_driver
-  LIBRARIES uwb_init_lib
+  CATKIN_DEPENDS ${ros_packages}
+  LIBRARIES
 )
 
 ## List custom libraries inside lib folder
@@ -128,10 +135,28 @@ list(
 
 ## Declare a C++ library
 add_library(ros1_lib STATIC ${ros1_lib_sources})
-add_dependencies(ros1_lib ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_generate_messages_cpp)
+add_dependencies(ros1_lib ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(ros1_lib uwb_init_lib)
 target_include_directories(ros1_lib PUBLIC ${include_dirs} ${catkin_INCLUDE_DIRS} include)
 
 ## Declare a C++ executable
 add_executable(${PROJECT_NAME} src/uwb_init_ros_node.cpp)
 target_link_libraries(${PROJECT_NAME} ros1_lib ${catkin_LIBRARIES})
+
+
+install(TARGETS ${PROJECT_NAME}
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+# Mark cpp header files for installation
+install(DIRECTORY include/
+DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+  FILES_MATCHING PATTERN "*.h*"
+  PATTERN ".svn" EXCLUDE
+)
+install(FILES
+  launch/default.launch
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
+)

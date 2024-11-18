@@ -63,7 +63,7 @@ public:
   void set_init_method(const InitMethod& method);
 
   ///
-  /// \brief Get solution of the leas square formulation of the initialization problem
+  /// \brief Get solution of the least square formulation of the initialization problem
   ///
   /// \return the actual solution of the least square problem as a constant reference
   /// to LSSolutions.
@@ -124,7 +124,7 @@ public:
   /// \param timestamp timestamp of pose
   /// \param p_UinG position to add to buffer
   ///
-  void feed_position(const double timestamp, const Eigen::Vector3d p_UinG);
+  void feed_position(const double timestamp, const Eigen::Vector3d p_UinG, uint const Tag_ID=0);
 
   ///
   /// \brief init_anchors tries to initialize all anchors for which readings exist
@@ -170,8 +170,10 @@ private:
   OptWpsGenerator planner_;
 
   // Anchor and measurement handling
-  PositionBuffer p_UinG_buffer_;   //!< buffer of UWB module positions in global frame
-  UwbDataBuffer uwb_data_buffer_;  //!< history of uwb readings in DataBuffer
+  // map<Tag_ID, Hist<p_TinG>>>
+  PositionBufferDict_t p_UinG_buffer_;   //!< buffer of UWB module positions in global frame
+  // map<Anchor_ID, map<Tag_ID, Hist<UwbData>>>
+  UwbDataBufferDict_t uwb_data_buffer_;  //!< history of uwb readings in DataBuffer
 
   // Solutions handling
   LSSolutions ls_sols_;
@@ -180,6 +182,11 @@ private:
 
   // Optimal Waypoints
   Waypoints opt_wps_;
+
+
+  LSSolution to_LSSolution(Eigen::VectorXd const& lsSolution, Eigen::MatrixXd const& lsCov, size_t const ID_Anchor, std::vector<size_t> const& ID_Tags);
+  NLSSolution to_NLSSolution(Eigen::VectorXd const& nlsSolution, Eigen::MatrixXd const& nlsCov, size_t const ID_Anchor, std::vector<size_t> const& ID_Tags);
+
 };
 
 }  // namespace uwb_init

@@ -18,8 +18,7 @@ patents is granted.
 
 ### Usage for academic purposes
 
-If you use this software in an academic research setting, please cite the
-corresponding [academic paper] and consult the `LICENSE` file for a detailed explanation.
+If you use this software in an academic research setting, please cite [Delama2023] or [Jung2024] and consult the `LICENSE` file for a detailed explanation.
 
 ```latex
 @inproceedings{Delama2023,
@@ -27,6 +26,16 @@ corresponding [academic paper] and consult the `LICENSE` file for a detailed exp
    booktitle    = {2023 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)},
    title        = {UVIO: An UWB-Aided Visual-Inertial Odometry Framework with Bias-Compensated Anchors Initialization},
    year         = {2023},
+  organization  = {IEEE}
+}
+```
+
+```latex
+@inproceedings{Jung2024,
+   author       = {Jung, Roland and Santoro, Luca and Brunelli, Davide and Fontanelli, Daniele and Weiss, Stephan},
+   booktitle    = {2024 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)},
+   title        = {Modular Meshed Ultra-Wideband Aided Inertial Navigation with Robust Anchor Calibration},
+   year         = {2024},
   organization  = {IEEE}
 }
 ```
@@ -54,8 +63,9 @@ These software components are needed on your platform to run the ROS node.
     ```[bash]
     cd src
     git clone git@gitlab.aau.at:aau-cns/ros_pkgs/mdek_uwb_driver.git
-    git clone git@gitlab.aau.at:aau-cns/ros_pkgs/amaze_mission_sequencer.git
+    git@github.com:aau-cns/mission_sequencer.git
     git clone git@gitlab.aau.at:aau-cns/ros_pkgs/uwb_init_cpp.git
+    git clone git@gitlab.aau.at:aau-cns/ros_pkgs/uwb_msgs.git
     ```
 
 ### Build
@@ -115,12 +125,16 @@ rosservice call uwb_init_ros/refine "{}"
 The provided launchfile and node allows the setting of the following parameters. Each of these parameters can either be set in the launchfile, set through other launchfiles by using the `<include>` and `<arg>` tags, or set through the command line with `roslaunch uwb_init_ros uwb_init.launch <PARAMETER>:=<VALUE>`.
 
 #### ROS Topics and Services
-| ROS parameter | description | default value |
-|---|---|---|
-| estimated_pose_topic | name of the pose topic used for anchor initialization | `/uvio/poseimu` |
-| uwb_range_topic | name of the uwb topic used for anchor initialization  | `/uwb_driver_node/uwb` |
-| uwb_anchors_topic | name of the topic used to publish the anchors after initialization | `~uwb_anchors` |
-| waypoints_topic | name of topic used to publish the generated optimal waypoints | `~wps` |
+| ROS parameter | description | default value | type
+|---|---|---|---|
+| estimated_pose_topic | name of the body pose topic used for anchor initialization  | `` | geometry_msgs::PoseStamped |
+| estimated_pose_cov_topic | name of the body pose with covariance topic used for anchor initialization  | `` | geometry_msgs::PoseWithCovarianceStamped <
+| estimated_transform_topic | name of the body transform stamped topic used for anchor initialization  | `` | geometry_msgs::TransformStamped | 
+| estimated_odometry_topic | name of the body odometry stamped topic used for anchor initialization (nav_msgs::Odometry) | `` |
+| uwb_twr_topics | dictionary of two-way ranging topics: `{<ID>: topic, }`  | `{1: /uwb_driver_node/twr}` | uwb_msgs::TwoWayRangeStamped |
+| uwb_range_topic | name of the uwb topic used for anchor initialization   | `/uwb_driver_node/uwb` | mdek_uwb_driver::Uwb |
+| uwb_anchors_topic | name of the topic used to publish the anchors after initialization | `~uwb_anchors` | uwb_msgs::UwbAnchorArrayStamped | 
+| waypoints_topic | name of topic used to publish the generated optimal waypoints | `~wps` | mission_sequencer::MissionWaypointArray | 
 
 ## Reporting Issues
 
@@ -131,6 +145,8 @@ In case of issues, feature requests, or other questions please open a [New Issue
 * Giulio Delama ([email](mailto:giulio.delama@aau.at?subject=[UWB%20Init]))
 * Alessandro Fornasier ([email](mailto:alessandro.fornasier@ieee.org?subject=[UWB%20Init]))
 * Martin Scheiber ([email](mailto:martin.scheiber@ieee.org?subject=[UWB%20Init]))
+* Roland Jung ([email](mailto:roland.jung@ieee.org?subject=[UWB%20Init]))
 
 <!-- LINKS: -->
-[academic paper]: https://arxiv.org/abs/2308.00513
+[Delama2023]: https://arxiv.org/abs/2308.00513
+[Jung2024]: https://www.arxiv.org/abs/2408.14081

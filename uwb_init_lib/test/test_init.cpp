@@ -1,4 +1,4 @@
-﻿// Copyright (C) 202w Giulio Delama, Alessandro Fornasier
+﻿// Copyright (C) 2023 Giulio Delama, Alessandro Fornasier
 // Control of Networked Systems, Universitaet Klagenfurt, Austria
 //
 // All rights reserved.
@@ -32,9 +32,13 @@ int main()
   std::unique_ptr<NlsSolverOptions> nls_options = nullptr;
   std::unique_ptr<PlannerOptions> planner_options = nullptr;
 
-  init_options = std::make_shared<UwbInitOptions>(InitMethod::DOUBLE, BiasType::CONST_BIAS);
-  ls_options = std::make_unique<LsSolverOptions>(0.05, 0.1);
-  nls_options = std::make_unique<NlsSolverOptions>(1e-2, 10, 1e-6, 1e-6, 1e3);
+  RANSAC_Options ransac_opts;
+  double sigma_pos = 0.05;
+  double sigma_range = 0.1;
+
+  init_options = std::make_shared<UwbInitOptions>();
+  ls_options = std::make_unique<LsSolverOptions>(sigma_pos, sigma_range, true, false, InitMethod::DOUBLE,  BiasType::CONST_BIAS);
+  nls_options = std::make_unique<NlsSolverOptions>(1e-2, 10.0, 1e-6, 1e-6, 1e3, true, false, sigma_pos, sigma_range, BiasType::CONST_BIAS);
   planner_options = std::make_unique<PlannerOptions>(10, 10, 3000, 0.5, 0.2, 2, 2, 4, 4, 5, 6, 1, 0, 0);
 
   // Test initialization

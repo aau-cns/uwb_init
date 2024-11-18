@@ -25,14 +25,17 @@
 #include <ros/ros.h>
 #include <std_srvs/Empty.h>
 #include <tf/transform_broadcaster.h>
-#include <uwb_init_ros/UwbAnchor.h>
-#include <uwb_init_ros/UwbAnchorArrayStamped.h>
+#include <uwb_msgs/TwoWayRangeStamped.h>
+#include <uwb_msgs/UwbAnchor.h>
+#include <uwb_msgs/UwbAnchorArrayStamped.h>
+#include <nav_msgs/Odometry.h>
 #include <yaml-cpp/yaml.h>
 
 #include <Eigen/Eigen>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <mutex>
 #include <uwb_init.hpp>
 
 #include "options.hpp"
@@ -59,6 +62,8 @@ private:
   void callbackPose(const geometry_msgs::PoseStamped::ConstPtr& msg);
   void callbackPoseWithCov(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg);
   void callbackTransform(const geometry_msgs::TransformStamped::ConstPtr& msg);
+  void callbackOdometry(const nav_msgs::Odometry::ConstPtr& msg);
+
 
   /**
    * @brief uwb ranges callback
@@ -66,6 +71,13 @@ private:
    * @param msg
    */
   void callbackUwbRanges(const mdek_uwb_driver::UwbConstPtr& msg);
+
+  /**
+   * @brief UWB two-way-ranges callback
+   *
+   * @param msg
+   */
+  void callbackUwbTwoWayRanges(const uwb_msgs::TwoWayRangeStampedConstPtr& msg);
 
   /**
    * @brief Starting service callback
@@ -126,7 +138,13 @@ private:
    * @brief Save anchors to yaml file
    * @param sol
    */
-  void saveAnchors(const uwb_init::NLSSolutions& sols);
+  void saveAnchorsYaml(const uwb_init::NLSSolutions& sols);
+
+  /**
+   * @brief Save anchors csv file
+   * @param sol
+   */
+  void saveAnchorCSV(const uwb_init::NLSSolutions& sols);
 
   /**
    * @brief Publish anchor transform
@@ -154,6 +172,11 @@ private:
    */
   [[nodiscard]] bool refineAnchors();
 
+  bool uwb_id_on_black_list(size_t const id);
+  bool uwb_id_is_tag(size_t const id);
+
+  void feed_stationary_anchor_pos();
+
   // Flags
   bool collect_measurements_ = false;
 
@@ -162,7 +185,12 @@ private:
 
   /// Subscribers
   ros::Subscriber uwb_range_sub_;
+  std::vector<ros::Subscriber> uwb_twr_subs_;
   ros::Subscriber estimated_pose_sub_;
+  ros::Subscriber estimated_pose_cov_sub_;
+  ros::Subscriber estimated_transform_sub_;
+  ros::Subscriber estimated_odom_sub_;
+
 
   /// Publishers
   ros::Publisher uwb_anchors_pub_;
@@ -180,6 +208,8 @@ private:
   ros::ServiceServer init_srv_;
   ros::ServiceServer wps_srv_;
   ros::ServiceServer refine_srv_;
+
+  std::mutex mtx_service_;
 
   /// UWB initializer
   uwb_init::UwbInitializer uwb_init_;

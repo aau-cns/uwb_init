@@ -1,0 +1,7 @@
+########################################
+### node config
+node_profile: false
+# [Hz]
+node_spinning_rate: 1
+# [sec]
+node_warn_time: 60

@@ -21,11 +21,13 @@
 #ifndef UTILS_HPP_
 #define UTILS_HPP_
 
-#include <Eigen/Eigen>
+#include <Eigen/Dense>
 #include <array>
 #include <iterator>
+#include <random>
 #include <type_traits>
 #include <vector>
+#include <algorithm>
 
 namespace uwb_init
 {
@@ -103,6 +105,12 @@ std::ostream& operator<<(std::ostream& stream, const T& v)
 
   return stream;
 }
+
+std::vector<size_t> randperm(size_t const num_samples, const size_t max_range);
+std::vector<size_t> randperm(size_t const num_samples, const size_t max_range, std::mt19937& gen);
+
+double roundn(double const num, size_t const digits);
+float roundn(float const num, size_t const digits);
 
 }  // namespace uwb_init
 

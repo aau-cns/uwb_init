@@ -20,7 +20,7 @@
 
 #include <gtest/gtest.h>
 #include <iostream>
-
+#include <utils/utils.hpp>
 #include "uwb_init.hpp"
 
 using namespace uwb_init;
@@ -83,6 +83,45 @@ TEST(TimedBuffer, get)
   EXPECT_EIGEN_EQ(pos.get_closest(0.492), Eigen::Vector3d(49, 49, 49), eps);
   EXPECT_EIGEN_EQ(pos.get_at_timestamp(0.49), Eigen::Vector3d(49, 49, 49), eps);
   EXPECT_EIGEN_EQ(pos.get_at_timestamp(0.49572), Eigen::Vector3d(49.572, 49.572, 49.572), eps);
+}
+
+TEST(randperm, std)
+{
+  {
+  std::vector<size_t> indices = randperm(10, 100);
+
+  std::cout << "Got random indices: \n";
+  for(auto const& e: indices) {
+    std::cout << e << ", ";
+  }
+  std::cout << std::endl;
+
+  EXPECT_TRUE(indices.size() == 10);
+  }
+  {
+    std::vector<size_t> indices = randperm(10, 100);
+
+  std::cout << "Got random indices: \n";
+  for(auto const& e: indices) {
+    std::cout << e << ", ";
+  }
+  std::cout << std::endl;
+
+  EXPECT_TRUE(indices.size() == 10);
+  }
+}
+
+TEST(randperm, more_samples_than_range)
+{
+  std::vector<size_t> indices = randperm(10, 9);
+
+  std::cout << "Got random indices: \n";
+  for(auto const& e: indices) {
+    std::cout << e << ", ";
+  }
+  std::cout << std::endl;
+
+  EXPECT_TRUE(indices.size() == 0);
 }
 
 int main(int argc, char* argv[])

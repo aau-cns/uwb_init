@@ -61,7 +61,7 @@ public:
    * @brief Return the size of the buffer
    * @return Size of buffer
    */
-  inline const size_t size() const
+  inline size_t size() const
   {
     return buffer_.size();
   }
@@ -135,6 +135,12 @@ public:
     }
     else
     {
+      // Get the only element
+      if(buffer_.size() == 1) {
+        auto it = buffer_.cbegin();
+        return it->second;
+      }
+
       // Get closest iterator
       auto it = get_closest_cit(timestamp);
 
