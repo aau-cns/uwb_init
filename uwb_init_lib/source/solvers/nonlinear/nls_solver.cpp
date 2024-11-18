@@ -105,6 +105,7 @@ bool NlsSolver::levenbergMarquardt(const UwbDataPerTag &dict_uwb_data, const Pos
       if(theta.size() != 3 + num_tags ) {
         init_theta = true;
       }
+      break;
     }
     case BiasType::ALL_BIAS:
     {
@@ -112,6 +113,9 @@ bool NlsSolver::levenbergMarquardt(const UwbDataPerTag &dict_uwb_data, const Pos
         init_theta = true;
       }
       break;
+    }
+    default: {
+      init_theta = false;
     }
   }
   if (init_theta) {
