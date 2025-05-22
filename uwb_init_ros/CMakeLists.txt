@@ -37,7 +37,9 @@ endif()
 
 FetchContent_Declare(
     yaml-cpp
-    URL https://github.com/jbeder/yaml-cpp/archive/refs/tags/${YAML_CPP_VERSION}.tar.gz
+    #URL https://github.com/jbeder/yaml-cpp/archive/refs/tags/${YAML_CPP_VERSION}.tar.gz
+    GIT_REPOSITORY https://github.com/jbeder/yaml-cpp
+    GIT_TAG origin/master
     GIT_SHALLOW     TRUE
     GIT_PROGRESS    TRUE
 )
