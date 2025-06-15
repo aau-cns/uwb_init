@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 3.6)
 
 set(lib_name "uwb_init_trigger")
 project(${lib_name}

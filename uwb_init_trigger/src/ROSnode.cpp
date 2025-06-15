@@ -103,9 +103,12 @@ void ROSnode::load_config()
   // we need a spinning process to check the timer
   mbSpinningProcess = opts.m_bAutoTrigger;
 
+  time_started = ros::Time::now();
+
   if (opts.m_bAutoTrigger) {
     ROS_INFO(" auto trigger enables: rec starts in %f [s]; cal in %f [s]", opts.timeout_start_rec,
              opts.timeout_start_cal);
+    ROS_INFO(" auto trigger start time %f [s]", time_started.toSec());
   }
 
   m_clt_start = mNh.serviceClient<std_srvs::Empty>(opts.service_start_);
@@ -114,7 +117,7 @@ void ROSnode::load_config()
   m_clt_wps = mNh.serviceClient<std_srvs::Empty>(opts.service_wps_);
   m_clt_refine = mNh.serviceClient<std_srvs::Empty>(opts.service_refine_);
 
-  time_started = ros::Time::now();
+  
 }
 
 // 3)
@@ -126,7 +129,18 @@ void ROSnode::init()
 // 4) is called when mbHasNewMessage == true or mbSpinningProcess == true
 void ROSnode::process()
 {
-  if (opts.m_bAutoTrigger) {
+  // for use_sim_time=true, when bag file was not played
+  if(time_started.toSec() == 0.0) 
+  {
+    time_started = ros::Time::now();
+    ROS_INFO(" auto trigger start time %f [s]", time_started.toSec());
+  }
+
+
+  if (opts.m_bAutoTrigger && time_started.toSec() != 0.0) {
+
+
+
     ros::Time processTimeNow = ros::Time::now();
 
     if (opts.timeout_start_rec > 0) {
