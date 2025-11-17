@@ -166,10 +166,17 @@ int main(int argc, char** argv)
     }
   }
 
-  // Get init options from parameter server
-  bool opt_enable_ls, opt_compute_covariance, opt_use_ranac;
+  // Get UwbInitOptions from parameter server
+  bool opt_enable_ls, opt_compute_covariance, opt_use_ranac, opt_outlier_rejection, opt_auto_calibration;
+  double opt_min_traveled_distance, opt_PDOP_threshold;
+  int opt_max_num_samples;
   nh.param<bool>("enable_ls", opt_enable_ls, false);
   nh.param<bool>("compute_covariance", opt_compute_covariance, false);
+  nh.param<bool>("outlier_rejection", opt_outlier_rejection, false);
+  nh.param<double>("min_traveled_distance_m", opt_min_traveled_distance, 0.2);
+  nh.param<int>("max_num_samples", opt_max_num_samples, 1000);
+  nh.param<bool>("auto_calibration", opt_auto_calibration, false);
+  nh.param<double>("PDOP_threshold", opt_PDOP_threshold, 1);
   nh.param<bool>("use_ransac", opt_use_ranac, true);
   std::string method, bias_type;
   nh.param<std::string>("method", method, "double");
@@ -359,7 +366,7 @@ int main(int argc, char** argv)
       YAML::Node node = YAML::Load(dict_p_ItoU_str);
       if (node.IsMap()) {
         for (YAML::iterator it = node.begin(); it != node.end(); ++it) {
-          size_t Tag_ID = it->first.as<int>();
+          size_t Tag_ID = (size_t)it->first.as<int>();
           std::vector<double> pos = it->second.as<std::vector<double>>();
 
           Eigen::Vector3d p_UinI(pos.data());
@@ -440,7 +447,13 @@ int main(int argc, char** argv)
                                                                   opt_dist_bias_prior_cov,
                                                                   opt_min_num_anchors,
                                                                   opt_enable_ls,
-                                                                  opt_compute_covariance);
+                                                                  opt_compute_covariance,
+                                                                  opt_outlier_rejection,
+                                                                  opt_sigma_mes,
+                                                                  std::max(opt_min_traveled_distance, 0.01),
+                                                                  (size_t) std::max(opt_max_num_samples, 100),
+                                                                  opt_auto_calibration,
+                                                                  std::max(opt_PDOP_threshold, 0.1));
   opts.ls_solver_options_ = std::make_unique<uwb_init::LsSolverOptions>(opt_sigma_pos,
                                                                         opt_sigma_mes,
                                                                         opt_check_ls_cov_spd,

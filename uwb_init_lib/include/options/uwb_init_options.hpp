@@ -49,16 +49,36 @@ struct UwbInitOptions
   // Compute covariance
   bool compute_covariance_;
 
+  // Enable real-time outlier rejection
+  bool enable_outlier_rejection_= {false};
+  double stddev_range_ = {0.0};
+  double min_traveled_distance_m_ = {0.2};
+  size_t max_num_samples_ = {1000};
+  bool auto_calibration_ = {false};
+  double min_PDOP_threshold_ = {1};
+
   UwbInitOptions(const double const_bias_prior_cov = 0.1,
                  const double dist_bias_prior_cov = 0.1,
                  const unsigned int min_num_anchors = 1,
                  const bool enable_ls = true,
-                 const bool compute_covariance = true)
+                 const bool compute_covariance = true,
+                 const bool enable_outlier_rejection = false,
+                 const double stddev_range = 0.1,
+                 const double min_traveled_distance_m = 0.2,
+                 const size_t max_num_samples = 1000,
+                 const bool auto_calibration = false,
+                 const double min_PDOP_threshold = 1)
     : const_bias_prior_cov_(const_bias_prior_cov)
     , dist_bias_prior_cov_(dist_bias_prior_cov)
     , min_num_anchors_(min_num_anchors)
     , enable_ls_(enable_ls)
     , compute_covariance_(compute_covariance)
+    , enable_outlier_rejection_(enable_outlier_rejection)
+    , stddev_range_(stddev_range)
+    , min_traveled_distance_m_(min_traveled_distance_m)
+    , max_num_samples_(max_num_samples)
+    , auto_calibration_(auto_calibration)
+    , min_PDOP_threshold_(min_PDOP_threshold)
   {
   }
 
