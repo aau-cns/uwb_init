@@ -198,21 +198,22 @@ struct NLSSolution
 struct UwbData
 {
   /// Validity flag, determines if distance is valid
-  bool valid_;
+  bool valid_={false};
 
   /// Distance measurement between anchor and tag in meters
-  double distance_;
+  double distance_={0.0};
 
   /// Id of the anchor from which the measurement is received
-  uint id_Anchor;
+  uint id_Anchor=0;
 
   /// Id of the tag from which the measurement is received
   uint id_Tag = 0;
 
-  UwbData(const bool& valid, const double& distance, const uint& id_anchor, const uint id_tag = 0) : valid_(valid), distance_(distance),
+  UwbData(const bool valid=false, const double distance=0.0, const uint id_anchor = 0, const uint id_tag = 0) : valid_(valid), distance_(distance),
                                                                                                      id_Anchor(id_anchor), id_Tag(id_tag)
   {
   }
+
 };
 
 /**
@@ -245,6 +246,10 @@ typedef std::map<uint, TimedBuffer<UwbData>> UwbDataBuffer;
 typedef std::map<uint, TimedBuffer<UwbData>> UwbDataPerTag;
 // map<Anchor_ID, map<Tag_ID, Hist<UwbData>>>
 typedef std::map<uint, UwbDataPerTag> UwbDataBufferDict_t;
+// map<Anchor_ID, pair<distance, p_TinG>>
+typedef std::map<uint, std::pair<double, Eigen::Vector3d>> ClosestPointToAnchorDict_t;
+// map<Anchor_ID, H^T*H>>
+typedef std::map<uint, Eigen::Matrix3d> OuterProductDict_t;
 // map<Anchor_ID,  LSSolution>
 typedef std::map<uint, LSSolution> LSSolutions;
 // map<Anchor_ID,  NLSSolution>
