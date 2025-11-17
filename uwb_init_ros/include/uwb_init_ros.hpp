@@ -53,6 +53,7 @@ public:
    */
   UwbInitRos(const ros::NodeHandle& nh, UwbInitRosOptions&& options);
 
+  void start();
   void auto_calibration();
 
 private:

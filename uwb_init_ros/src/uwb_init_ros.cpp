@@ -75,12 +75,19 @@ UwbInitRos::UwbInitRos(const ros::NodeHandle& nh, UwbInitRosOptions&& options)
 
 }
 
+void UwbInitRos::start()
+{
+  uwb_init_.clear_buffers();
+  collect_measurements_ = true;
+  feed_stationary_anchor_pos();
+}
+
 void UwbInitRos::auto_calibration()
 {
 
   uwb_init::NLSSolutions sols = uwb_init_.auto_calibrate();
   if(sols.size()) {
-    // Stop collecting measurements
+    // TODO: this will overwrite existings files!
     ROS_INFO("Anchors initialization completed.");
 
     // If enabled, publish and save anchors
@@ -259,9 +266,7 @@ bool UwbInitRos::callbackServiceStart([[maybe_unused]] std_srvs::Empty::Request&
   std::scoped_lock lock{mtx_service_};
   ROS_INFO("Start service called.");
   // Clear buffers at each start
-  uwb_init_.clear_buffers();
-  collect_measurements_ = true;
-  feed_stationary_anchor_pos();
+  start();
   return true;
 }
 

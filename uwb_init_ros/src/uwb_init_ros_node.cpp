@@ -493,8 +493,13 @@ int main(int argc, char** argv)
   if (opt_auto_calibration) {
     double spinningRate = 1;  // Hz
     ros::Rate rate(spinningRate);
+    UwbInitRos.start();
     while (ros::ok())
     {
+      // ref: http://wiki.ros.org/roscpp/Overview/Callbacks%20and%20Spinning
+      // will call all the callbacks waiting to be called at that point in time.
+      ros::spinOnce();
+
       UwbInitRos.auto_calibration();
       rate.sleep();
     }
