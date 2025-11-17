@@ -153,7 +153,7 @@ void UwbInitializer::feed_uwb(const double timestamp, const UwbData uwb_measurem
 
         double delta_p = (p_UinG_cur.second-p_UinG_prev.second).norm();
         double delta_range = std::abs(uwb_measurement.distance_ - uwb_data_prev.second.distance_);
-        if(delta_range > delta_p + this->init_options_->stddev_range_ )
+        if(delta_range > delta_p + 3*this->init_options_->stddev_range_ )
         {
           valid = false;
         }
