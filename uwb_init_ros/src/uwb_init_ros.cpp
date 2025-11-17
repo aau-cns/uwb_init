@@ -75,6 +75,30 @@ UwbInitRos::UwbInitRos(const ros::NodeHandle& nh, UwbInitRosOptions&& options)
 
 }
 
+void UwbInitRos::auto_calibration()
+{
+
+  uwb_init::NLSSolutions sols = uwb_init_.auto_calibrate();
+  if(sols.size()) {
+    // Stop collecting measurements
+    ROS_INFO("Anchors initialization completed.");
+
+    // If enabled, publish and save anchors
+    if (options_.publish_first_solution_)
+    {
+      ROS_INFO("Publishing and saving solution...");
+      publishAnchors(sols);
+
+      if (!options_.anchors_yaml_file_path_.empty()) {
+        saveAnchorsYaml(sols);
+      }
+      if (!options_.anchors_csv_file_path_.empty()) {
+        saveAnchorCSV(sols);
+      }
+    }
+  }
+}
+
 void UwbInitRos::callbackPose(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
   // Get pose

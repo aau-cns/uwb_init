@@ -490,9 +490,18 @@ int main(int argc, char** argv)
   // Instanciate UwbInitRos
   uwb_init_ros::UwbInitRos UwbInitRos(nh, std::move(opts));
 
-  // ROS Spin
-  ros::spin();
-
+  if (opt_auto_calibration) {
+    double spinningRate = 1;  // Hz
+    ros::Rate rate(spinningRate);
+    while (ros::ok())
+    {
+      UwbInitRos.auto_calibration();
+      rate.sleep();
+    }
+  } else {
+    // ROS Spin
+    ros::spin();
+  }
   // Done!
   ROS_INFO("Done!");
   return EXIT_SUCCESS;
