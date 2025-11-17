@@ -182,23 +182,32 @@ void UwbInitializer::feed_uwb(const double timestamp, const UwbData uwb_measurem
     if(uwb_data_buffer_[Anchor_ID][Tag_ID].size() > this->init_options_->max_num_samples_)
     {
       uwb_data_buffer_[Anchor_ID][Tag_ID].subsample(2); // remove very second element
+      logger_->debug("UwbInitializer::feed_uwb(): measurement from A[" + std::to_string(Anchor_ID) + "] to T[" + std::to_string(Tag_ID) + "] subsampled");
     }
 
     uwb_data_buffer_[Anchor_ID][Tag_ID].push_back(timestamp, uwb_measurement);
     //logger_->debug("UwbInitializer::feed_uwb(): added measurement from tag_ID=" + std::to_string(Tag_ID)
     //               + " to anchor_ID=" + std::to_string(Anchor_ID) + " at timestamp " + std::to_string(timestamp));
 
-    // check if we got a new closest point to anchor by means of the raw distance measurement for the PDOP calculation:
-    if(this->p_UinG_buffer_.find(Tag_ID) != p_UinG_buffer_.end())
+    // auto_calibration: check if we got a new closest point to anchor by means of the raw distance measurement for the PDOP calculation:
+    if(init_options_->auto_calibration_ && this->p_UinG_buffer_.find(Tag_ID) != p_UinG_buffer_.end())
     {
+      bool new_closest_found = false;
       Eigen::Vector3d p_UinG_cur = p_UinG_buffer_.at(Tag_ID).get_closest(timestamp);
       if (closest_to_anchor_.find(Anchor_ID) == closest_to_anchor_.end())
       {
         closest_to_anchor_.insert({Anchor_ID, std::make_pair(uwb_measurement.distance_, p_UinG_cur)});
       } else if(closest_to_anchor_[Anchor_ID].first > uwb_measurement.distance_)
       {
+        // new closest added
         closest_to_anchor_[Anchor_ID].first = uwb_measurement.distance_;
         closest_to_anchor_[Anchor_ID].second = p_UinG_cur;
+        new_closest_found = true;
+      }
+
+      if(!new_closest_found)
+      {
+        update_PDOP(Anchor_ID, closest_to_anchor_[Anchor_ID].second, p_UinG_cur, uwb_measurement.distance_);
       }
     }
   }
@@ -229,6 +238,7 @@ void UwbInitializer::feed_position(const double timestamp, const Eigen::Vector3d
     if(p_UinG_buffer_[Tag_ID].size() > this->init_options_->max_num_samples_)
     {
       p_UinG_buffer_[Tag_ID].subsample(2);
+      logger_->debug("UwbInitializer::feed_position(): positions from [" + std::to_string(Tag_ID) + "] subsampled");
     }
     p_UinG_buffer_[Tag_ID].push_back(timestamp, p_UinG);
   } else {
@@ -571,6 +581,43 @@ double UwbInitializer::get_PDOP(uint const ID_Anchor)
   {
     return std::numeric_limits<double>::infinity();
   }
+}
+
+NLSSolutions UwbInitializer::auto_calibrate()
+{
+  NLSSolutions sols;
+  if(init_options_->auto_calibration_)
+  {
+    // Counter for initialized anchors
+    uint init_count = 0;
+    // check the PDOP of the known anchor
+    for(auto e : closest_to_anchor_) {
+      uint ID_Anchor = e.first;
+
+      // check if me miss a solution (no continous refinement!)
+      if(nls_sols_.find(ID_Anchor) == nls_sols_.end())
+      {
+
+        if(new_closest_to_anchor_.find(ID_Anchor) != new_closest_to_anchor_.end()) {
+          recompute_PDOP(ID_Anchor, closest_to_anchor_[ID_Anchor].second );
+          new_closest_to_anchor_.erase(ID_Anchor);
+        }
+
+        double PDOP_i = get_PDOP(ID_Anchor);
+        if(PDOP_i < init_options_->min_PDOP_threshold_) {
+          if(init_anchor(ID_Anchor)) {
+            sols[ID_Anchor] = nls_sols_[ID_Anchor];
+            init_count++;
+          }
+        }
+      }
+    }
+    if(init_count)
+    {
+       logger_->info("UwbInitializer:auto_calibrate(): SUCCESSFUL (initialized " + std::to_string(init_count) + " anchors)");
+    }
+  }
+  return sols;
 }
 
 LSSolution UwbInitializer::to_LSSolution(const Eigen::VectorXd &lsSolution,

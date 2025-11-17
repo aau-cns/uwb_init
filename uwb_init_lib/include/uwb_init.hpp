@@ -25,6 +25,7 @@
 #include <chrono>
 #include <deque>
 #include <map>
+#include <set>
 
 #include "logger/logger.hpp"
 #include "options/nls_solver_options.hpp"
@@ -171,6 +172,8 @@ public:
   /// \return the PDOP
   ///
   [[nodiscard]] double get_PDOP(uint const ID_Anchor);
+
+  [[nodiscard]] uwb_init::NLSSolutions auto_calibrate();
 private:
   // Shared pointer to logger
   std::shared_ptr<Logger> logger_ = nullptr;
@@ -194,6 +197,7 @@ private:
   UwbDataBufferDict_t uwb_data_buffer_;  //!< history of uwb readings in DataBuffer
 
   ClosestPointToAnchorDict_t closest_to_anchor_;
+  std::set<uint> new_closest_to_anchor_;
   OuterProductDict_t  PDOP_outproducts_;
   // Solutions handling
   LSSolutions ls_sols_;
