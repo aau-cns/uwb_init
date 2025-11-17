@@ -41,6 +41,7 @@ struct UwbAnchor
   /// Position of the anchor (A) in the global frame of reference (G)
   Eigen::Vector3d p_AinG_;
 
+  UwbAnchor() : id_(0), p_AinG_(Eigen::Vector3d::Zero()) {}
   UwbAnchor(const uint& id, const Eigen::Vector3d& p_AinG) : id_(id), p_AinG_(p_AinG)
   {
   }
@@ -122,6 +123,7 @@ struct NLSSolution
   /// Covariance of the solution
   Eigen::MatrixXd cov_;
 
+  NLSSolution() {}
   NLSSolution(const UwbAnchor& anchor, const double& gamma, const double& beta, const Eigen::MatrixXd& cov, const uint id_tag = 0)
     : anchor_(anchor) {
 
