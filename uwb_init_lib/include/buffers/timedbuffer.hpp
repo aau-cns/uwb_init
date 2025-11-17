@@ -105,6 +105,23 @@ public:
     buffer_.clear();
   }
 
+  inline void subsample(size_t step_size) {
+    if(step_size > 1 && buffer_.size() >= step_size)
+    {
+      size_t j = 0;
+      for(size_t i = 0; i < buffer_.size(); i+=step_size)
+      {
+        buffer_[j] = buffer_[i];
+        j++;
+      }
+      buffer_.resize(j);
+    }
+  }
+
+  inline std::pair<double, BufferType> get_closest_elem(const double& timestamp) const
+  {
+    return *get_closest_cit(timestamp);
+  }
   /**
    * @brief Get the closest element to given timestamp from unsorted TimedBuffer
    *
@@ -123,22 +140,24 @@ public:
    * @param timestamp
    * @return BufferType
    */
-  inline BufferType get_at_timestamp(const double& timestamp) const
+
+  inline std::pair<double, BufferType>  get_elem_at_timestamp(const double& timestamp) const
   {
+    assert(!buffer_.empty());
     // Check if we have an element at a given timestamp, if not perform linear interpolation
     auto it =
         std::find_if(buffer_.cbegin(), buffer_.cend(),
                      [&timestamp](const std::pair<double, BufferType>& element) { return element.first == timestamp; });
     if (it != buffer_.cend())
     {
-      return it->second;
+      return *it;
     }
     else
     {
       // Get the only element
       if(buffer_.size() == 1) {
         auto it = buffer_.cbegin();
-        return it->second;
+        return *it;
       }
 
       // Get closest iterator
@@ -158,7 +177,8 @@ public:
         double t1 = it->first;
         BufferType elem1 = it->second;
 
-        return lerp(elem0, elem1, (timestamp - t0) / (t1 - t0));
+
+        return std::make_pair(timestamp, lerp(elem0, elem1, (timestamp - t0) / (t1 - t0)));
       }
       else
       {
@@ -173,11 +193,65 @@ public:
         double t0 = it->first;
         BufferType elem0 = it->second;
 
-        return lerp(elem0, elem1, (timestamp - t0) / (t1 - t0));
+        return std::make_pair(timestamp, lerp(elem0, elem1, (timestamp - t0) / (t1 - t0)));
+      }
+    }
+  }
+  inline BufferType get_at_timestamp(const double& timestamp) const
+  {
+    std::pair<double, BufferType> elem = get_elem_at_timestamp(timestamp);
+    return elem.second;
+  }
+
+  /**
+   * @brief Get an object of BufferType at timestamp.
+   * If this object does not exist the function perform linear interpolation of the object
+   *
+   * @param timestamp
+   * @return BufferType
+   */
+  inline std::pair<double, BufferType> get_elem_before_timestamp(const double& timestamp) const
+  {
+    assert(!buffer_.empty());
+    // Check if we have an element at a given timestamp, if not perform linear interpolation
+    auto it =
+        std::find_if(buffer_.cbegin(), buffer_.cend(),
+                     [&timestamp](const std::pair<double, BufferType>& element) { return element.first == timestamp; });
+    if (it != buffer_.cbegin())
+    {
+      --it;
+      return *it;
+    }
+    else
+    {
+      // Get the only element
+      if(buffer_.size() == 1) {
+        auto it = buffer_.cbegin();
+        return *it;
+      }
+
+      // Get closest iterator
+      auto it = get_closest_cit(timestamp);
+
+      // Check if closest timestamp is before or after timestamp
+      if (it->first < timestamp)
+      {
+        return *it;
+      }
+      else
+      {
+        // Decrement iterator
+        --it;
+        return *it;
       }
     }
   }
 
+  inline BufferType get_before_timestamp(const double& timestamp) const
+  {
+    std::pair<double, BufferType> elem = get_elem_before_timestamp(timestamp);
+    return elem.second;
+  }
 private:
   /**
    * @brief Get a constant iterator to closest element to given timestamp from unsorted TimedBuffer
