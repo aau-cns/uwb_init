@@ -164,6 +164,10 @@ bool LsSolver::solve_ls(const TimedBuffer<UwbData>& uwb_data, const PositionBuff
   cov = svd.matrixV() * svd.singularValues().asDiagonal().inverse() * svd.singularValues().asDiagonal().inverse() *
         svd.matrixV().transpose();
 
+  // stabilize covariance:
+  Eigen::MatrixXd I = Eigen::MatrixXd::Identity(cov.rows(), cov.cols())*1e-6;
+  cov =  0.5*(cov + cov.transpose()) + I;
+
   // If covariance matrix is not semi-positive-definite return
   if (solver_options_->check_cov_ && !isSPD(cov))
   {
@@ -231,6 +235,10 @@ bool LsSolver::solve_ls(const UwbDataPerTag &dict_uwb_data, PositionBufferDict_t
           // if A_ = U*S*V' then (A_'*A_)^-1 = V*S^-1*S^-1*V' (see properties of SVD)
   cov = svd.matrixV() * svd.singularValues().asDiagonal().inverse() * svd.singularValues().asDiagonal().inverse()
         * svd.matrixV().transpose();
+
+  // stabilize covariance:
+  Eigen::MatrixXd I = Eigen::MatrixXd::Identity(cov.rows(), cov.cols())*1e-6;
+  cov =  0.5*(cov + cov.transpose()) + I;
 
           // If covariance matrix is not semi-positive-definite return
   if (!isSPD(cov)) {
