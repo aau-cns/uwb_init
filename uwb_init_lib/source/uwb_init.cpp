@@ -213,7 +213,7 @@ void UwbInitializer::feed_uwb(const double timestamp, const UwbData uwb_measurem
   }
   else
   {
-    logger_->warn("UwbInitializer::feed_uwb(): DISCARDING measurment " + std::to_string(uwb_measurement.distance_) +
+    logger_->warn("UwbInitializer::feed_uwb(): REJECTING measurment " + std::to_string(uwb_measurement.distance_) +
                   " from anchor " + std::to_string(uwb_measurement.id_Anchor));
   }
 }
@@ -242,7 +242,7 @@ void UwbInitializer::feed_position(const double timestamp, const Eigen::Vector3d
     }
     p_UinG_buffer_[Tag_ID].push_back(timestamp, p_UinG);
   } else {
-     logger_->debug("UwbInitializer::feed_position(): position from [" + std::to_string(Tag_ID) + "] at timestamp " + std::to_string(timestamp) + "discareded");
+     //logger_->debug("UwbInitializer::feed_position(): position from [" + std::to_string(Tag_ID) + "] at timestamp " + std::to_string(timestamp) + " discareded");
   }
   //logger_->debug("UwbInitializer::feed_position(): added position from [" + std::to_string(Tag_ID) + "] at timestamp " + std::to_string(timestamp));
 }
@@ -310,8 +310,6 @@ bool UwbInitializer::init_anchor(uint const ID_Anchor)
     // Logging
     logger_->info("Anchor[" + std::to_string(ID_Anchor) + "]: Solutiuon refined");
 
-
-
     std::vector<size_t> ID_Tags;
     for(auto const&e : uwb_data_inliers) { ID_Tags.push_back(e.first); }
 
@@ -330,6 +328,12 @@ bool UwbInitializer::init_anchor(uint const ID_Anchor)
 
     // sucess
     return true;
+  }
+  else
+  {
+    // If LS fails assign empty solution
+    logger_->warn("Anchor[" + std::to_string(ID_Anchor) +
+                  "]: NlsSolver FAILED!");
   }
   // If NLS fails continue with next anchor
   return false;
@@ -604,7 +608,8 @@ NLSSolutions UwbInitializer::auto_calibrate()
         }
 
         double PDOP_i = get_PDOP(ID_Anchor);
-        if(PDOP_i < init_options_->min_PDOP_threshold_) {
+        if(PDOP_i > 1e-3 && PDOP_i < init_options_->min_PDOP_threshold_) {
+          logger_->info("UwbInitializer:auto_calibrate(): PDOP of A[" + std::to_string(ID_Anchor) +  "]=" + std::to_string(PDOP_i));
           if(init_anchor(ID_Anchor)) {
             sols[ID_Anchor] = nls_sols_[ID_Anchor];
             init_count++;
