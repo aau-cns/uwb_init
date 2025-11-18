@@ -177,8 +177,11 @@ public:
         double t1 = it->first;
         BufferType elem1 = it->second;
 
-
-        return std::make_pair(timestamp, lerp(elem0, elem1, (timestamp - t0) / (t1 - t0)));
+        if(std::abs(t1-t0) < 1e-6) {
+          return std::make_pair(timestamp, elem0);
+        } else {
+          return std::make_pair(timestamp, lerp(elem0, elem1, (timestamp - t0) / (t1 - t0)));
+        }
       }
       else
       {
@@ -193,7 +196,11 @@ public:
         double t0 = it->first;
         BufferType elem0 = it->second;
 
-        return std::make_pair(timestamp, lerp(elem0, elem1, (timestamp - t0) / (t1 - t0)));
+        if(std::abs(t1-t0) < 1e-6) {
+          return std::make_pair(timestamp, elem0);
+        } else {
+          return std::make_pair(timestamp, lerp(elem0, elem1, (timestamp - t0) / (t1 - t0)));
+        }
       }
     }
   }
