@@ -25,6 +25,7 @@
 #include <chrono>
 #include <deque>
 #include <map>
+#include <set>
 
 #include "logger/logger.hpp"
 #include "options/nls_solver_options.hpp"
@@ -136,6 +137,8 @@ public:
   /// already successfully initialized in the past it is skipped. It will also return 'true' if all anchors, for which
   /// measurements are present were successfully initialized at some point.
   ///
+  ///
+  [[nodiscard]] bool init_anchor(uint const ID_Anchor);
   [[nodiscard]] bool init_anchors();
 
   ///
@@ -153,6 +156,24 @@ public:
   ///
   [[nodiscard]] bool refine_anchors();
 
+  ///
+  /// \brief recompute_PDOP recomputes the an estimated PDOP of the a certain anchor (by ID) given an
+  /// estimated anchor position, e.g., the closest point to anchor.
+  ///
+  [[nodiscard]] void recompute_PDOP(uint const ID_Anchor, Eigen::Vector3d const p_AinG_est);
+
+  ///
+  /// \brief update_PDOP adds a new measurement to the outer-product matrix of the geometry matrix
+  ///
+  [[nodiscard]] void update_PDOP(uint const ID_Anchor, Eigen::Vector3d const p_AinG, Eigen::Vector3d const p_UinG, double const distance);
+
+  ///
+  /// \brief get_PDOP computes the PDOP based on the outer-product matrix of the geometry matrix
+  /// \return the PDOP
+  ///
+  [[nodiscard]] double get_PDOP(uint const ID_Anchor);
+
+  [[nodiscard]] uwb_init::NLSSolutions auto_calibrate();
 private:
   // Shared pointer to logger
   std::shared_ptr<Logger> logger_ = nullptr;
@@ -175,6 +196,9 @@ private:
   // map<Anchor_ID, map<Tag_ID, Hist<UwbData>>>
   UwbDataBufferDict_t uwb_data_buffer_;  //!< history of uwb readings in DataBuffer
 
+  ClosestPointToAnchorDict_t closest_to_anchor_;
+  std::set<uint> new_closest_to_anchor_;
+  OuterProductDict_t  PDOP_outproducts_;
   // Solutions handling
   LSSolutions ls_sols_;
   NLSSolutions nls_sols_;
@@ -182,7 +206,6 @@ private:
 
   // Optimal Waypoints
   Waypoints opt_wps_;
-
 
   LSSolution to_LSSolution(Eigen::VectorXd const& lsSolution, Eigen::MatrixXd const& lsCov, size_t const ID_Anchor, std::vector<size_t> const& ID_Tags);
   NLSSolution to_NLSSolution(Eigen::VectorXd const& nlsSolution, Eigen::MatrixXd const& nlsCov, size_t const ID_Anchor, std::vector<size_t> const& ID_Tags);

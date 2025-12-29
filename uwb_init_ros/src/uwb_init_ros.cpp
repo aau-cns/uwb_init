@@ -75,6 +75,37 @@ UwbInitRos::UwbInitRos(const ros::NodeHandle& nh, UwbInitRosOptions&& options)
 
 }
 
+void UwbInitRos::start()
+{
+  uwb_init_.clear_buffers();
+  collect_measurements_ = true;
+  feed_stationary_anchor_pos();
+}
+
+void UwbInitRos::auto_calibration()
+{
+
+  uwb_init::NLSSolutions sols = uwb_init_.auto_calibrate();
+  if(sols.size()) {
+    // TODO: this will overwrite existings files!
+    ROS_INFO("Anchors initialization completed.");
+
+    // If enabled, publish and save anchors
+    if (options_.publish_first_solution_)
+    {
+      ROS_INFO("Publishing and saving solution...");
+      publishAnchors(sols);
+
+      if (!options_.anchors_yaml_file_path_.empty()) {
+        saveAnchorsYaml(sols);
+      }
+      if (!options_.anchors_csv_file_path_.empty()) {
+        saveAnchorCSV(sols);
+      }
+    }
+  }
+}
+
 void UwbInitRos::callbackPose(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
   // Get pose
@@ -235,9 +266,7 @@ bool UwbInitRos::callbackServiceStart([[maybe_unused]] std_srvs::Empty::Request&
   std::scoped_lock lock{mtx_service_};
   ROS_INFO("Start service called.");
   // Clear buffers at each start
-  uwb_init_.clear_buffers();
-  collect_measurements_ = true;
-  feed_stationary_anchor_pos();
+  start();
   return true;
 }
 
